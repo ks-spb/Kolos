@@ -8,7 +8,7 @@ conn = sqlite3.connect('Li_db_v1_4.db')
 cursor = conn.cursor()
 A = True
 posledniy_t = 0
-posledniy_t_0 = 3
+posledniy_t_0 = 3   # переменная содержит ID последней временной точки t0
 posledniy_tp = 0
 # print("Posl_to теперь 1 : ", posledniy_t_0)
 
@@ -211,7 +211,7 @@ def proverka_signal_porog():
 
 def pogasit_vse_tochki():
     # погасить все точки в конце главного цикла
-    nayti_ID_s_work = tuple(cursor.execute("SELECT ID FROM tochki WHERE signal > 0 AND work = 1"))
+    nayti_ID_s_work = tuple(cursor.execute("SELECT ID FROM tochki WHERE signal > 0"))
     # print("погашены все точки: ", nayti_ID_s_work)
     for nayti_ID_s_work_1 in nayti_ID_s_work:
         cursor.execute("UPDATE tochki SET work = 0 WHERE ID = (?)", nayti_ID_s_work_1)
@@ -488,20 +488,55 @@ def concentrator_deystviy():
             schetchik_B += 1
     # print('Лист действий: ', list_deystviy)
     if list_deystviy != []:   # 3.2.3 - было if posl_tp != ()
-        # list_deystviy += posledniy_tp_work1   # исправить - добавляется tp, игнорирующий все проверки
-        # print("Лист действий следующий, но выбираем 1ю поз.: ", list_deystviy)
-        # for list_deystviy1 in list_deystviy:   # 3.2.3 - лист действий может содержать 2 действия - выбираю 1е
-        sbor_deystviya(list_deystviy[0])
-        list_deystviy1_kortez = (list_deystviy[0], )
+        list_minus_deystviy = []
+        otmena_minus_deystviya = 0    #переменная, чтобы не происходил ответ, если он уже имеется
+        # 13.02.23 - добавляю поиск отрицательных реакций у найденных действий, чтобы снизить возможность повторного
+        # не верного ответа
+        for list_deystviy1 in list_deystviy:
+            # поиск связей с текущим ID (tp) и (t0)
+            # print("Лист действий, такой ID передаётся: ", list_deystviy1)
+            # приходится ID передавать в кортеже
+            list_deystviy1_kortez = (list_deystviy1,)
+            poisk_svyazi_ID_s_t0 = tuple(cursor.execute("SELECT ID FROM tochki WHERE rod2 = ? AND name = 'time_0'",
+                                                           list_deystviy1_kortez))
+            # print("Найдены следующие связи (tp): ", list_deystviy1, " и (to): ", poisk_svyazi_ID_s_t0)
+            # найдём связи с (+)-реакцией, если имеются связи с (t0), а если не имеются - то применим это действие:
+            if poisk_svyazi_ID_s_t0 != ():
+                for poisk_svyazi_ID_s_t01 in poisk_svyazi_ID_s_t0:
+                    poisk_svyazi_t0_s_reakciey = tuple(cursor.execute(
+                        "SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 1", poisk_svyazi_ID_s_t01))
+                    # print("Найдены связи (t0) и (+): ", poisk_svyazi_t0_s_reakciey)
+                    # если есть связь с (+) - то применим это действие
+                    if poisk_svyazi_t0_s_reakciey != ():
+                        # print("Найдена связь с (+) - значит применяется действие: ", list_deystviy1)
+                        sbor_deystviya(list_deystviy1)
+                        otmena_minus_deystviya = 1
+                        break   # прекращение цикла
+                    # если связи с (+) нет - то ищем связь с (-)
+                    poisk_svyazi_t0_s_minus = tuple(cursor.execute(
+                        "SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 2", poisk_svyazi_ID_s_t01))
+                    # если связи с (-) нет - то применим это действие, а если есть - то впишем его в список
+                    # print("Найдены ли связи с (-): ", poisk_svyazi_t0_s_minus)
+                    list_minus_deystviy += poisk_svyazi_t0_s_minus
+                if list_minus_deystviy == []:
+                    # print("Не найдена связь с (-) - значит применяется действие: ", list_deystviy1)
+                    sbor_deystviya(list_deystviy1)
+                    otmena_minus_deystviya = 1
+                    break
+            else:
+                sbor_deystviya(list_deystviy1)
+                otmena_minus_deystviya = 1
+                break
+        # если цикл дошёл до этой строчки - значит не были найдены (tp) с (+) или без связи с (-) и применяется первая
+        # из (tp), связанная с (-)
+        # print("otmena_minus_deystviya == ", otmena_minus_deystviya)
+        if otmena_minus_deystviya != 1:
+            if list_minus_deystviy != []:
+                for list_minus_deystviy1 in list_minus_deystviy[0]:
+                    # print("Найдена связь с (-) и других действий нет - значит применяется действие: ",
+                    #       list_minus_deystviy1)
+                    sbor_deystviya(list_minus_deystviy1)
         pogasit_vse_tochki()
-        # cursor.execute("UPDATE tochki SET work = 0 WHERE ID = ?", list_deystviy1_kortez)
-        # cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = ?", list_deystviy1_kortez)
-        # proverka_gasheniya_work = tuple(
-        #     cursor.execute("SELECT work FROM tochki WHERE ID = ?", list_deystviy1_kortez))
-        # print("Гасится точка: ", list_deystviy1_kortez, 'work = ', proverka_gasheniya_work)
-        # proverka_gasheniya_signal = tuple(
-        #     cursor.execute("SELECT signal FROM tochki WHERE ID = ?", list_deystviy1_kortez))
-        # print("Гасится точка: ", list_deystviy1_kortez, 'signal = ', proverka_gasheniya_signal)
 
 
 
