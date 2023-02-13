@@ -1,5 +1,5 @@
 # 3.2.5 - Добавлена (+) реакция, и уменьшение сигнала на 0,01, если сигнал <0,1
-#Test
+
 
 import sqlite3, random
 import webbrowser
