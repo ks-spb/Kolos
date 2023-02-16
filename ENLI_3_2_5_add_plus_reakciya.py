@@ -2,7 +2,10 @@
 
 
 import sqlite3, random
-import webbrowser
+from time import sleep
+from mous_kb_record import rec, play
+
+
 
 conn = sqlite3.connect('Li_db_v1_4.db')
 cursor = conn.cursor()
@@ -639,6 +642,11 @@ def ymenshenie_signal ():
 schetchik = 0
 
 while A:
+    if rec.status:
+        # Блокируем основную программу, пока идет запись
+        sleep(0.001)
+        continue
+
     schetchik += 1
     print("schetchik = ", schetchik)
     posledniy_t_0_kortez = (posledniy_t_0,)
@@ -650,6 +658,21 @@ while A:
     # print('ввели: ', vvedeno_luboe)
     if vvedeno_luboe == ('0'):
         A = False
+
+    if vvedeno_luboe == ('3'):
+        # Включение записи
+        sleep(1)
+        rec.start()
+        continue
+
+    if vvedeno_luboe == ('4'):
+        # Показать запись
+        sleep(1)
+        for i in rec.record:
+            print(i)
+            sleep(0.5)
+            play.play_one(i)
+
     elif vvedeno_luboe == ('9'):
         stiranie_pamyati()
     elif vvedeno_luboe == ('2'):
