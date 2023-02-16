@@ -670,7 +670,6 @@ while A:
         sleep(1)
         for i in rec.record:
             print(i)
-            sleep(0.5)
             play.play_one(i)
 
     elif vvedeno_luboe == ('9'):
