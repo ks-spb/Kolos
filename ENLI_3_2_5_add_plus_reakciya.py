@@ -13,6 +13,9 @@ A = True
 posledniy_t = 0
 posledniy_t_0 = 3   # переменная содержит ID последней временной точки t0
 posledniy_tp = 0
+
+source = None  # Получает значение источника ввода None - клавиатура, 'rec' -  запись клавиатуры и мыши
+
 # print("Posl_to теперь 1 : ", posledniy_t_0)
 
 def stiranie_pamyati():
@@ -34,7 +37,8 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
     global posledniy_t
     global posledniy_t_0
     global posledniy_tp
-    nayti_id = tuple(cursor.execute("SELECT ID FROM tochki WHERE name = ? AND type = 'mozg'", symbol))
+    # symbol = 'mozg_deyst'
+    nayti_id = cursor.execute("SELECT ID FROM tochki WHERE name = ? AND type = 'mozg'", (symbol, )).fetchone()
     # print("poisk_bykvi_iz_vvedeno_v2. ID у входящей точки такой: ", nayti_id)
     if nayti_id == ():
         # print("poisk_bykvi_iz_vvedeno_v2. Такого ID нету")
@@ -58,14 +62,9 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
             sozdat_svyaz(posledniy_tp, new_tochka_time_p, 1)
         posledniy_tp = new_tochka_time_p
     else:   # если есть такая буква с таким ID
-        for nayti_id1 in nayti_id:
-            # print("Такая точка уже была введена ранее, ID такой: ", nayti_id1)
-            cursor.execute("UPDATE tochki SET work = 1 WHERE ID = (?)", nayti_id1)
-            # cursor.execute("UPDATE tochki SET puls = 10 WHERE ID = (?)", nayti_id1)
-            # cursor.execute("UPDATE tochki SET freq = 10 WHERE ID = (?)", nayti_id1)
-            for nayti_id2 in nayti_id1:
-                # print("posl_t был: ", posledniy_t)
-                proverka_nalichiya_svyazey_in(nayti_id2)
+        if nayti_id:
+            cursor.execute("UPDATE tochki SET work = 1 WHERE ID = (?)", nayti_id)
+            proverka_nalichiya_svyazey_in(nayti_id[0])
 
 
 
@@ -329,12 +328,10 @@ def sozdat_svyaz(id_start, id_finish, weight):
 
 
 def sozdat_new_tochky(name, work, type, func, porog, signal, puls, rod1, rod2, freq):
-    max_ID = tuple(cursor.execute("SELECT MAX(ID) FROM tochki"))
-    for max_ID1 in max_ID:
-        old_id = max_ID1[0]
-        new_id = old_id + 1
-        cursor.execute("INSERT INTO tochki VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (
-            new_id, name, work, type, func, porog, signal, puls, rod1, rod2, freq))
+    max_ID = cursor.execute("SELECT MAX(ID) FROM tochki").fetchone()
+    new_id = max_ID[0] + 1
+    cursor.execute("INSERT INTO tochki VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (
+        new_id, name, work, type, func, porog, signal, puls, rod1, rod2, freq))
     return new_id
 
 
@@ -690,9 +687,30 @@ while A:
         if poisk_svyazi_t0_s_2 == ():
             sozdat_svyaz(posledniy_t_0, 1, 1)
         pogasit_vse_tochki()
+
     elif vvedeno_luboe != "":
-        for vvedeno_luboe1 in vvedeno_luboe:
-            poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe1)
+        if not source:
+            # Ввод строки с клаиатуры, запись побуквенно
+            for vvedeno_luboe1 in vvedeno_luboe:
+                poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe1)
+
+        else:
+            # Источник события мыши и клавиатуры. Чтение из объекта rec
+            # Формат записи
+            # Для клавиатуры: 'Key.down'/'Key.up', Клавиша (символ или название)
+            # Для мыши: 'Button.down'/'Button.up', 'Left'/'Right', x (координата), y (координата)
+
+            for event in rec.record:
+
+                if event['type'] == 'kb':
+                    # Запись события клавиатуры
+                    poisk_bykvi_iz_vvedeno_v2('Key.' + event['event'])
+                    poisk_bykvi_iz_vvedeno_v2(event['key'])
+
+                else:
+                    # Запись собтия мыши
+                    pass
+
         proverka_nalichiya_svyazey_t_t_o()
         functions()
         # 3.2.1 - зафиксировать создание новой сущности, создав связь м/у posl_tp и (4)
