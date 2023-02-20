@@ -40,7 +40,7 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
     # symbol = 'mozg_deyst'
     nayti_id = cursor.execute("SELECT ID FROM tochki WHERE name = ? AND type = 'mozg'", (symbol, )).fetchone()
     # print("poisk_bykvi_iz_vvedeno_v2. ID у входящей точки такой: ", nayti_id)
-    print('---------', nayti_id, '------- ', symbol)
+
     if not nayti_id:
         # print("poisk_bykvi_iz_vvedeno_v2. Такого ID нету")
         new_tochka_name = sozdat_new_tochky(symbol, 0, 'mozg', 'zazech_sosedey', 1, 0, 10, 0, 0, 10)
@@ -308,9 +308,39 @@ def print1(ID):
 def out_red(text):
     print("\033[31m {}".format(' '))
     print("\033[31m {}".format(text))
-    print("\033[0m {}".format(""))
+    print("\033[0m {}".format("**********************************"))
 
+    # Воспроизвеение событий клавиатуры и мыши
+    i = 0
+    while i < len(text):
 
+        if '.' in text[i]:
+            item = text[i].split('.')
+
+            if item[0] == 'Key':
+                # Читаем и готовим событие для клавиатуры
+                event = {'type': 'kb'}
+                event['event'] = item[1]
+                event['key'] = text[i+1]
+                i += 2
+
+            elif item[0] == 'Button':
+                # Читаем и готовим событие для мыши
+                event = {'type': 'mouse'}
+                event['event'] = item[1]
+                event['key'] = 'Button.' + text[i+1]
+                event['x'] = int(text[i+2])
+                event['y'] = int(text[i+3])
+                i += 4
+
+            else:
+                i += 1
+                continue
+
+            play.play_one(event)  # Воспроизводим событие
+            continue
+
+        i += 1
 
 def sozdat_svyaz(id_start, id_finish, weight):
     # проверим, есть ли уже такая связь
@@ -595,27 +625,21 @@ def sbor_deystviya(tp):
                 B = False
     # print("Собран следующий лист действий, который нужно перевернуть: ", list_deystviy)
     list_deystviy.reverse()
-    # print("Этот же лист, но уже перевернут: ", list_deystviy)
+
     list_p = []
     for list_deystviy1 in list_deystviy:
-        # print('list_deystviy1: ', list_deystviy1)
         otvet_kortez = (list_deystviy1,)
-        # print('otvet_kortez: ', otvet_kortez)
         # ищутся сами (р) для формирования ответа
         poisk_svyazi_s_p = tuple(cursor.execute("SELECT id_finish FROM svyazi WHERE id_start = ?", otvet_kortez))
-        # print('poisk_svyazi_s_p: ', poisk_svyazi_s_p)
         for poisk_svyazi_s_p1 in poisk_svyazi_s_p:
-            poisk_p = tuple(cursor.execute("SELECT name FROM tochki WHERE ID = ? AND type = 'print'",
-                                                         poisk_svyazi_s_p1))
-            for poisk_p1 in poisk_p:
-                for poisk_p2 in poisk_p1:
-                    list_p += poisk_p2
-    # print('list_p = ', list_p)
+            poisk_p = cursor.execute("SELECT name FROM tochki WHERE ID = ? AND type = 'print'",
+                                                         poisk_svyazi_s_p1).fetchone()
+            if poisk_p:
+                list_p.append(poisk_p[0])
+
     if list_p != []:
         print("Ответ программы: ")
         out_red(list_p)
-        # print("\033[31m".join(list_p))
-        # print("\033[0m {}".format(""))
         print("")
 
 
@@ -662,6 +686,7 @@ while A:
         # Для клавиатуры: 'Key.down'/'Key.up', Клавиша (символ или название)
         # Для мыши: 'Button.down'/'Button.up', 'left'/'right', x (координата), y (координата)
 
+        vvedeno_luboe = []
         source = None
         n = 0
 
@@ -669,15 +694,15 @@ while A:
 
             if event['type'] == 'kb':
                 # Запись события клавиатуры
-                poisk_bykvi_iz_vvedeno_v2('Key.' + event['event'])
-                poisk_bykvi_iz_vvedeno_v2(event['key'])
+                vvedeno_luboe.append('Key.' + event['event'])
+                vvedeno_luboe.append(event['key'])
 
             else:
                 # Запись собтия мыши
-                poisk_bykvi_iz_vvedeno_v2('Button.' + event['event'])
-                poisk_bykvi_iz_vvedeno_v2(event['key'].split('.')[1])
-                poisk_bykvi_iz_vvedeno_v2(str(event['x']))
-                poisk_bykvi_iz_vvedeno_v2(str(event['y']))
+                vvedeno_luboe.append('Button.' + event['event'])
+                vvedeno_luboe.append(event['key'].split('.')[1])
+                vvedeno_luboe.append(str(event['x']))
+                vvedeno_luboe.append(str(event['y']))
 
             n += 1
 
@@ -685,7 +710,6 @@ while A:
             print(f'Сохраненo {n} записанных событий', end='\n\n')
         else:
             print('Нет событий для записи', end='\n\n')
-        continue
 
     print("")
 
