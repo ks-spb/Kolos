@@ -40,7 +40,8 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
     # symbol = 'mozg_deyst'
     nayti_id = cursor.execute("SELECT ID FROM tochki WHERE name = ? AND type = 'mozg'", (symbol, )).fetchone()
     # print("poisk_bykvi_iz_vvedeno_v2. ID у входящей точки такой: ", nayti_id)
-    if nayti_id == ():
+    print('---------', nayti_id, '------- ', symbol)
+    if not nayti_id:
         # print("poisk_bykvi_iz_vvedeno_v2. Такого ID нету")
         new_tochka_name = sozdat_new_tochky(symbol, 0, 'mozg', 'zazech_sosedey', 1, 0, 10, 0, 0, 10)
         new_tochka_print = sozdat_new_tochky(symbol, 0, 'print', "print1", 1, 0, 0, new_tochka_name, 0, 10)
@@ -649,9 +650,45 @@ while A:
     posledniy_t_0_kortez = (posledniy_t_0,)
     proverka_signal_porog()   # проверка и зажигание точек, если signal >= porog
     concentrator_deystviy()
+
     print("")
-    vvedeno_luboe = input("Введите текст: ")
+    if not source:
+    # Ввод строки с клаиатуры, запись побуквенно
+        vvedeno_luboe = input("Введите текст: ")
+
+    else:
+        # Источник события мыши и клавиатуры. Чтение из объекта rec
+        # Формат записи
+        # Для клавиатуры: 'Key.down'/'Key.up', Клавиша (символ или название)
+        # Для мыши: 'Button.down'/'Button.up', 'left'/'right', x (координата), y (координата)
+
+        source = None
+        n = 0
+
+        for event in rec.record:
+
+            if event['type'] == 'kb':
+                # Запись события клавиатуры
+                poisk_bykvi_iz_vvedeno_v2('Key.' + event['event'])
+                poisk_bykvi_iz_vvedeno_v2(event['key'])
+
+            else:
+                # Запись собтия мыши
+                poisk_bykvi_iz_vvedeno_v2('Button.' + event['event'])
+                poisk_bykvi_iz_vvedeno_v2(event['key'].split('.')[1])
+                poisk_bykvi_iz_vvedeno_v2(str(event['x']))
+                poisk_bykvi_iz_vvedeno_v2(str(event['y']))
+
+            n += 1
+
+        if n:
+            print(f'Сохраненo {n} записанных событий', end='\n\n')
+        else:
+            print('Нет событий для записи', end='\n\n')
+        continue
+
     print("")
+
     # print('ввели: ', vvedeno_luboe)
     if vvedeno_luboe == ('0'):
         A = False
@@ -668,6 +705,12 @@ while A:
         for i in rec.record:
             print(i)
             play.play_one(i)
+        continue
+
+    if vvedeno_luboe == ('5'):
+        # Сохранение записи
+        source = 'rec'  # Запись сохранится в месте ввода
+        continue
 
     elif vvedeno_luboe == ('9'):
         stiranie_pamyati()
@@ -689,27 +732,8 @@ while A:
         pogasit_vse_tochki()
 
     elif vvedeno_luboe != "":
-        if not source:
-            # Ввод строки с клаиатуры, запись побуквенно
-            for vvedeno_luboe1 in vvedeno_luboe:
-                poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe1)
-
-        else:
-            # Источник события мыши и клавиатуры. Чтение из объекта rec
-            # Формат записи
-            # Для клавиатуры: 'Key.down'/'Key.up', Клавиша (символ или название)
-            # Для мыши: 'Button.down'/'Button.up', 'Left'/'Right', x (координата), y (координата)
-
-            for event in rec.record:
-
-                if event['type'] == 'kb':
-                    # Запись события клавиатуры
-                    poisk_bykvi_iz_vvedeno_v2('Key.' + event['event'])
-                    poisk_bykvi_iz_vvedeno_v2(event['key'])
-
-                else:
-                    # Запись собтия мыши
-                    pass
+        for vvedeno_luboe1 in vvedeno_luboe:
+            poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe1)
 
         proverka_nalichiya_svyazey_t_t_o()
         functions()

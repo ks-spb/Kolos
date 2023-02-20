@@ -149,7 +149,7 @@ class Play:
                 sleep(self.duration)  # Удержание клавиши нажатой
                 exec(f"mo.release({insert})")
 
-        sleep(self.gap)  # Пауза между нажатиями и/или кликами
+            sleep(self.gap)  # Пауза между нажатиями и/или кликами
 
 
 play = Play()  # Экземпляр проигрывателя
