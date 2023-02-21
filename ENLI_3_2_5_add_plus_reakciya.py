@@ -214,7 +214,7 @@ def proverka_signal_porog():
 
 def pogasit_vse_tochki():
     # погасить все точки в конце главного цикла
-    nayti_ID_s_work = tuple(cursor.execute("SELECT ID FROM tochki WHERE signal > 0"))
+    nayti_ID_s_work = tuple(cursor.execute("SELECT ID FROM tochki WHERE signal > 0"))    #!!! ранее был "AND work= 1"
     # print("погашены все точки: ", nayti_ID_s_work)
     for nayti_ID_s_work_1 in nayti_ID_s_work:
         cursor.execute("UPDATE tochki SET work = 0 WHERE ID = (?)", nayti_ID_s_work_1)
@@ -408,7 +408,7 @@ def concentrator_deystviy():
     list_tp = []
     list_signal_tp = []
     poisk_drygih_tp = tuple(cursor.execute("SELECT ID FROM tochki WHERE signal > 0 AND name = 'time_p'"))
-    # print("Нашли следующие возможные (tp), у которых signal > 0 AND name = 'time_p': ", poisk_drygih_tp)
+    print("Нашли следующие возможные (tp), у которых signal > 0 AND name = 'time_p': ", poisk_drygih_tp)
     if poisk_drygih_tp != ():
         for poisk_drygih_tp1 in poisk_drygih_tp:
             # найдём signal у этих (tp)
@@ -517,7 +517,7 @@ def concentrator_deystviy():
             else:
                 B = False
             schetchik_B += 1
-    # print('Лист действий: ', list_deystviy)
+    print('Лист действий: ', list_deystviy)
     if list_deystviy != []:   # 3.2.3 - было if posl_tp != ()
         list_minus_deystviy = []
         otmena_minus_deystviya = 0    #переменная, чтобы не происходил ответ, если он уже имеется
@@ -525,21 +525,21 @@ def concentrator_deystviy():
         # не верного ответа
         for list_deystviy1 in list_deystviy:
             # поиск связей с текущим ID (tp) и (t0)
-            # print("Лист действий, такой ID передаётся: ", list_deystviy1)
+            print("Лист действий, такой ID передаётся: ", list_deystviy1)
             # приходится ID передавать в кортеже
             list_deystviy1_kortez = (list_deystviy1,)
             poisk_svyazi_ID_s_t0 = tuple(cursor.execute("SELECT ID FROM tochki WHERE rod2 = ? AND name = 'time_0'",
                                                            list_deystviy1_kortez))
-            # print("Найдены следующие связи (tp): ", list_deystviy1, " и (to): ", poisk_svyazi_ID_s_t0)
+            print("Найдены следующие связи (tp): ", list_deystviy1, " и (to): ", poisk_svyazi_ID_s_t0)
             # найдём связи с (+)-реакцией, если имеются связи с (t0), а если не имеются - то применим это действие:
             if poisk_svyazi_ID_s_t0 != ():
                 for poisk_svyazi_ID_s_t01 in poisk_svyazi_ID_s_t0:
                     poisk_svyazi_t0_s_reakciey = tuple(cursor.execute(
                         "SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 1", poisk_svyazi_ID_s_t01))
-                    # print("Найдены связи (t0) и (+): ", poisk_svyazi_t0_s_reakciey)
+                    print("Найдены связи (t0) и (+): ", poisk_svyazi_t0_s_reakciey)
                     # если есть связь с (+) - то применим это действие
                     if poisk_svyazi_t0_s_reakciey != ():
-                        # print("Найдена связь с (+) - значит применяется действие: ", list_deystviy1)
+                        print("Найдена связь с (+) - значит применяется действие: ", list_deystviy1)
                         sbor_deystviya(list_deystviy1)
                         otmena_minus_deystviya = 1
                         break   # прекращение цикла
@@ -547,10 +547,12 @@ def concentrator_deystviy():
                     poisk_svyazi_t0_s_minus = tuple(cursor.execute(
                         "SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 2", poisk_svyazi_ID_s_t01))
                     # если связи с (-) нет - то применим это действие, а если есть - то впишем его в список
-                    # print("Найдены ли связи с (-): ", poisk_svyazi_t0_s_minus)
-                    list_minus_deystviy += poisk_svyazi_t0_s_minus
+                    print("Найдены ли связи с (-): ", poisk_svyazi_t0_s_minus)
+                    if poisk_svyazi_t0_s_minus != ():
+                        # если были найдены связи с (-)
+                        list_minus_deystviy += list_deystviy1_kortez
                 if list_minus_deystviy == []:
-                    # print("Не найдена связь с (-) - значит применяется действие: ", list_deystviy1)
+                    print("Не найдена связь с (-) - значит применяется действие: ", list_deystviy1)
                     sbor_deystviya(list_deystviy1)
                     otmena_minus_deystviya = 1
                     break
@@ -560,13 +562,15 @@ def concentrator_deystviy():
                 break
         # если цикл дошёл до этой строчки - значит не были найдены (tp) с (+) или без связи с (-) и применяется первая
         # из (tp), связанная с (-)
-        # print("otmena_minus_deystviya == ", otmena_minus_deystviya)
+        print("otmena_minus_deystviya == ", otmena_minus_deystviya)
         if otmena_minus_deystviya != 1:
             if list_minus_deystviy != []:
-                for list_minus_deystviy1 in list_minus_deystviy[0]:
-                    # print("Найдена связь с (-) и других действий нет - значит применяется действие: ",
-                    #       list_minus_deystviy1)
-                    sbor_deystviya(list_minus_deystviy1)
+                print('list_minus_deystviy = ', list_minus_deystviy)
+                if len(list_minus_deystviy) != 1:
+                    sbor_deystviya(list_minus_deystviy[0])
+                else:
+                    for list_minus_deystviy1 in list_minus_deystviy:
+                        sbor_deystviya(list_minus_deystviy1)
         pogasit_vse_tochki()
 
 
@@ -784,6 +788,7 @@ while A:
 
 # -------------------------------------------------------------------------------------------
 # обязательно весь текст по работе с базой данных вписывать до этих двух строчек
+# test1
 
 conn.commit()
 

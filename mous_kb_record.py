@@ -133,6 +133,7 @@ class Play:
                 # Отпускание клавиши
                 sleep(self.duration)  # Удержание клавиши нажатой
                 exec(f"kb.release({insert})")
+
                 sleep(self.gap)  # Пауза между нажатиями и/или кликами
 
         else:
