@@ -72,5 +72,3 @@ def save_image(x_point :int, y_point :int) -> str:
     cv2.imwrite(f'{PATH}/{filename}.png', ROI)
 
     return f'{filename}.png'
-
-print(save_image(32, 541))

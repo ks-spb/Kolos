@@ -3,6 +3,9 @@ from pynput import keyboard, mouse
 from pynput.keyboard import Key, Controller as kb_Controller
 from pynput.mouse import Button, Controller
 
+from element_images import save_image
+
+
 kb = kb_Controller()
 mo = Controller()
 
@@ -71,6 +74,10 @@ class Recorder:
         out['x'] = x
         out['y'] = y
         self.record.append(out)
+
+        if not is_pressed:
+            # При отпускании
+            print(save_image(x, y))  # Сохранить изображение элемента на котором был клик
 
 
 rec = Recorder()  # Создаем объект записи
