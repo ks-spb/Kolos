@@ -49,7 +49,7 @@ def save_image(x_point :int, y_point :int) -> str:
 
     # apply binary thresholding
     # Применение бинарного порога к изображению
-    ret, thresh = cv2.threshold(img_gray, 40, 255, cv2.THRESH_BINARY)
+    ret, thresh = cv2.threshold(img_gray, 20, 255, cv2.THRESH_BINARY)
     # cv2.imwrite("in_memory_to_disk.png", thresh)
 
     # Нахождение контуров
@@ -58,6 +58,7 @@ def save_image(x_point :int, y_point :int) -> str:
     # Ищем контур, которому принадлежит точка
     for c in contours:
         x,y,w,h = cv2.boundingRect(c)
+
         if x_point >= x and x_point <= x+w and y_point >= y and y_point <= y+h:
             # Координаты точки принадлежат прямоугольнику описанному вокруг контура
             break
