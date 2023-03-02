@@ -3,7 +3,7 @@ from pynput import keyboard, mouse
 from pynput.keyboard import Key, Controller as kb_Controller
 from pynput.mouse import Button, Controller
 
-from element_images import save_image
+from element_images import save_image, pattern_search
 
 
 kb = kb_Controller()
@@ -73,11 +73,12 @@ class Recorder:
         out['key'] = str(button)
         out['x'] = x
         out['y'] = y
-        self.record.append(out)
 
-        if not is_pressed:
-            # При отпускании
-            print(save_image(x, y))  # Сохранить изображение элемента на котором был клик
+        if is_pressed:
+            # При нажатии
+            out['image'] = save_image(x, y)  # Сохранить изображение элемента на котором был клик
+
+        self.record.append(out)
 
 
 rec = Recorder()  # Создаем объект записи
@@ -144,14 +145,26 @@ class Play:
                 sleep(self.gap)  # Пауза между нажатиями и/или кликами
 
         else:
-            # Работа с мышью
-
             # Ставим указатель мыши в нужную позицию
             mo.position = (action['x'], action['y'])
 
             # Нажатие и отпускание кнопки мыши
             if action['event'] == 'down':
                 # Нажатие клавиши
+
+                # Проверяем, есть ли нужный элемент под курсором и если нет,
+                # пытаемся найти его на экране
+                try:
+                    x = action['x']
+                    y = action['y']
+                    print(action['image'])
+                    mo.position = pattern_search(action['image'], x, y)  # Поиск элемента на экране
+
+                except Exception as err:
+                    # Ошибка при поиске элемента
+                    print(err)
+                    return
+
                 exec(f"mo.press({insert})")
             else:
                 # Отпускание клавиши
