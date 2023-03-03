@@ -68,7 +68,7 @@ def save_image(x_point :int, y_point :int) -> str:
 
     # apply binary thresholding
     # Применение бинарного порога к изображению
-    ret, thresh = cv2.threshold(img_gray, 40, 255, cv2.THRESH_BINARY)
+    ret, thresh = cv2.threshold(img_gray, 100, 255, cv2.THRESH_BINARY)
     # cv2.imwrite("in_memory_to_disk.png", thresh)
 
     # Нахождение контуров
@@ -90,6 +90,8 @@ def save_image(x_point :int, y_point :int) -> str:
     suffix = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
     filename = "_".join([BASENAME, suffix])  # e.g. 'mylogfile_120508_171442'
     cv2.imwrite(f'{PATH}/{filename}.png', ROI)
+
+    # print(ROI.set_printoptions(threshold=ROI.nan))
 
     return f'{filename}.png'
 
@@ -156,7 +158,6 @@ def pattern_search(name_template: str, x_point: int = 0, y_point: int = 0) -> tu
 
             # Проверка, найден ли шаблон на всем экране
             if xy:
-                print(xy, (xy[0] + w // 2, xy[1] + h // 2))
                 # # Нарисуйте прямоугольник вокруг совпадающей области
                 # pt = xy
                 # d = cv2.rectangle(image, pt, (pt[0] + w, pt[1] + h), (0, 255, 255), 2)

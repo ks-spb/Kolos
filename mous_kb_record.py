@@ -123,6 +123,10 @@ class Play:
     gap = 0.3  # Промежуток между нажатиями клавиш и кликами мыши при воспроизведении (МС)
     duration = 0.001  # Длительность удержания кнопки нажатой (мыши и клавиатуры)
 
+    # В текущей реализации отсутствуют понятия перетаскивания, выделения, поэтому координаты отпускания клавиш мыши
+    # считаются теми же, в которых они были нажаты
+    button_up = {}  # Координаты отпускания правой/левой клавиши мыши. Пример: {'button.left': (x, y)}
+
     def play_one(self, action):
         """ Воспроизведение одного действия """
 
@@ -157,18 +161,24 @@ class Play:
                 try:
                     x = action['x']
                     y = action['y']
-                    print(action['image'])
-                    mo.position = pattern_search(action['image'], x, y)  # Поиск элемента на экране
+                    x, y = pattern_search(action['image'], x, y)  # Поиск элемента на экране
+                    mo.position = (x, y)
+                    self.button_up[action['key']] = (x, y)  # Координаты отпускания для левой или правой клавиш мыши
 
                 except Exception as err:
                     # Ошибка при поиске элемента
                     print(err)
-                    return
+                    raise
 
                 exec(f"mo.press({insert})")
             else:
                 # Отпускание клавиши
                 sleep(self.duration)  # Удержание клавиши нажатой
+
+                if self.button_up[action['key']]:
+                    # Координаты в которых должна быть отпущена клавиша мыши, запомнены, при ее нажатии
+                    mo.position = self.button_up[action['key']]
+
                 exec(f"mo.release({insert})")
 
                 sleep(self.gap)  # Пауза между нажатиями и/или кликами

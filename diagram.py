@@ -85,4 +85,3 @@ with contextlib.closing(sqlite3.connect('Li_db_v1_4.db')) as conn:
 
         for one, two in connections.fetchall():
             points[one].node >> points[two].node
-
