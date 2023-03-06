@@ -104,7 +104,6 @@ def save_image(x_point :int, y_point :int) -> str:
     # Ищем контур, которому принадлежит np.array(image)точка
     for c in contours:
         x, y, w, h = cv2.boundingRect(c)
-        print(x, y, w, h)
         if x_point >= x and x_point <= x+w and y_point >= y and y_point <= y+h:
             # Координаты точки принадлежат прямоугольнику описанному вокруг контура
             break
