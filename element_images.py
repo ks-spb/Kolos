@@ -20,7 +20,9 @@ import cv2
 
 
 # Настройки
-REGION = 48  # Сторона квадрата получаемого изображения с экрана для поиска в нем элемента
+FIRST_REGION = 96  # Сторона квадрата, в котором ищутся сохраненные элементы
+REGION = 48  # Сторона квадрата с сохраняемым элементом
+
 BASENAME = "elem"  # Префикс для имени файла при сохранении изображения элемента
 PATH = input_file = os.path.join(sys.path[0], 'elements_img')  # Путь для сохранения изображений
 REGION_FOR_SEARCH = 96  # Сторона квадрата в котором производится первоначальный поиск элемента
@@ -42,33 +44,58 @@ def screenshot(x_reg: int = 0, y_reg: int = 0, region: int = 0):
 
 
 def save_image(x_point :int, y_point :int) -> str:
-    """ Сохранение изображения кнопки/иконки (элемента)
+    """ Сохранение изображения кнопки/иконки (элемента) если он еще не сохранен
 
     Функция принимает в качестве аргументов координаты точки на экране.
-    Предполагается, что эта точка расположена на элементе, изображение которого нужно сохранить.
-    Точка принимается как цент квадрата. Внутри него будет искаться изображение элемента.
-    Возвращает имя нового изображения.
+    Предполагается, что эта точка расположена на элементе, изображение которого нужно сохранить или найти.
+    Точка принимается как цент квадрата со стороной FIRST_REGION внутри которого должен находиться
+    элемент (кнопка, иконка...). Проверяются сохраненные элементы. Если такого нет квадрат обрезается
+    до размера стороны REGION и сохраняется. Если есть, возвращается его имя.
+    Возвращает имя нового или существующего изображения.
 
     """
 
-    # Вычисляем координаты квадрата для скриншота
-    x_reg = x_point - REGION // 2
-    y_reg = y_point - REGION // 2
+    threshold = 0.8 # Порог
+    method = cv2.TM_CCOEFF_NORMED  # Метод расчёта корреляции между изображениями
 
-    # Координаты точки на новом регионе
-    x_point -= x_reg
-    y_point -= y_reg
+    # Вычисляем координаты квадрата для скриншота
+    x_reg = x_point - FIRST_REGION // 2
+    y_reg = y_point - FIRST_REGION // 2
 
     # Делаем скриншот нужного квадрата
-    image = screenshot(x_reg, y_reg, REGION-1)
-    # image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+    image = screenshot(x_reg, y_reg, FIRST_REGION-1)
 
-    # преобразовать изображение в формат оттенков серого
-    img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # Перевод изображения в оттенки серого
+    gray_img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    # Перебор сохраненных элементов, был ли ранее такой сохранен
+    for name in os.listdir(PATH):
+        template = cv2.imread(f'{PATH}/{name}', 0)
+        # Операция сопоставления
+        res = cv2.matchTemplate(gray_img, template, method)
+        # Ищем координаты совпадающего местоположения в массиве numpy
+        loc = np.where(res >= threshold)
+        if any(loc[-1]):
+            return name
+
+    # Если выбранный элемент ранее не был сохранен, сохраним его
+    # Обрезаем квадрат
+    a = (FIRST_REGION - REGION) // 2
+    image = image[a: a + REGION, a: a + REGION]
+
+    # Координаты точки на новом регионе
+    x_point = x_point - x_reg - a
+    y_point = y_point - y_reg - a
+
+    # cv2.imshow('', image)
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+    # Перевод изображения в оттенки серого
+    gray_img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     # apply binary thresholding
     # Применение бинарного порога к изображению
-    ret, thresh = cv2.threshold(img_gray, 100, 255, cv2.THRESH_BINARY)
+    ret, thresh = cv2.threshold(gray_img, 100, 255, cv2.THRESH_BINARY)
     # cv2.imwrite("in_memory_to_disk.png", thresh)
 
     # Нахождение контуров
@@ -76,14 +103,16 @@ def save_image(x_point :int, y_point :int) -> str:
 
     # Ищем контур, которому принадлежит np.array(image)точка
     for c in contours:
-        x,y,w,h = cv2.boundingRect(c)
-
+        x, y, w, h = cv2.boundingRect(c)
+        print(x, y, w, h)
         if x_point >= x and x_point <= x+w and y_point >= y and y_point <= y+h:
             # Координаты точки принадлежат прямоугольнику описанному вокруг контура
             break
     else:
-        # Проверены все контуры, точка непринадлежит ни одному
-        raise Exception('Элемент не найден')
+        # Проверены все контуры, точка не принадлежит ни одному
+        # Выбираем весь квадрат
+        x = y = 0
+        w = h = REGION
 
     # Сохраняем изображение найденного элемента
     ROI = image[y:y+h, x:x+w]
