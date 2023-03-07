@@ -4,6 +4,7 @@ from pynput.keyboard import Key, Controller as kb_Controller
 from pynput.mouse import Button, Controller
 
 from element_images import save_image, pattern_search
+from exceptions import *
 
 
 kb = kb_Controller()
@@ -159,20 +160,30 @@ class Play:
                 # Нажатие клавиши
 
                 # Проверяем, есть ли нужный элемент под курсором и если нет,
-                # пытаемся найти его на экране
-                try:
-                    x = action['x']
-                    y = action['y']
-                    x, y = pattern_search(action['image'], x, y)  # Поиск элемента на экране
-                    mo.position = (x, y)
-                    self.button_up[action['key']] = (x, y)  # Координаты отпускания для левой или правой клавиш мыши
+                # пытаемся найти его на экране, ожидаем и повторяем попытку на случай долгого открытия приложения
+                rep = 3
+                while rep:
 
-                except Exception as err:
-                    # Ошибка при поиске элемента
-                    print(err)
-                    raise
+                    try:
+                        x = action['x']
+                        y = action['y']
+                        x, y = pattern_search(action['image'], x, y)  # Поиск элемента на экране
+                        mo.position = (x, y)
+                        self.button_up[action['key']] = (x, y)  # Координаты отпускания для левой или правой клавиш мыши
+                        exec(f"mo.press({insert})")
+                        rep = 0
 
-                exec(f"mo.press({insert})")
+                    # Ошибки при поиске элемента
+                    except TemplateNotFoundError as err:
+                        print(err)
+                        raise
+
+                    except ElementNotFound as err:
+                        print(err, 'Ожидание приложения...')
+                        sleep(1)
+                        rep -= 1
+                        if not rep:
+                            raise
             else:
                 # Отпускание клавиши
                 sleep(self.duration)  # Удержание клавиши нажатой
