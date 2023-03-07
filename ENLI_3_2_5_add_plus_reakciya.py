@@ -146,10 +146,10 @@ def proverka_nalichiya_svyazey_in(tochka_1):
                                             posledniy_tp = poisk_tp2
 
 
-
 def proverka_nalichiya_svyazey_t_t_o():
     # функция создаёт (new_posl_t_o) между загоревшейся (posledniy_t) и (posledniy_t_0)
     global posledniy_t
+    global posledniy_tp
     global posledniy_t_0
     global posledniy_t_0_kortez
     list_poiska_t0 = []
@@ -183,10 +183,17 @@ def proverka_nalichiya_svyazey_t_t_o():
             sozdat_svyaz(posledniy_t, new_t, 1)  # weight was 0.1
             # v3.0.0 - posledniy_t становится новая связующая (.) м/у внешней горящей и старым posledniy_t
             posledniy_t_0 = new_t
-            print("Posl_to теперь 2 : ", posledniy_t_0)
+            # print("Posl_to теперь 2 : ", posledniy_t_0)
+
+            # 06.03.23 - добавлено создание дублирующей t0, связанной с tp, для возможности повторения длинных
+            # цепочек действий
+            new_t0_tp = sozdat_new_tochky('time_0', 1, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, posledniy_tp, 10)
+            sozdat_svyaz(posledniy_t_0, new_t0_tp, 1)
+            sozdat_svyaz(new_t0_tp, posledniy_tp, 1)
+            posledniy_t_0 = new_t0_tp
+
         posledniy_t = 0
-
-
+        posledniy_tp = 0   # 06.03.23 - добавлено
 
 
 def proverka_signal_porog():
