@@ -14,8 +14,10 @@ mo = Controller()
     Нажата клавиша 'A': {'type': 'kb', 'event': 'down', 'key': 'A'}
     Отпущена клавиша 'A': {'type': 'kb', 'event': 'up', 'key': 'A'}
 
-    Нажата левая клавиша мыши: {'type': 'mouse', 'event': 'down', 'key': 'Button.left', 'x': 671, 'y': 591}
-    Нажата правая клавиша мыши: {'type': 'mouse', 'event': 'down', 'key': 'Button.right', 'x': 671, 'y': 591}
+    Нажата левая клавиша мыши: {'type': 'mouse', 'event': 'down', 'key': 'Button.left', 'x': 671, 'y': 591, 
+    'image': name}
+    Нажата правая клавиша мыши: {'type': 'mouse', 'event': 'down', 'key': 'Button.right', 'x': 671, 'y': 591, 
+    'image': name}
     Отпущена левая клавиша мыши: {'type': 'mouse', 'event': 'up', 'key': 'Button.left', 'x': 671, 'y': 591}
     Отпущена правая клавиша мыши: {'type': 'mouse', 'event': 'up', 'key': 'Button.right', 'x': 671, 'y': 591}
 """
@@ -185,4 +187,3 @@ class Play:
 
 
 play = Play()  # Экземпляр проигрывателя
-
