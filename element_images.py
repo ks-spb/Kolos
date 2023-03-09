@@ -29,7 +29,7 @@ PATH = input_file = os.path.join(sys.path[0], 'elements_img')  # Путь для
 
 REGION_FOR_SEARCH = 96  # Сторона квадрата в котором производится первоначальный поиск элемента
 # Где искать элемент: full - по всему экрану, region - в квадрате с заданными координатами, all - везде
-WHERE_TO_LOOK = 'full'
+WHERE_TO_LOOK = 'all'
 
 
 def screenshot(x_reg: int = 0, y_reg: int = 0, region: int = 0):
@@ -98,7 +98,7 @@ def save_image(x_point :int, y_point :int) -> str:
 
     # apply binary thresholding
     # Применение бинарного порога к изображению
-    ret, thresh = cv2.threshold(gray_img, 100, 255, cv2.THRESH_BINARY)
+    ret, thresh = cv2.threshold(gray_img, 40, 255, cv2.THRESH_BINARY)
     # cv2.imwrite("in_memory_to_disk.png", thresh)
 
     # Нахождение контуров

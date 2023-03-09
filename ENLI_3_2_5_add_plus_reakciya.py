@@ -320,7 +320,7 @@ def out_red(text):
     # Воспроизвеение событий клавиатуры и мыши.
     # Данные в 1 списке, подрряд для всех событий:
     # Для клавиатуры 2 элемента: 'Key.down'/'Key.up', Клавиша (символ или название)
-    # Для мыши 3 элемента: 'Button.down'/'Button.up', 'left'/'right', 'image' (имя изображения элемента)
+    # Для мыши 4 элемента: 'Button.down'/'Button.up', 'left'/'right', 'x.y',  'image' (имя изображения элемента)
     # Пример: ['Button.down', 'left', 'elem_230307_144451.png', 'Button.up', 'left', 'Button.down',
     # 'left', 'elem_230228_163525.png', 'Button.up', 'left']
     i = 0
@@ -341,12 +341,13 @@ def out_red(text):
                 event = {'type': 'mouse'}
                 event['event'] = item[1]
                 event['key'] = 'Button.' + text[i+1]
+                x, y = text[i+2].split('.')
                 if event['event'] == 'down':
-                    event['image'] = text[i + 2]
+                    event['image'] = text[i + 3]
                     i += 1
-                i += 2  # У событий вверх и вниз разная длина, поэтому счетчик увеличиваем соответственно
-                event['x'] = 0
-                event['y'] = 0
+                i += 3  # У событий вверх и вниз разная длина, поэтому счетчик увеличиваем соответственно
+                event['x'] = int(x)
+                event['y'] = int(y)
 
             else:
                 i += 1
@@ -703,7 +704,7 @@ while A:
         # Источник события мыши и клавиатуры. Чтение из объекта rec
         # Формат записи
         # Для клавиатуры: 'Key.down'/'Key.up', Клавиша (символ или название)
-        # Для мыши: 'Button.down'/'Button.up', 'left'/'right', 'image' (имя изображения элемента)
+        # Для мыши: 'Button.down'/'Button.up', 'left'/'right', 'x.y', 'image' (имя изображения элемента)
 
         vvedeno_luboe = []
         source = None
@@ -720,6 +721,7 @@ while A:
                 # Запись собтия мыши
                 vvedeno_luboe.append('Button.' + event['event'])
                 vvedeno_luboe.append(event['key'].split('.')[1])
+                vvedeno_luboe.append(str(event['x']) + '.' + str(event['y']))  # Координаты записываем в одну точку
                 if event['event'] == 'down':
                     vvedeno_luboe.append(event['image'])
                 # vvedeno_luboe.append(str(event['x']))
