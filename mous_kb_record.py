@@ -10,6 +10,7 @@ from exceptions import *
 kb = kb_Controller()
 mo = Controller()
 
+
 """ Вид в котором информация о событиях хранится объекте:
     
     Нажата клавиша 'A': {'type': 'kb', 'event': 'down', 'key': 'A'}
@@ -29,6 +30,7 @@ class Recorder:
 
     status = False  # Чтение с мыши и клавиатуры запрещено
     record = []  # В списке в порядке поступления хранятся события мыши и клавиатуры в виде кортежа словарей
+    key_down = ''  # Помнит, какая клавиша нажата, для использования во внешних модулях
 
     def start(self):
         """ Начать запись """
@@ -45,6 +47,7 @@ class Recorder:
 
             # Остановка записи по лавише Esc
             self.stop()
+            self.key_down = ''
             return
 
         try:
@@ -89,6 +92,12 @@ rec = Recorder()  # Создаем объект записи
 
 def on_press(key):
     """ Действие, когда пользователь нажимает клавишу на клавиатуре """
+
+    # Записываем нажатую клавишу, для использования во внешних модулях
+    try:
+        rec.key_down = key.char
+    except:
+        rec.key_down = str(key)
 
     if rec.status:
         rec.on_press(key)

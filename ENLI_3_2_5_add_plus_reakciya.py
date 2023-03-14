@@ -695,12 +695,12 @@ while A:
     proverka_signal_porog()   # проверка и зажигание точек, если signal >= porog
     concentrator_deystviy()
 
-    print("")
-    if not source:
+    print("Сейчас ", source)
+    if source == 'input':
     # Ввод строки с клаиатуры, запись побуквенно
         vvedeno_luboe = input("Введите текст: ")
 
-    else:
+    elif source == 'rec':
         # Источник события мыши и клавиатуры. Чтение из объекта rec
         # Формат записи
         # Для клавиатуры: 'Key.down'/'Key.up', Клавиша (символ или название)
@@ -734,6 +734,15 @@ while A:
         else:
             print('Нет событий для записи', end='\n\n')
 
+    else:
+
+        if rec.key_down in '0123459':
+            vvedeno_luboe = rec.key_down
+        elif rec.key_down == 'Key.space':
+            source = 'input'
+            vvedeno_luboe = ''
+        rec.key_down = ''
+        sleep(1)
     print("")
 
     # print('ввели: ', vvedeno_luboe)
@@ -744,7 +753,7 @@ while A:
         # Включение записи
         sleep(1)
         rec.start()
-        # source = 'rec'  # Запись сохранится в месте ввода
+        # source = None  # Запись сохранится в месте ввода
         continue
 
     if vvedeno_luboe == ('4'):
@@ -753,15 +762,21 @@ while A:
         for i in rec.record:
             print(i)
             play.play_one(i)
+        source = None
+        vvedeno_luboe = ''
         continue
 
     if vvedeno_luboe == ('5'):
         # Сохранение записи
         source = 'rec'  # Запись сохранится в месте ввода
+        vvedeno_luboe = ''
         continue
 
     elif vvedeno_luboe == ('9'):
         stiranie_pamyati()
+        source = None
+        vvedeno_luboe = ''
+
     elif vvedeno_luboe == ('2'):
         # нужно проверить имеется ли уже связь м/у t0 и tp
         # print("Состояние перед (-) реакцией было такое: ", posledniy_t_0, "    С ней и создаётся связь")
@@ -770,6 +785,9 @@ while A:
         if poisk_svyazi_t0_s_2 == ():
             sozdat_svyaz(posledniy_t_0, 2, 1)
         pogasit_vse_tochki()
+        source = None
+        vvedeno_luboe = ''
+
     elif vvedeno_luboe == ('1'):
         # нужно проверить имеется ли уже связь м/у t0 и tp
         print("Состояние перед (+) реакцией было такое: ", posledniy_t_0, "    С ней и создаётся связь")
@@ -778,11 +796,14 @@ while A:
         if poisk_svyazi_t0_s_2 == ():
             sozdat_svyaz(posledniy_t_0, 1, 1)
         pogasit_vse_tochki()
+        source = None
+        vvedeno_luboe = ''
 
     elif vvedeno_luboe != "":
         for vvedeno_luboe1 in vvedeno_luboe:
             poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe1)
 
+        vvedeno_luboe = ''
         proverka_nalichiya_svyazey_t_t_o()
         functions()
         # 3.2.1 - зафиксировать создание новой сущности, создав связь м/у posl_tp и (4)
