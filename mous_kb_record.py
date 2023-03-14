@@ -192,7 +192,7 @@ class Play:
                         sleep(1)
                         rep -= 1
                         if not rep:
-                            raise
+                            print('Элемент не найден в заданной области или на всем экране')
             else:
                 # Отпускание клавиши
                 sleep(self.duration)  # Удержание клавиши нажатой
