@@ -187,13 +187,13 @@ def proverka_nalichiya_svyazey_t_t_o():
 
             # 06.03.23 - добавлено создание дублирующей t0, связанной с tp, для возможности повторения длинных
             # цепочек действий
-            new_t0_tp = sozdat_new_tochky('time_0', 1, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, posledniy_tp, 10)
-            sozdat_svyaz(posledniy_t_0, new_t0_tp, 1)
-            sozdat_svyaz(new_t0_tp, posledniy_tp, 1)
-            posledniy_t_0 = new_t0_tp
+            # new_t0_tp = sozdat_new_tochky('time_0', 1, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, posledniy_tp, 10)
+            # sozdat_svyaz(posledniy_t_0, new_t0_tp, 1)
+            # sozdat_svyaz(new_t0_tp, posledniy_tp, 1)
+            # posledniy_t_0 = new_t0_tp
 
         posledniy_t = 0
-        posledniy_tp = 0   # 06.03.23 - добавлено
+        # posledniy_tp = 0   # 06.03.23 - добавлено
 
 
 def proverka_signal_porog():
