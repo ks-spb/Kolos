@@ -18,6 +18,7 @@ import numpy as np
 import pyautogui
 import cv2
 
+from exceptions import *
 
 # Настройки
 FIRST_REGION = 96  # Сторона квадрата, в котором ищутся сохраненные элементы
@@ -28,7 +29,7 @@ PATH = input_file = os.path.join(sys.path[0], 'elements_img')  # Путь для
 
 REGION_FOR_SEARCH = 96  # Сторона квадрата в котором производится первоначальный поиск элемента
 # Где искать элемент: full - по всему экрану, region - в квадрате с заданными координатами, all - везде
-WHERE_TO_LOOK = 'full'
+WHERE_TO_LOOK = 'all'
 
 
 def screenshot(x_reg: int = 0, y_reg: int = 0, region: int = 0):
@@ -97,7 +98,7 @@ def save_image(x_point :int, y_point :int) -> str:
 
     # apply binary thresholding
     # Применение бинарного порога к изображению
-    ret, thresh = cv2.threshold(gray_img, 100, 255, cv2.THRESH_BINARY)
+    ret, thresh = cv2.threshold(gray_img, 40, 255, cv2.THRESH_BINARY)
     # cv2.imwrite("in_memory_to_disk.png", thresh)
 
     # Нахождение контуров
@@ -149,7 +150,7 @@ def pattern_search(name_template: str, x_point: int = 0, y_point: int = 0) -> tu
     try:
         template = cv2.imread(f'{PATH}/{name_template}', 0)
     except:
-        raise FileNotFoundError('Шаблон с таким именем не найден')
+        raise TemplateNotFoundError('Шаблон с таким именем не найден')
 
     # Сохранить ширину в переменной w и высоту в переменной h шаблона
     w, h = template.shape
@@ -178,7 +179,7 @@ def pattern_search(name_template: str, x_point: int = 0, y_point: int = 0) -> tu
             return (x_point, y_point)
         elif WHERE_TO_LOOK != 'all':
             # Элемент не найден в заданном месте, а поиск по всему экрану не включен
-            raise Exception('Элемент не найден в указанной области.')
+            raise ElementNotFound('Элемент не найден в указанной области.')
 
         # Если поиск шаблона в заданных координатах не принес результата any(loc[-1] будет пустым.
         # Ищем на всем экране если это разрешено
@@ -197,7 +198,7 @@ def pattern_search(name_template: str, x_point: int = 0, y_point: int = 0) -> tu
 
         # Ищем координаты совпадающего местоположения в массиве numpy
         loc = np.where(res >= threshold)
-        xy = list(zip(*loc[::-1]))[-1]
+        xy = list(zip(*loc[::-1]))[-1] if list(zip(*loc[::-1])) else []
 
         # Проверка, найден ли шаблон на всем экране
         if xy:
@@ -206,4 +207,4 @@ def pattern_search(name_template: str, x_point: int = 0, y_point: int = 0) -> tu
 
         else:
             # Заданный шаблон на экране не найден
-            raise Exception('Указанный элемент на экране не найден.')
+            raise ElementNotFound('Указанный элемент на экране не найден.')

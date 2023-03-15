@@ -4,10 +4,12 @@ from pynput.keyboard import Key, Controller as kb_Controller
 from pynput.mouse import Button, Controller
 
 from element_images import save_image, pattern_search
+from exceptions import *
 
 
 kb = kb_Controller()
 mo = Controller()
+
 
 """ Вид в котором информация о событиях хранится объекте:
     
@@ -28,6 +30,7 @@ class Recorder:
 
     status = False  # Чтение с мыши и клавиатуры запрещено
     record = []  # В списке в порядке поступления хранятся события мыши и клавиатуры в виде кортежа словарей
+    key_down = ''  # Помнит, какая клавиша нажата, для использования во внешних модулях
 
     def start(self):
         """ Начать запись """
@@ -44,6 +47,7 @@ class Recorder:
 
             # Остановка записи по лавише Esc
             self.stop()
+            self.key_down = ''
             return
 
         try:
@@ -88,6 +92,12 @@ rec = Recorder()  # Создаем объект записи
 
 def on_press(key):
     """ Действие, когда пользователь нажимает клавишу на клавиатуре """
+
+    # Записываем нажатую клавишу, для использования во внешних модулях
+    try:
+        rec.key_down = key.char
+    except:
+        rec.key_down = str(key)
 
     if rec.status:
         rec.on_press(key)
@@ -159,20 +169,31 @@ class Play:
                 # Нажатие клавиши
 
                 # Проверяем, есть ли нужный элемент под курсором и если нет,
-                # пытаемся найти его на экране
-                try:
-                    x = action['x']
-                    y = action['y']
-                    x, y = pattern_search(action['image'], x, y)  # Поиск элемента на экране
-                    mo.position = (x, y)
-                    self.button_up[action['key']] = (x, y)  # Координаты отпускания для левой или правой клавиш мыши
+                # пытаемся найти его на экране, ожидаем и повторяем попытку на случай долгого открытия приложения
+                rep = 3
+                while rep:
 
-                except Exception as err:
-                    # Ошибка при поиске элемента
-                    print(err)
-                    raise
+                    try:
+                        x = action['x']
+                        y = action['y']
+                        x, y = pattern_search(action['image'], x, y)  # Поиск элемента на экране
+                        mo.position = (x, y)
+                        self.button_up[action['key']] = (x, y)  # Координаты отпускания для левой или правой клавиш мыши
+                        exec(f"mo.press({insert})")
+                        rep = 0
 
-                exec(f"mo.press({insert})")
+                    # Ошибки при поиске элемента
+                    except TemplateNotFoundError as err:
+                        print(err)
+                        raise
+
+                    except ElementNotFound as err:
+                        print(err, 'Ожидание приложения...')
+                        sleep(1)
+                        rep -= 1
+                        if not rep:
+                            # raise
+                            print('Элемент не найден в заданной области или на всем экране')
             else:
                 # Отпускание клавиши
                 sleep(self.duration)  # Удержание клавиши нажатой

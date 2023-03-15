@@ -187,13 +187,13 @@ def proverka_nalichiya_svyazey_t_t_o():
 
             # 06.03.23 - добавлено создание дублирующей t0, связанной с tp, для возможности повторения длинных
             # цепочек действий
-            new_t0_tp = sozdat_new_tochky('time_0', 1, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, posledniy_tp, 10)
-            sozdat_svyaz(posledniy_t_0, new_t0_tp, 1)
-            sozdat_svyaz(new_t0_tp, posledniy_tp, 1)
-            posledniy_t_0 = new_t0_tp
+            # new_t0_tp = sozdat_new_tochky('time_0', 1, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, posledniy_tp, 10)
+            # sozdat_svyaz(posledniy_t_0, new_t0_tp, 1)
+            # sozdat_svyaz(new_t0_tp, posledniy_tp, 1)
+            # posledniy_t_0 = new_t0_tp
 
         posledniy_t = 0
-        posledniy_tp = 0   # 06.03.23 - добавлено
+        # posledniy_tp = 0   # 06.03.23 - добавлено
 
 
 def proverka_signal_porog():
@@ -320,7 +320,7 @@ def out_red(text):
     # Воспроизвеение событий клавиатуры и мыши.
     # Данные в 1 списке, подрряд для всех событий:
     # Для клавиатуры 2 элемента: 'Key.down'/'Key.up', Клавиша (символ или название)
-    # Для мыши 3 элемента: 'Button.down'/'Button.up', 'left'/'right', 'image' (имя изображения элемента)
+    # Для мыши 4 элемента: 'Button.down'/'Button.up', 'left'/'right', 'x.y',  'image' (имя изображения элемента)
     # Пример: ['Button.down', 'left', 'elem_230307_144451.png', 'Button.up', 'left', 'Button.down',
     # 'left', 'elem_230228_163525.png', 'Button.up', 'left']
     i = 0
@@ -341,12 +341,13 @@ def out_red(text):
                 event = {'type': 'mouse'}
                 event['event'] = item[1]
                 event['key'] = 'Button.' + text[i+1]
+                x, y = text[i+2].split('.')
                 if event['event'] == 'down':
-                    event['image'] = text[i + 2]
+                    event['image'] = text[i + 3]
                     i += 1
-                i += 2  # У событий вверх и вниз разная длина, поэтому счетчик увеличиваем соответственно
-                event['x'] = 0
-                event['y'] = 0
+                i += 3  # У событий вверх и вниз разная длина, поэтому счетчик увеличиваем соответственно
+                event['x'] = int(x)
+                event['y'] = int(y)
 
             else:
                 i += 1
@@ -694,16 +695,16 @@ while A:
     proverka_signal_porog()   # проверка и зажигание точек, если signal >= porog
     concentrator_deystviy()
 
-    print("")
-    if not source:
+    print("Сейчас ", source)
+    if source == 'input':
     # Ввод строки с клаиатуры, запись побуквенно
         vvedeno_luboe = input("Введите текст: ")
 
-    else:
+    elif source == 'rec':
         # Источник события мыши и клавиатуры. Чтение из объекта rec
         # Формат записи
         # Для клавиатуры: 'Key.down'/'Key.up', Клавиша (символ или название)
-        # Для мыши: 'Button.down'/'Button.up', 'left'/'right', 'image' (имя изображения элемента)
+        # Для мыши: 'Button.down'/'Button.up', 'left'/'right', 'x.y', 'image' (имя изображения элемента)
 
         vvedeno_luboe = []
         source = None
@@ -720,6 +721,7 @@ while A:
                 # Запись собтия мыши
                 vvedeno_luboe.append('Button.' + event['event'])
                 vvedeno_luboe.append(event['key'].split('.')[1])
+                vvedeno_luboe.append(str(event['x']) + '.' + str(event['y']))  # Координаты записываем в одну точку
                 if event['event'] == 'down':
                     vvedeno_luboe.append(event['image'])
                 # vvedeno_luboe.append(str(event['x']))
@@ -732,6 +734,15 @@ while A:
         else:
             print('Нет событий для записи', end='\n\n')
 
+    else:
+
+        if rec.key_down in '0123459':
+            vvedeno_luboe = rec.key_down
+        elif rec.key_down == 'Key.space':
+            source = 'input'
+            vvedeno_luboe = ''
+        rec.key_down = ''
+        sleep(1)
     print("")
 
     # print('ввели: ', vvedeno_luboe)
@@ -742,7 +753,7 @@ while A:
         # Включение записи
         sleep(1)
         rec.start()
-        # source = 'rec'  # Запись сохранится в месте ввода
+        # source = None  # Запись сохранится в месте ввода
         continue
 
     if vvedeno_luboe == ('4'):
@@ -751,15 +762,21 @@ while A:
         for i in rec.record:
             print(i)
             play.play_one(i)
+        source = None
+        vvedeno_luboe = ''
         continue
 
     if vvedeno_luboe == ('5'):
         # Сохранение записи
         source = 'rec'  # Запись сохранится в месте ввода
+        vvedeno_luboe = ''
         continue
 
     elif vvedeno_luboe == ('9'):
         stiranie_pamyati()
+        source = None
+        vvedeno_luboe = ''
+
     elif vvedeno_luboe == ('2'):
         # нужно проверить имеется ли уже связь м/у t0 и tp
         # print("Состояние перед (-) реакцией было такое: ", posledniy_t_0, "    С ней и создаётся связь")
@@ -768,6 +785,9 @@ while A:
         if poisk_svyazi_t0_s_2 == ():
             sozdat_svyaz(posledniy_t_0, 2, 1)
         pogasit_vse_tochki()
+        source = None
+        vvedeno_luboe = ''
+
     elif vvedeno_luboe == ('1'):
         # нужно проверить имеется ли уже связь м/у t0 и tp
         print("Состояние перед (+) реакцией было такое: ", posledniy_t_0, "    С ней и создаётся связь")
@@ -776,11 +796,14 @@ while A:
         if poisk_svyazi_t0_s_2 == ():
             sozdat_svyaz(posledniy_t_0, 1, 1)
         pogasit_vse_tochki()
+        source = None
+        vvedeno_luboe = ''
 
     elif vvedeno_luboe != "":
         for vvedeno_luboe1 in vvedeno_luboe:
             poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe1)
 
+        vvedeno_luboe = ''
         proverka_nalichiya_svyazey_t_t_o()
         functions()
         # 3.2.1 - зафиксировать создание новой сущности, создав связь м/у posl_tp и (4)
