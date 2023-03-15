@@ -1,6 +1,3 @@
-# 3.2.5 - Добавлена (+) реакция, и уменьшение сигнала на 0,01, если сигнал <0,1
-
-
 import sqlite3, random
 from time import sleep
 
