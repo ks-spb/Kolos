@@ -3,8 +3,9 @@
 
 import sqlite3, random
 from time import sleep
-from mous_kb_record import rec, play
 
+from mous_kb_record import rec, play
+from exceptions import *
 
 
 conn = sqlite3.connect('Li_db_v1_4.db')
@@ -352,8 +353,12 @@ def out_red(text):
             else:
                 i += 1
                 continue
+            try:
+                play.play_one(event)  # Воспроизводим событие
+            except:
+                print('Выполнение скрипта остановлено')
+                break
 
-            play.play_one(event)  # Воспроизводим событие
             continue
 
         i += 1
@@ -761,7 +766,11 @@ while A:
         sleep(1)
         for i in rec.record:
             print(i)
-            play.play_one(i)
+            try:
+                play.play_one(i)
+            except:
+                print('Выполнение скрипта остановлено')
+                break
         source = None
         vvedeno_luboe = ''
         continue
