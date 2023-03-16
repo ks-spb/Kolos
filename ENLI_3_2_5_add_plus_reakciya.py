@@ -44,9 +44,9 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
         new_tochka_name = sozdat_new_tochky(symbol, 0, 'mozg', 'zazech_sosedey', 1, 0, 10, 0, 0, 10)
         new_tochka_print = sozdat_new_tochky(symbol, 0, 'print', "print1", 1, 0, 0, new_tochka_name, 0, 10)
         new_tochka_time_t = sozdat_new_tochky('time', 1, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
-                                              posledniy_t, 10)
+                                              posledniy_t, symbol)
         new_tochka_time_p = sozdat_new_tochky('time_p', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
-                                            posledniy_tp, 10)
+                                            posledniy_tp, symbol)
         # нужно создать между ними связь
         sozdat_svyaz(0, new_tochka_time_t, 1)
         sozdat_svyaz(new_tochka_name, new_tochka_time_t, 1)
@@ -63,11 +63,11 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
     else:   # если есть такая буква с таким ID
         if nayti_id:
             cursor.execute("UPDATE tochki SET work = 1 WHERE ID = (?)", nayti_id)
-            proverka_nalichiya_svyazey_in(nayti_id[0])
+            proverka_nalichiya_svyazey_in(nayti_id[0], symbol)
 
 
 
-def proverka_nalichiya_svyazey_in(tochka_1):
+def proverka_nalichiya_svyazey_in(tochka_1, symbol):
     # функция создаёт (new_t) между загоревшейся внешней (.) (type = mozg or print) и posledniy_t
     global posledniy_t
     global posledniy_tp
@@ -95,7 +95,7 @@ def proverka_nalichiya_svyazey_in(tochka_1):
                 if not proverka_list:
                     # print("то есть proverka_list не пустой и всё равно прошли дальше?")
                     new_t = sozdat_new_tochky('time', 0, 'time', 'zazech_sosedey', 1, 0, 0,
-                                              tochka_1, posledniy_t, 10)
+                                              tochka_1, posledniy_t, symbol)
                     # print("Создана новая (т): ", new_t, " где rod1 = ", tochka_1, " и rod2 = ", posledniy_t)
                     sozdat_svyaz(tochka_1, new_t, 1)  # weight was 0.1
                     sozdat_svyaz(posledniy_t, new_t, 1)  # weight was 0.1
@@ -111,7 +111,7 @@ def proverka_nalichiya_svyazey_in(tochka_1):
                         for poisk_p1 in poisk_p:
                             for poisk_p2 in poisk_p1:
                                 new_tp = sozdat_new_tochky('time_p', 1, 'time', 'zazech_sosedey', 1, 0, 0, poisk_p2,
-                                                           posledniy_tp, 10)
+                                                           posledniy_tp, symbol)
                                 sozdat_svyaz(new_tp, poisk_p2, 1)
                                 sozdat_svyaz(posledniy_tp, new_tp, 1)
                                 sozdat_svyaz(new_t, new_tp, 1)
@@ -840,3 +840,5 @@ while A:
 conn.commit()
 
 conn.close()
+
+from diagram import new_diagram
