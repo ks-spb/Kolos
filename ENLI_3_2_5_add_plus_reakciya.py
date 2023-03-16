@@ -35,14 +35,15 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
     global posledniy_t
     global posledniy_t_0
     global posledniy_tp
+    poisk_img = '.png'
     # symbol = 'mozg_deyst'
     nayti_id = cursor.execute("SELECT ID FROM tochki WHERE name = ? AND type = 'mozg'", (symbol, )).fetchone()
     # print("poisk_bykvi_iz_vvedeno_v2. ID у входящей точки такой: ", nayti_id)
 
     if not nayti_id:
         # print("poisk_bykvi_iz_vvedeno_v2. Такого ID нету")
-        new_tochka_name = sozdat_new_tochky(symbol, 0, 'mozg', 'zazech_sosedey', 1, 0, 10, 0, 0, 10)
-        new_tochka_print = sozdat_new_tochky(symbol, 0, 'print', "print1", 1, 0, 0, new_tochka_name, 0, 10)
+        new_tochka_name = sozdat_new_tochky(symbol, 0, 'mozg', 'zazech_sosedey', 1, 0, 10, 0, 0, " ")
+        new_tochka_print = sozdat_new_tochky(symbol, 0, 'print', "print1", 1, 0, 0, new_tochka_name, 0, " ")
         new_tochka_time_t = sozdat_new_tochky('time', 1, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
                                               posledniy_t, symbol)
         new_tochka_time_p = sozdat_new_tochky('time_p', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
@@ -60,10 +61,24 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
             # print('Создаётся новая связь posledniy_tp: ', posledniy_tp, ' и new_tochka_time_p: ', new_tochka_time_p)
             sozdat_svyaz(posledniy_tp, new_tochka_time_p, 1)
         posledniy_tp = new_tochka_time_p
-    else:   # если есть такая буква с таким ID
+        # 14.03.23 - добавлено отдельное создание (t0) для (img)
+        if poisk_img in symbol:
+            new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
+                                                  new_tochka_time_t, '')
+            sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
+            sozdat_svyaz(new_tochka_time_t, new_tochka_time_0, 1)
+            posledniy_t_0 = new_tochka_time_0
+    else:  # если есть такая буква с таким ID
         if nayti_id:
             cursor.execute("UPDATE tochki SET work = 1 WHERE ID = (?)", nayti_id)
             proverka_nalichiya_svyazey_in(nayti_id[0], symbol)
+            # 14.03.23 - добавлено отдельное создание (t0) для (img)
+            if poisk_img in symbol:
+                new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
+                                                      nayti_id[0], '')
+                sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
+                sozdat_svyaz(nayti_id[0], new_tochka_time_0, 1)
+                posledniy_t_0 = new_tochka_time_0
 
 
 
@@ -175,7 +190,7 @@ def proverka_nalichiya_svyazey_t_t_o():
 
         # print('list_poiska_t0  2 : ', list_poiska_t0)
         if list_poiska_t0 == []:
-            new_t = sozdat_new_tochky('time_0', 1, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, posledniy_t, 10)
+            new_t = sozdat_new_tochky('time_0', 1, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, posledniy_t, " ")
             # print("Создана новая (т): ", new_t, " где rod1 = ", posledniy_t_0, " и rod2 = ", posledniy_t)
             sozdat_svyaz(posledniy_t_0, new_t, 1)  # weight was 0.1
             sozdat_svyaz(posledniy_t, new_t, 1)  # weight was 0.1
@@ -185,7 +200,7 @@ def proverka_nalichiya_svyazey_t_t_o():
 
             # 06.03.23 - добавлено создание дублирующей t0, связанной с tp, для возможности повторения длинных
             # цепочек действий
-            # new_t0_tp = sozdat_new_tochky('time_0', 1, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, posledniy_tp, 10)
+            # new_t0_tp = sozdat_new_tochky('time_0', 1, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, posledniy_tp, " ")
             # sozdat_svyaz(posledniy_t_0, new_t0_tp, 1)
             # sozdat_svyaz(new_t0_tp, posledniy_tp, 1)
             # posledniy_t_0 = new_t0_tp
@@ -605,7 +620,7 @@ def sbor_deystviya(tp):
                                                 (posledniy_t_0, tp)))
     if poisk_svyazi_tp_s_t0 == ():
         # создать t0 и к нему привязать tp
-        new_tochka_t0 = sozdat_new_tochky('time_0', 1, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, tp, 10)
+        new_tochka_t0 = sozdat_new_tochky('time_0', 1, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, tp, " ")
         # print('new_tochka_t0 такая: ', new_tochka_t0)
         # sozdat_svyaz(new_tochka_t0, tp, 1)  # 3.2.2 - убрал обратную связь
         sozdat_svyaz(posledniy_t_0, new_tochka_t0, 1)
