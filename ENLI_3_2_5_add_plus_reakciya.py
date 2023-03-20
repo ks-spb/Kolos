@@ -855,5 +855,4 @@ while A:
 conn.commit()
 
 conn.close()
-
-from diagram import new_diagram
+import diagram
