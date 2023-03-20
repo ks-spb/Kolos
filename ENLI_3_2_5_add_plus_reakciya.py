@@ -20,7 +20,7 @@ def stiranie_pamyati():
     global posledniy_t
     global posledniy_t_0
     global posledniy_tp
-    # удаление лишних строчек в таблице точки, где ID>5. 5 - это последняя (.) реакции "хоро"
+    # Удаление лишних строчек в таблице точки, где ID>5. 5 - это последняя (.) реакции "хоро"
     print("Запущено стирание памяти")
     cursor.execute("DELETE FROM tochki WHERE ID > 4")
     cursor.execute("DELETE FROM svyazi WHERE ID > 2") # удаление лишних строчек в таблице связи, где ID>2. 2 - это связь м/у 5 и 1.
@@ -38,12 +38,12 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
     poisk_img = '.png'
     # symbol = 'mozg_deyst'
     nayti_id = cursor.execute("SELECT ID FROM tochki WHERE name = ? AND type = 'mozg'", (symbol, )).fetchone()
-    print("poisk_bykvi_iz_vvedeno_v2. ID у входящей точки такой: ", nayti_id)
+    # print("poisk_bykvi_iz_vvedeno_v2. ID у входящей точки такой: ", nayti_id)
 
     if not nayti_id:
-        print("poisk_bykvi_iz_vvedeno_v2. Такого ID нету")
+        # print("poisk_bykvi_iz_vvedeno_v2. Такого ID нету")
         new_tochka_name = sozdat_new_tochky(symbol, 0, 'mozg', 'zazech_sosedey', 1, 0, 10, 0, 0, " ")
-        print("Создали новую точку in: ", new_tochka_name)
+        # print("Создали новую точку in: ", new_tochka_name)
         new_tochka_print = sozdat_new_tochky(symbol, 0, 'print', "print1", 1, 0, 0, new_tochka_name, 0, " ")
         new_tochka_time_t = sozdat_new_tochky('time', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
                                               posledniy_t, symbol)
@@ -72,7 +72,7 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
     else:  # если есть такая буква с таким ID
         if nayti_id:
             cursor.execute("UPDATE tochki SET work = 1 WHERE ID = (?)", nayti_id)
-            print("Зажглась точка в проверке наличия точек: ", nayti_id)
+            # print("Зажглась точка в проверке наличия точек: ", nayti_id)
             proverka_nalichiya_svyazey_in(nayti_id[0], symbol)
             # 14.03.23 - добавлено отдельное создание (t0) для (img)
             if poisk_img in symbol:
@@ -185,7 +185,7 @@ def proverka_nalichiya_svyazey_t_t_o():
                         # print('list_poiska_t0 = ', list_poiska_t0)
                         for poisk_svyazi_t_s_t05 in poisk_svyazi_t_s_t04:
                             posledniy_t_0 = poisk_svyazi_t_s_t05
-                            print("Posl_to теперь 3 : ", posledniy_t_0)
+                            # print("Posl_to теперь 3 : ", posledniy_t_0)
                             # 3.2.5 - зажигание posl_t0
                             # for posledniy_t_01 in posledniy_t_0:
                             # cursor.execute("UPDATE tochki SET work = 1 WHERE ID = ?", (posledniy_t_0,))
@@ -204,24 +204,15 @@ def proverka_nalichiya_svyazey_t_t_o():
 
 
 def proverka_signal_porog():
-    print("Работа функции проверка сигнал порог")
+    # print("Работа функции проверка сигнал порог")
     nayti_tochki_signal_porog = tuple(cursor.execute("SELECT ID FROM tochki WHERE signal >= porog"))
     # 2.3.0 - ранее в nayti_tochki_signal_porog искались только (р), теперь сделал, чтобы находились все (...)
-    print("proverka_signal_porog. Нашли точки, у которых signal выше чем porog", nayti_tochki_signal_porog)
+    # print("proverka_signal_porog. Нашли точки, у которых signal выше чем porog", nayti_tochki_signal_porog)
     for nayti_tochki_signal_porog1 in nayti_tochki_signal_porog:
-        # nayti_tochki_signal_porog_proverka_signal = tuple(
-        # cursor.execute("SELECT signal FROM tochki WHERE ID = ?", nayti_tochki_signal_porog1))
         # print("proverka_signal_porog. Нашли точки: ", nayti_tochki_signal_porog1, " у которых сигнал signal выше чем porog")
         # print("zazech_sosedey. Проверка porog, какой у этой точки porog", nayti_tochki_signal_porog_proverka_signal)
         cursor.execute("UPDATE tochki SET work = 1 WHERE ID = (?)", nayti_tochki_signal_porog1)
         cursor.execute("UPDATE tochki SET signal = 0.9 WHERE ID = (?)", nayti_tochki_signal_porog1)
-        # cursor.execute("UPDATE tochki SET puls = 10 WHERE ID = (?)", nayti_tochki_signal_porog1)
-        # cursor.execute("UPDATE tochki SET freq = 10 WHERE ID = (?)", nayti_tochki_signal_porog1)
-        # 2.3.2 - создаётся связь только между (posl_t) и (p) и в другой функции
-        # for nayti_tochki_signal_porog2 in nayti_tochki_signal_porog1:
-        #     if nayti_tochki_signal_porog2 != posledniy_t:
-        #         # проверить имеется ли прямая связь между posledniy_t и этой загоревшейся (т)
-        #         proverka_nalichiya_svyazey(nayti_tochki_signal_porog2)
 
 
 
@@ -255,7 +246,7 @@ def pogasit_vse_tochki_t():
 def zazech_sosedey(ID):
     # выполним действие зажечь соседей
     # Если горящие точки есть - то найдём связи у этих точек
-    print("Работа функции Зажечь соседей с ID = ", ID)
+    # print("Работа функции Зажечь соседей с ID = ", ID)
     nayti_id_svyaz = tuple(cursor.execute("SELECT ID FROM svyazi WHERE id_start = ?", ID))
     if nayti_id_svyaz != ():  # если список связей не пустой - то идём дальше
         for nayti_id_svyaz1 in nayti_id_svyaz:
@@ -265,7 +256,7 @@ def zazech_sosedey(ID):
                 for ves_svyazi2 in ves_svyazi1:
                     id_tochki_soseda = tuple(cursor.execute("SELECT id_finish FROM svyazi WHERE ID = ?",
                                                             nayti_id_svyaz1))
-                    print("Сигнал", ves_svyazi2, "передаётся следующим соседям: ", id_tochki_soseda)
+                    # print("Сигнал", ves_svyazi2, "передаётся следующим соседям: ", id_tochki_soseda)
                     for id_tochki_soseda1 in id_tochki_soseda:
                         for id_tochki_soseda2 in id_tochki_soseda1:
                             cursor.execute("UPDATE tochki SET signal = signal + ? + 0.01 WHERE ID = ?",
@@ -273,19 +264,13 @@ def zazech_sosedey(ID):
                             # 2.3.0 - если сигнал стал больше, чем порог - то прибавим к связи +вес
                             prov_tochki = tuple(cursor.execute("SELECT signal FROM tochki WHERE ID = ?",
                                                                id_tochki_soseda1))
-                            print('Сигнал у (',id_tochki_soseda2, '), которой передали сигнал такой: ', prov_tochki, ' должен быть больше 1')
+                            # print('Сигнал у (',id_tochki_soseda2, '), которой передали сигнал такой: ', prov_tochki, ' должен быть больше 1')
                             # Если такая (.) нашлась - значит её сигнал выше, чем 1 (стандартный порог).
-                            # if prov_tochki != ():
-                            #     cursor.execute("UPDATE svyazi SET weight = weight + 0.01 WHERE ID = ? AND weight < 1",
-                            #                    nayti_id_svyaz1)
+                            if prov_tochki != ():
+                                cursor.execute("UPDATE svyazi SET weight = weight + 0.01 WHERE ID = ? AND weight < 1",
+                                               nayti_id_svyaz1)
                         # если зажглись (+-) - то нужно сразу же провести работу с сигналом (т)
                         for id_tochki_soseda3 in id_tochki_soseda1:
-                            # Слишком много происходит ответов из-за того, что (+) передаёт такой мощный сигнал (+1)
-                            # if id_tochki_soseda3 == 1:
-                            #     # если 1 - то это (+) реакция - прибавим +1 к сигналу (т), чтобы загорелась в след. раз
-                            #     cursor.execute("UPDATE tochki SET signal = signal + 1 WHERE ID = ? AND work >= 1", ID)
-                            #     cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = 1")
-                            #     cursor.execute("UPDATE tochki SET work = 0 WHERE ID = 1")
                             if id_tochki_soseda3 == 2:
                                 # если 2 - это (-) реакция - отнимем -1 от сигнала (т), чтобы в след. раз не загорелась
                                 cursor.execute("UPDATE tochki SET signal = signal - 1 WHERE ID = ? AND work >= 1", ID)
@@ -294,7 +279,7 @@ def zazech_sosedey(ID):
     # гашение точки, которая отработала
     cursor.execute("UPDATE tochki SET work = 0 WHERE ID = ?", ID)
     cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = ?", ID)
-    print("Зажечь соседей. Погашена отработанная точка: ", ID)
+    # print("Зажечь соседей. Погашена отработанная точка: ", ID)
     proverka_signal_porog()
 
 
@@ -487,7 +472,8 @@ def concentrator_deystviy():
                         list_t01_kortez = (list_t01, )
                         # print('Поиск связи между posledniy_t_0 = ', posledniy_t_0, 'и list_t01 = ', list_t01)
                         poisk_svyazi_s_posl_t0 = tuple(
-                            cursor.execute("SELECT ID FROM svyazi WHERE id_start = ?", posledniy_t_0_kortez))
+                            cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = ?",
+                                           (posledniy_t_0, list_t01)))
                         # print('poisk_svyazi_s_posl_t0 = ', poisk_svyazi_s_posl_t0)
                         # не ищется ID... разделяю на 2 фильтр
                         if poisk_svyazi_s_posl_t0 != ():
@@ -610,7 +596,7 @@ def sbor_deystviya(tp):
     global posledniy_t_0
     B = True
     tp_kortez = (tp, )
-    # 3.2.2 - добавляется поиск уже имеющегося t0 и проверяется имеется ли связь с posl_t0
+    # 3.2.2 - добавляется поиск уже имеющегося t0 и проверяется - имеется ли связь с posl_t0
     poisk_svyazi_tp_s_t0 = tuple(cursor.execute("SELECT ID FROM tochki WHERE rod1 = ? AND name = 'time_0' AND rod2 = ?",
                                                 (posledniy_t_0, tp)))
     if poisk_svyazi_tp_s_t0 == ():
@@ -621,12 +607,12 @@ def sbor_deystviya(tp):
         sozdat_svyaz(posledniy_t_0, new_tochka_t0, 1)
         sozdat_svyaz(new_tochka_t0, tp, 1)
         posledniy_t_0 = new_tochka_t0
-        print("Posl_to теперь 5 : ", posledniy_t_0)
+        # print("Posl_to теперь 5 : ", posledniy_t_0)
     else:
         for poisk_svyazi_tp_s_t01 in poisk_svyazi_tp_s_t0:
             for poisk_svyazi_tp_s_t02 in poisk_svyazi_tp_s_t01:
                 posledniy_t_0 = poisk_svyazi_tp_s_t02
-                print("Posl_to теперь 6 : ", posledniy_t_0)
+                # print("Posl_to теперь 6 : ", posledniy_t_0)
                 # cursor.execute("UPDATE tochki SET work = 1 WHERE ID = ?", (posledniy_t_0,))
     list_deystviy = []
     list_deystviy += tp_kortez
@@ -692,7 +678,7 @@ def ymenshenie_signal ():
     ymenshenie_signal_ = tuple(cursor.execute("SELECT ID FROM tochki WHERE signal >= 0.1",))
     cursor.execute("UPDATE tochki SET signal = signal - 0.1 WHERE signal >= 0.1 AND signal < 1")
     cursor.execute("UPDATE tochki SET signal = signal - 0.01 WHERE signal >= 0 AND signal < 0.1")  #3.2.4 - added
-    print("Уменьшен сигнал у следующих точек: ", ymenshenie_signal_)
+    # print("Уменьшен сигнал у следующих точек: ", ymenshenie_signal_)
 
 
 schetchik = 0
