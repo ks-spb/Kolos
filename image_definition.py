@@ -21,6 +21,8 @@ import datetime
 import numpy as np
 import pyautogui
 import cv2
+from PIL import Image
+
 
 # Настройки
 FIRST_REGION = 96  # Сторона квадрата, в котором ищутся сохраненные элементы
@@ -77,7 +79,6 @@ def save_image():
 
     """
 
-
     x_pos, y_pos = pyautogui.position()
     print('Позиция мыши следующая: ', x_pos, y_pos)
 
@@ -93,11 +94,23 @@ def save_image():
     filename = "_".join([BASENAME, suffix])  # e.g. 'mylogfile_120508_171442'
     cv2.imwrite(f'{PATH}/{filename}.png', ROI)
 
-    # print(ROI.set_printoptions(threshold=ROI.nan))
-
-    # image_to(filename)
+    preobrazovanie_img(filename)
 
     return f'{filename}.png'
+
+
+def preobrazovanie_img(filename):
+    img = np.asarray(Image.open(f'{PATH}/{filename}.png'))
+
+    # np.savetxt('test1.txt', img, fmt='%d')
+
+    np.save("nxx.npy", img)
+
+    # for img1 in img:
+    #     print(img1)
+
+    # np.savetxt(f"{PATH}/{filename}.csv", img, delimiter=" ,", fmt=" %.0f ")
+    np.savetxt(f"{PATH}/{filename}.csv", img.reshape(20, -1), fmt="%s", header=str(img.shape))
 
 
 save_image()
