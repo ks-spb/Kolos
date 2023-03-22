@@ -102,15 +102,23 @@ def save_image():
 def preobrazovanie_img(filename):
     img = np.asarray(Image.open(f'{PATH}/{filename}.png'))
 
-    # np.savetxt('test1.txt', img, fmt='%d')
+    image = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
-    np.save("nxx.npy", img)
+    # преобразовать изображение в формат оттенков серого
+    img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-    # for img1 in img:
-    #     print(img1)
+    # Применение бинарного порога к изображению
+    ret, thresh = cv2.threshold(img_gray, 100, 255, cv2.THRESH_BINARY)
 
-    # np.savetxt(f"{PATH}/{filename}.csv", img, delimiter=" ,", fmt=" %.0f ")
-    np.savetxt(f"{PATH}/{filename}.csv", img.reshape(20, -1), fmt="%s", header=str(img.shape))
+    """
+    для сохранения scv файла в цвете - нужно раскомментировать эти 2 строчки: 
+    # np.save("nxx.npy", img)
+    # np.savetxt(f"{PATH}/{filename}.csv", img.reshape(REGION, -1), delimiter=",", fmt="%s", header=str(img.shape))
+    """
+
+    # np.savetxt(f"{PATH}/{filename}.csv", thresh, delimiter=" ,", fmt=" %.0f ")
+
+
 
 
 save_image()
