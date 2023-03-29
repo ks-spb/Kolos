@@ -2,32 +2,18 @@
 Модуль выполняет скриншот изображения и его преобразование в точки
 """
 
-"""
-Сохранение изображения кнопки/иконки (элемента) и подтверждение его присутствия
-
-$ sudo apt-get install scrot
-$ sudo apt-get install python-tk python-dev
-$ sudo apt-get install python3-tk python3-dev
-$ workon your_virtualenv
-$ pip install pillow imutils
-$ pip install python3_xlib python-xlib
-$ pip install pyautogui
-https://pyimagesearch.com/2018/01/01/taking-screenshots-with-opencv-and-python/
-
-"""
-
 import os, sys
 import datetime
 import numpy as np
 import pyautogui
 import cv2
 from PIL import Image
+import sqlite3
 
-
+conn = sqlite3.connect('Li_db_v1_4.db')
+cursor = conn.cursor()
 # Настройки
-FIRST_REGION = 96  # Сторона квадрата, в котором ищутся сохраненные элементы
-REGION = 20  # Сторона квадрата с сохраняемым элементом
-
+REGION = 301  # Сторона квадрата с сохраняемым элементом. Ставить нечетным!
 BASENAME = "elem"  # Префикс для имени файла при сохранении изображения элемента
 PATH = input_file = os.path.join(sys.path[0], 'elements_img')  # Путь для сохранения изображений
 
@@ -46,44 +32,15 @@ def screenshot(x_reg: int = 0, y_reg: int = 0, region: int = 0):
     return cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
 
-# def image_to(filename_):
-#
-#     # прочитать изображение
-#     img = cv2.imread(filename_)
-#
-#     image = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-#
-#     # преобразовать изображение в формат оттенков серого
-#     img_gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-#
-#     # apply binary thresholding
-#     # Применение бинарного порога к изображению
-#     ret, thresh = cv2.threshold(img_gray, 100, 255, cv2.THRESH_BINARY)
-#
-#     print(thresh)
-#     print(ret)
-#
-#     np.savetxt(f"{PATH}/{filename_}.csv", thresh, delimiter=" ,", fmt=" %.0f ")
-
-
 def save_image():
-    """ Сохранение изображения кнопки/иконки (элемента) если он еще не сохранен
-
-    Функция принимает в качестве аргументов координаты точки на экране.
-    Предполагается, что эта точка расположена на элементе, изображение которого нужно сохранить или найти.
-    Точка принимается как центр квадрата со стороной FIRST_REGION внутри которого должен находиться
-    элемент (кнопка, иконка...). Проверяются сохраненные элементы. Если такого нет квадрат обрезается
-    до размера стороны REGION и сохраняется. Если есть, возвращается его имя.
-    Возвращает имя нового или существующего изображения.
-    https://myrusakov.ru/current-mouse-position-python.html
-
     """
-
+    Функция определяет положение курсора мыши, делает скриншот квадрата с заданными размерами и сохраняет файл с img
+    """
     x_pos, y_pos = pyautogui.position()
     print('Позиция мыши следующая: ', x_pos, y_pos)
 
     # Делаем скриншот нужного квадрата
-    image = screenshot(x_pos-REGION/2, y_pos-REGION/2, FIRST_REGION-1)
+    image = screenshot(0.5+x_pos-REGION/2, 0.5+y_pos-REGION/2, REGION)
 
     x = y = 0
     w = h = REGION
@@ -96,10 +53,11 @@ def save_image():
 
     preobrazovanie_img(filename)
 
-    return f'{filename}.png'
-
 
 def preobrazovanie_img(filename):
+    """
+    Функция открывает файл с сохранённым изображением, преобразовывает в ч/б и сохраняет в csv
+    """
     img = np.asarray(Image.open(f'{PATH}/{filename}.png'))
 
     image = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
@@ -110,15 +68,50 @@ def preobrazovanie_img(filename):
     # Применение бинарного порога к изображению
     ret, thresh = cv2.threshold(img_gray, 100, 255, cv2.THRESH_BINARY)
 
-    """
-    для сохранения scv файла в цвете - нужно раскомментировать эти 2 строчки: 
-    # np.save("nxx.npy", img)
+    # сохранение scv файла в цвете в csv:
     # np.savetxt(f"{PATH}/{filename}.csv", img.reshape(REGION, -1), delimiter=",", fmt="%s", header=str(img.shape))
-    """
 
-    # np.savetxt(f"{PATH}/{filename}.csv", thresh, delimiter=" ,", fmt=" %.0f ")
+    np.savetxt(f"{PATH}/{filename}.csv", thresh, delimiter=" ,", fmt=" %.0f ")  # сохранение в csv-файл
+    # print('thresh:\n', thresh)
+
+    # TO DO прописать, чтобы центр перемещался на 3 слоя вокруг центра, чтобы поймать более точное изображение
+    # TO DO сделать так, чтобы контур прорисовывался без запоздания на 1 шаг и не удалялись горизонтальные линии
+    # преобразовываем изображение и оставляем только контур
+    # img_kontur = []
+    # tochka_old = 0
+    # for thresh1 in thresh:
+    #     # print("thresh1: ", thresh1)
+    #     sloy = []
+    #     for thresh2 in thresh1:
+    #         # print('thresh2: ', thresh2)
+    #         # print('tochka_old: ', tochka_old)
+    #         # # если новая точка = старой - то 0, иначе 1.
+    #         # print('tochka_new: ', tochka_new)
+    #         if thresh2 == tochka_old:
+    #             tochka_new = 0
+    #             sloy.append(tochka_new)
+    #         else:
+    #             tochka_new = 1
+    #             sloy.append(tochka_new)
+    #             tochka_old = thresh2
+    #     img_kontur.append(sloy)
+    #     print("sloy: ", sloy)
+    # print("img_kontur: ", img_kontur)
 
 
+# def safe_to_bd(img):
+    # Функция сохраняет изображение в таблицу glaz, начиная от центральной точки, которая = REGION/2+0.5
+
+    # TO DO определить какого цвета в изображении больше
+    # Поиск цвета, который представлен больше всего - это фон, точки не будут зажигаться.
+    # black = img.count(0)
+    # white = img.count(255)
+    #
+    # print("black: ", black, "white", white)  # 3
 
 
 save_image()
+
+conn.commit()
+
+conn.close()

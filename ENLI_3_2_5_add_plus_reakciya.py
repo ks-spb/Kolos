@@ -1,4 +1,4 @@
-import sqlite3, random
+import sqlite3
 from time import sleep
 
 from mous_kb_record import rec, play
