@@ -36,6 +36,32 @@ def screenshot(x_reg: int = 0, y_reg: int = 0, region: int = 0):
     return cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
 
+def spiral(x, y, n):
+    """ Это функция генератор координат по спирали, вокруг заданной точки.
+
+    Ее надо инициализировать и далее с помощью оператора next получать координаты
+     a = spiral(3, 3, 3)
+     x, y = next(a)
+     x, y координаты центра, n - количество слоев
+
+     """
+    x = [x]
+    y = [y]
+    end = y[0] + n + 1
+    xy = [y, x, y, x]  # у - по вертикали, x - по горизонтали
+    where = [1, 1, -1, -1]  # Движение: вниз, вправо, вверх, налево
+    stop = [xy[i][0]+where[i] for i in range(4)]
+    i = 0
+    while y[0] < end:
+        while True:
+            yield (x[0], y[0])
+            xy[i][0] = xy[i][0] + where[i]
+            if xy[i][0] == stop[i]:
+                stop[i] = stop[i] + where[i]
+                break
+        i = (i + 1) % 4
+
+
 def save_image():
     """
     Функция определяет положение курсора мыши, делает скриншот квадрата с заданными размерами и сохраняет файл с img
@@ -99,7 +125,7 @@ def preobrazovanie_img(filename):
     # np.savetxt(f"{PATH}/{filename}.csv", img.reshape(REGION, -1), delimiter=",", fmt="%s", header=str(img.shape))
 
     # np.savetxt(f"{PATH}/{filename}.csv", thresh, delimiter=" ,", fmt=" %.0f ")  # сохранение в csv-файл
-    print('thresh:\n', thresh)
+    # print('thresh:\n', thresh)
 
     # TO DO прописать, чтобы центр перемещался на 3 слоя вокруг центра, чтобы поймать более точное изображение
     # TO DO сделать так, чтобы контур прорисовывался без запоздания на 1 шаг и не удалялись горизонтальные линии
@@ -133,16 +159,50 @@ def safe_to_bd():
     global thresh
     global REGION
 
-    koordinata = REGION/2-0.5  # -0.5 т.к. начало с 0, а не с единицы.
+    thresh[thresh == 255] = 1  # Меняем в массиве 255 на 1
 
-    poisk_sloy = thresh[int(koordinata)]
-    poisk_tochki = poisk_sloy[int(koordinata)]
-    print('Берём нужный слой: ', poisk_sloy, ', и нужную точку: ', poisk_tochki)
-    if poisk_tochki == 0:
-        # Если 0 - то нужно найти ближайший контур, для этого обходим по спирали.
-        0
+    # Определяем, что является чернилами
+    ink = 1 if sum(np.sum(i == 1) for i in thresh) < (len(thresh) * len(thresh[0])) // 2 else 0
+
+    # Меняем чернила на 1, а фон на 0
+    if not ink:
+        mask = thresh ^ 1
+        thresh = mask.astype(np.uint8)
 
 
+    # Печать матрицы
+    for i in thresh:
+        for j in range(len(i)):
+            if i[j] == 1:
+                print("\033[31m {}".format('0'), end='')
+            elif i[j] == 9:
+                print("\033[33m {}".format('0'), end='')
+            else:
+                print("\033[39m {}".format('0'), end='')
+        print()
+
+    koordinata = REGION // 2  # Делим без остатка
+    sp = spiral(koordinata, koordinata, 3)
+    x, y = next(sp)
+    while thresh[y][x] == 0:
+        try:
+            x, y = next(sp)
+        except:
+            raise ('Точка не найдена')
+
+    print(f'x={x}, y={y}')
+    thresh[y][x] = 9
+
+    # Печать матрицы
+    for i in thresh:
+        for j in range(len(i)):
+            if i[j] == 1:
+                print("\033[31m {}".format('0'), end='')
+            elif i[j] == 9:
+                print("\033[33m {}".format('0'), end='')
+            else:
+                print("\033[39m {}".format('0'), end='')
+        print()
 
 
 save_image()
