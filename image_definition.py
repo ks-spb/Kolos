@@ -36,6 +36,16 @@ def screenshot(x_reg: int = 0, y_reg: int = 0, region: int = 0):
     return cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
 
+# Функция, проверяющая является ли значение (x, y) точкой контура
+def is_contour_point(x, y, matrix):
+    # Проверяем, что точка (x, y) не находится на краю матрицы
+    if (y == 0) or (y == len(matrix) - 1) or (x == 0) or (x == len(matrix[0]) - 1):
+        return False
+    # Проверяем, все ли соседи (x, y) принадлежат объекту
+    return (matrix[y - 1][x] == 1) and (matrix[y + 1][x] == 1) and (matrix[y][x - 1] == 1) and (
+                matrix[y][x + 1] == 1)
+
+
 def spiral(x, y, n):
     """ Это функция генератор координат по спирали, вокруг заданной точки.
 
@@ -181,20 +191,30 @@ def safe_to_bd():
                 print("\033[39m {}".format('0'), end='')
         print()
 
+    # Новая пустая матрица
+    matrix = np.copy(thresh)
+
+    # Находим контур объекта
+    for y in range(len(thresh)):
+        for x in range(len(thresh[y])):
+            if thresh[y][x] == 1 and is_contour_point(x, y, thresh):
+                matrix[y][x] = 0
+
+    # Поиск точки в центре которая принадлежит объекту
     koordinata = REGION // 2  # Делим без остатка
     sp = spiral(koordinata, koordinata, 3)
     x, y = next(sp)
-    while thresh[y][x] == 0:
+    while matrix[y][x] == 0:
         try:
             x, y = next(sp)
         except:
             raise ('Точка не найдена')
 
     print(f'x={x}, y={y}')
-    thresh[y][x] = 9
+    matrix[y][x] = 9
 
     # Печать матрицы
-    for i in thresh:
+    for i in matrix:
         for j in range(len(i)):
             if i[j] == 1:
                 print("\033[31m {}".format('0'), end='')
