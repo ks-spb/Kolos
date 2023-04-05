@@ -16,7 +16,7 @@ cursor = conn.cursor()
 # Настройки
 # REGION должен быть больше, чем 17х17, чтобы можно было один раз сделать скриншот и работать с квадратом 17х17.
 # 21 - это 17 + 4 слоя для возможности перемещения.
-REGION = 17  # Сторона квадрата с сохраняемым элементом. Ставить нечетным!
+REGION = 21  # Сторона квадрата с сохраняемым элементом. Ставить нечетным!
 BASENAME = "elem"  # Префикс для имени файла при сохранении изображения элемента
 PATH = input_file = os.path.join(sys.path[0], 'elements_img')  # Путь для сохранения изображений
 thresh = []   # Список, в котором будет храниться обработанное изображение
@@ -162,10 +162,17 @@ def preobrazovanie_img(filename):
     # print("img_kontur: ", img_kontur)
 
 
-def safe_to_bd():
+def sozdat_new_tochky(name, work, type, func, porog, signal, puls, rod1, rod2, freq):
+    max_ID = cursor.execute("SELECT MAX(ID) FROM tochki").fetchone()
+    new_id = max_ID[0] + 1
+    cursor.execute("INSERT INTO tochki VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (
+        new_id, name, work, type, func, porog, signal, puls, rod1, rod2, freq))
+    return new_id
+
+
+def save_to_bd():
     # Функция сохраняет изображение в таблицу glaz, начиная от центральной точки, которая = REGION/2+0.5,
     # но перед этим определяет, что находится в центре - если это фон - то ищется точка объекта по спирали
-    # TO DO определить какого цвета в изображении больше
     global thresh
     global REGION
 
@@ -224,9 +231,40 @@ def safe_to_bd():
                 print("\033[39m {}".format('0'), end='')
         print()
 
+    # Ищем по часовой стрелке соседнюю горящую (.), чтобы сохранить в БД, начинаем с центральной точки.
+    # new_sp = spiral(x, y, 1)
+    # new_x, new_y = next(new_sp)
+    # new_matrix = matrix
+    # print(f'соседний х = {new_x}, y = {new_y}')
+    # # print('new_matrix: \n', new_matrix)
+    #
+    # A = True
+    # while A:
+    #     if new_matrix[new_y, new_x] == 1 or 9:
+    #         # поиск этой точки в БД, таблица glaz
+    #         print('new_matrix[new_y, new_x]: ', new_matrix[new_y, new_x])
+    #         name_tochki = str(new_y) + '_' + str(new_x)
+    #         print('name_tochki: ', name_tochki)
+    #         poisk_tochki = tuple(cursor.execute("SELECT ID FROM glaz WHERE name = ?", str(name_tochki)))
+    #         print('poisk_tochki: ', poisk_tochki)
+    #         if not poisk_tochki:
+    #             # если такой точки нет - создадим её
+    #             print('такой точки нет')
+    #             sozdat_new_tochky(name_tochki, 1, 'glaz', 'zazech_sosedey', 1, 0, 10, 0, 0, name_tochki)
+    #         else:
+    #             # если такая точка есть - зажжём её
+    #             print('такая точка есть')
+    #             cursor.execute("UPDATE glaz SET work = 1 WHERE name = (?)", name_tochki)
+    #         new_matrix[new_y, new_x] = 0
+    #         new_matrix[y, x] = 0
+    #     elif new_matrix[new_y, new_x] == 0:
+    #         new_x, new_y = next(new_sp)
+    #     else:
+    #         A = False
+
 
 save_image()
-safe_to_bd()
+save_to_bd()
 
 conn.commit()
 
