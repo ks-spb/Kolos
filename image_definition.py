@@ -53,17 +53,18 @@ def save_image():
     # print('Позиция мыши следующая: ', x_pos, y_pos)
 
     # Делаем скриншот нужного квадрата, где центр - координаты мыши
-    # image = screenshot(0.5+x_pos-REGION/2, 0.5+y_pos-REGION/2, REGION)
+    image = screenshot(0.5+x_pos-REGION/2, 0.5+y_pos-REGION/2, REGION)
 
     # скриншот целого экрана
-    image = screenshot()
+    # image = screenshot()
 
     x = y = 0
     # w = h = REGION
     h = w = 30   # в csv-файле показывается 600 цифр по горизонтали, в том числе пробелы и запятые
 
     # Сохраняем изображение найденного элемента
-    ROI = image[y:y+h, x:x+w]
+    # ROI = image[y:y+h, x:x+w]
+    ROI = image[y:y_pos + h, x:x_pos + w]
     suffix = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
     filename = "_".join([BASENAME, suffix])  # e.g. 'mylogfile_120508_171442'
     cv2.imwrite(f'{PATH}/{filename}.png', ROI)
@@ -107,7 +108,7 @@ def sozdat_svyaz(id_start: int = 0, id_finish: int = 0, koord_start: int = 0):
     for max_ID_svyazi1 in max_ID_svyazi:
         old_id_svyazi = max_ID_svyazi1[0]
         new_id_svyazi = old_id_svyazi + 1
-    cursor.execute("INSERT INTO svyazi_glaz VALUES (?, ?, ?, ?)", (new_id_svyazi, id_start, id_finish, koord_start))
+    cursor.execute("INSERT INTO svyazi_glaz VALUES (?, ?, ?)", (new_id_svyazi, id_start, id_finish))
 
 
 def fill(matrix, x, y):
@@ -127,7 +128,6 @@ def fill(matrix, x, y):
             name_koordinat = str(x) + ', ' + str(y)
             name_smesheniya = str(x - start_x) + '_' + str(y - start_y)
             poisk_smesheniya = tuple(cursor.execute("SELECT ID FROM glaz WHERE name = ?", (name_smesheniya,)))
-            # sozdat_svyaz(0, 0, posl_koord)
             posl_koord = name_koordinat
             if not poisk_smesheniya:
                 # если нет - создать
@@ -142,8 +142,8 @@ def fill(matrix, x, y):
             if not poisk_svyazyushei_tg_s_new_smeshenie:
                 new_tg = sozdat_new_tochky('time_g', 0, 'time', 'zazech_sosedey', 1, 0, 0, posl_tg, new_sdvig)
                 # sozdat_svyaz(0, new_tg, new_smeshenie)
-                sozdat_svyaz(posl_tg, new_tg, 0)
-                sozdat_svyaz(new_sdvig, new_tg, 0)
+                sozdat_svyaz(posl_tg, new_tg)
+                sozdat_svyaz(new_sdvig, new_tg)
                 posl_tg = new_tg
             else:
                 for poisk_svyazyushei_tg_s_new_smeshenie1 in poisk_svyazyushei_tg_s_new_smeshenie:
@@ -219,12 +219,12 @@ def save_to_bd():
                 # значит эта точка (0, 0)
                 # присвоить posl_tg - начальная точка
                 posl_tg = 1
-                sozdat_svyaz(0, 1, name_tochki)
+                # sozdat_svyaz(0, 1, name_tochki)
                 fill(thresh, i, j)
 
 
 
-stiranie_pamyati()
+# stiranie_pamyati()
 save_image()
 save_to_bd()
 
