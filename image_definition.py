@@ -21,7 +21,7 @@ REGION = 21  # Сторона квадрата с сохраняемым эле�
 BASENAME = "elem"  # Префикс для имени файла при сохранении изображения элемента
 PATH = input_file = os.path.join(sys.path[0], 'elements_img')  # Путь для сохранения изображений
 thresh = []   # Список, в котором будет храниться обработанное изображение
-posl_tg = 1
+posl_tg = 0
 posl_koord = 0
 
 def stiranie_pamyati():
@@ -60,8 +60,7 @@ def save_image():
 
     x = y = 0
     # w = h = REGION
-    h = 30
-    w = 30   # в csv-файле показывается 600 цифр, в том числе пробелы и запятые
+    h = w = 30   # в csv-файле показывается 600 цифр по горизонтали, в том числе пробелы и запятые
 
     # Сохраняем изображение найденного элемента
     ROI = image[y:y+h, x:x+w]
@@ -103,13 +102,12 @@ def sozdat_new_tochky(name, work, type, func, porog, signal, puls, rod1, rod2):
     return new_id
 
 
-def sozdat_svyaz(id_start: int = 0, id_finish: int = 0, koord_start: int = 0, koord_finish: int = 0):
+def sozdat_svyaz(id_start: int = 0, id_finish: int = 0, koord_start: int = 0):
     max_ID_svyazi = tuple(cursor.execute("SELECT MAX(ID) FROM svyazi_glaz"))
     for max_ID_svyazi1 in max_ID_svyazi:
         old_id_svyazi = max_ID_svyazi1[0]
         new_id_svyazi = old_id_svyazi + 1
-    cursor.execute("INSERT INTO svyazi_glaz VALUES (?, ?, ?, ?, ?, ?)", (new_id_svyazi, id_start, id_finish, 1,
-                                                                         koord_start, koord_finish))
+    cursor.execute("INSERT INTO svyazi_glaz VALUES (?, ?, ?, ?)", (new_id_svyazi, id_start, id_finish, koord_start))
 
 
 def fill(matrix, x, y):
@@ -123,33 +121,34 @@ def fill(matrix, x, y):
         x, y = stack.pop()
         if matrix[x][y] == 1:
             matrix[x][y] = 2
-            print(f"В путь добавлена точка с координатами: {y}, {x}. Это смещение: {y - start_y}, {x - start_x}")
+            # print(f"В путь добавлена точка с координатами: {y}, {x}. Это смещение: {y - start_y}, {x - start_x}")
             out.append((x - start_x, y - start_y))
             # поиск имеется ли точка в БД, соответствующая этому смещению
+            name_koordinat = str(x) + ', ' + str(y)
             name_smesheniya = str(x - start_x) + '_' + str(y - start_y)
-            poisk_smesheniya = tuple(cursor.execute("SELECT name FROM glaz WHERE name = ?", (name_smesheniya,)))
-            sozdat_svyaz(0, 0, posl_koord, name_smesheniya)
-            posl_koord = name_smesheniya
+            poisk_smesheniya = tuple(cursor.execute("SELECT ID FROM glaz WHERE name = ?", (name_smesheniya,)))
+            # sozdat_svyaz(0, 0, posl_koord)
+            posl_koord = name_koordinat
             if not poisk_smesheniya:
                 # если нет - создать
-                sozdat_new_tochky(name_smesheniya, 0, 'sdvig', 'zazech_sosedey', 1, 0, 0, posl_koord, 0)
-                new_smeshenie = name_smesheniya
+                new_sdvig = sozdat_new_tochky(name_smesheniya, 0, 'sdvig', 'zazech_sosedey', 1, 0, 0, posl_koord, 0)
             else:
                 for poisk_smesheniya1 in poisk_smesheniya:
                     for poisk_smesheniya2 in poisk_smesheniya1:
-                        new_smeshenie = poisk_smesheniya2
+                        new_sdvig = poisk_smesheniya2
             # найти связующее tg м/у posl_tg и точкой сдвига
             poisk_svyazyushei_tg_s_new_smeshenie = tuple(cursor.execute(
-                "SELECT ID FROM glaz WHERE rod1 = ? AND rod2 = ?", (posl_tg, new_smeshenie)))
+                "SELECT ID FROM glaz WHERE rod1 = ? AND rod2 = ?", (posl_tg, new_sdvig)))
             if not poisk_svyazyushei_tg_s_new_smeshenie:
-                new_tg = sozdat_new_tochky('time_g', 0, 'time', 'zazech_sosedey', 1, 0, 0, posl_tg, new_smeshenie)
-                # sozdat_svyaz(0, new_tg, new_smeshenie, 0)
-                sozdat_svyaz(posl_tg, new_tg, 0, 0)
+                new_tg = sozdat_new_tochky('time_g', 0, 'time', 'zazech_sosedey', 1, 0, 0, posl_tg, new_sdvig)
+                # sozdat_svyaz(0, new_tg, new_smeshenie)
+                sozdat_svyaz(posl_tg, new_tg, 0)
+                sozdat_svyaz(new_sdvig, new_tg, 0)
                 posl_tg = new_tg
             else:
                 for poisk_svyazyushei_tg_s_new_smeshenie1 in poisk_svyazyushei_tg_s_new_smeshenie:
                     for poisk_svyazyushei_tg_s_new_smeshenie2 in poisk_svyazyushei_tg_s_new_smeshenie1:
-                        # sozdat_svyaz(0, poisk_svyazyushei_tg_s_new_smeshenie2, new_smeshenie, 0)
+                        # sozdat_svyaz(0, poisk_svyazyushei_tg_s_new_smeshenie2, new_smeshenie)
                         posl_tg = poisk_svyazyushei_tg_s_new_smeshenie2
             for dx in [-1, 0, 1]:
                 for dy in [-1, 0, 1]:
@@ -215,18 +214,13 @@ def save_to_bd():
         for j in range(len(thresh[i])):
             if thresh[i][j] == 1:
                 # print(f"Координаты: (y = {i}, x = {j})")
-                name_tochki = str(j) + ', ' + str(i)
-                print(f"Имя точки следующее: {name_tochki}")
-                # если нет записи в столбце koord_finish - это точка start
-                poisk_svyazi = tuple(cursor.execute("SELECT ID FROM svyazi_glaz WHERE koord_finish = ?",
-                                                    (name_tochki,)))
-                if not poisk_svyazi:
-                    # значит эта точка (0, 0)
-                    # присвоить posl_tg - начальная точка
-                    posl_tg = 1
-                    sozdat_svyaz(0, 1, name_tochki, 0)
-                    posl_koord = name_tochki
-                    fill(thresh, i, j)
+                name_tochki = str(i) + ', ' + str(j)
+                print(f"Имя точки start нового объекта следующее: {name_tochki}")
+                # значит эта точка (0, 0)
+                # присвоить posl_tg - начальная точка
+                posl_tg = 1
+                sozdat_svyaz(0, 1, name_tochki)
+                fill(thresh, i, j)
 
 
 
