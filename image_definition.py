@@ -9,6 +9,7 @@ import pyautogui
 import cv2
 from PIL import Image
 import sqlite3
+from pynput import keyboard
 import time
 
 
@@ -17,12 +18,15 @@ cursor = conn.cursor()
 # Настройки
 # REGION должен быть больше, чем 17х17, чтобы можно было один раз сделать скриншот и работать с квадратом 17х17.
 # 21 - это 17 + 4 слоя для возможности перемещения.
-REGION = 21  # Сторона квадрата с сохраняемым элементом. Ставить нечетным!
+REGION = 30  # Сторона квадрата с сохраняемым элементом. Ставить нечетным!
 BASENAME = "elem"  # Префикс для имени файла при сохранении изображения элемента
 PATH = input_file = os.path.join(sys.path[0], 'elements_img')  # Путь для сохранения изображений
+FILENAME = ""   # Имя файла, в котором хранится изображение элемента
+SCR_XY = (0, 0)  # Координаты на экране левого верхнего угла квадрата с сохраняемым элементом
 thresh = []   # Список, в котором будет храниться обработанное изображение
 posl_tg = 0
 posl_koord = 0
+
 
 def stiranie_pamyati():
     # Удаление лишних строчек в таблицах БД
@@ -49,35 +53,34 @@ def save_image():
     """
     Функция определяет положение курсора мыши, делает скриншот квадрата с заданными размерами и сохраняет файл с img
     """
+    global SCR_XY
     x_pos, y_pos = pyautogui.position()
     # print('Позиция мыши следующая: ', x_pos, y_pos)
 
     # Делаем скриншот нужного квадрата, где центр - координаты мыши
-    image = screenshot(0.5+x_pos-REGION/2, 0.5+y_pos-REGION/2, REGION)
+    SCR_XY = (x_pos - REGION // 2, y_pos - REGION // 2)
+    image = screenshot(*SCR_XY, REGION)
 
     # скриншот целого экрана
     # image = screenshot()
 
     x = y = 0
-    # w = h = REGION
-    h = w = 30   # в csv-файле показывается 600 цифр по горизонтали, в том числе пробелы и запятые
+    w = h = REGION
 
     # Сохраняем изображение найденного элемента
-    # ROI = image[y:y+h, x:x+w]
     ROI = image[y:y_pos + h, x:x_pos + w]
     suffix = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
-    filename = "_".join([BASENAME, suffix])  # e.g. 'mylogfile_120508_171442'
-    cv2.imwrite(f'{PATH}/{filename}.png', ROI)
+    filename = f'{"_".join([BASENAME, suffix])}.png'
+    cv2.imwrite(os.path.join(PATH, filename), ROI)
 
-    preobrazovanie_img(filename)
+    return filename
 
 def preobrazovanie_img(filename):
     """
     Функция открывает файл с сохранённым изображением, преобразовывает в ч/б и сохраняет в csv
     """
-    global thresh
 
-    img = np.asarray(Image.open(f'{PATH}/{filename}.png'))
+    img = np.asarray(Image.open(os.path.join(PATH, filename)))
 
     image = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
 
@@ -90,9 +93,73 @@ def preobrazovanie_img(filename):
     # сохранение scv файла в цвете в csv:
     # np.savetxt(f"{PATH}/{filename}.csv", img.reshape(REGION, -1), delimiter=",", fmt="%s", header=str(img.shape))
 
-    np.savetxt(f"{PATH}/{filename}.csv", thresh, delimiter=" ,", fmt=" %.0f ")  # сохранение в csv-файл
+    # np.savetxt(f"{PATH}/{filename}.csv", thresh, delimiter=" ,", fmt=" %.0f ")  # сохранение в csv-файл
     # print('thresh:\n', thresh)
 
+    return thresh
+
+
+def save_matrix(thresh):
+    """ Точки объектов - 1, фон - 0, сохраняет матрицу в файл Preobrazovanniy"""
+
+    thresh[thresh == 255] = 1  # Меняем в массиве 255 на 1
+
+    # Определяем, что является чернилами
+    ink = 1 if sum(np.sum(i == 1) for i in thresh) < (len(thresh) * len(thresh[0])) // 2 else 0
+
+    # Меняем чернила на 1, а фон на 0
+    if not ink:
+        mask = thresh ^ 1
+        thresh = mask.astype(np.uint8)
+
+
+    filename = "Preobrazovanniy"
+
+    np.savetxt(f"{os.path.join(PATH, filename)}.csv", thresh, delimiter=" ,", fmt=" %.0f ")  # сохранение в csv-файл
+
+    return thresh
+
+
+def spiral(x, y, n):
+    """ Это функция генератор, ее надо инициализировать и далее с помощью оператора next получать координаты
+     a = spiral(3, 3, 3)
+     x, y = next(a)
+     x, y координаты центра, n - количество слоев """
+    x = [x]
+    y = [y]
+    end = y[0] + n + 1
+    xy = [y, x, y, x]  # у - по вертикали, x - по горизонтали
+    where = [1, 1, -1, -1]  # Движение: вниз, вправо, вверх, налево
+    stop = [xy[i][0]+where[i] for i in range(4)]
+    i = 0
+    while y[0] < end:
+        while True:
+            yield (x[0], y[0])
+            xy[i][0] = xy[i][0] + where[i]
+            if xy[i][0] == stop[i]:
+                stop[i] = stop[i] + where[i]
+                break
+        i = (i + 1) % 4
+
+
+def fill(matrix, x, y):
+    """ Обход точек и формирование списка смещения каждой относительно верхнего левого угла 0, 0"""
+    out = []
+    stack = [(x, y)]
+    while stack:
+        x, y = stack.pop()
+        if matrix[x][y] == 1:
+            matrix[x][y] = 2
+            out.append((x, y))
+            for dx in [-1, 0, 1]:
+                for dy in [-1, 0, 1]:
+                    if dx == dy == 0:
+                        continue
+                    new_x = x + dx
+                    new_y = y + dy
+                    if 0 <= new_x < matrix.shape[0] and 0 <= new_y < matrix.shape[1]:
+                        stack.append((new_x, new_y))
+    return out
 
 
 def sozdat_new_tochky(name, work, type, func, porog, signal, puls, rod1, rod2):
@@ -111,7 +178,7 @@ def sozdat_svyaz(id_start: int = 0, id_finish: int = 0, koord_start: int = 0):
     cursor.execute("INSERT INTO svyazi_glaz VALUES (?, ?, ?)", (new_id_svyazi, id_start, id_finish))
 
 
-def fill(matrix, x, y):
+def fill_okonchatelniy(matrix_fill, x, y):
     """ Обход точек и формирование списка смещения каждой точки от заданной """
     global posl_koord
     global posl_tg
@@ -120,8 +187,8 @@ def fill(matrix, x, y):
     stack = [(x, y)]
     while stack:
         x, y = stack.pop()
-        if matrix[x][y] == 1:
-            matrix[x][y] = 2
+        if matrix_fill[x][y] == 1:
+            matrix_fill[x][y] = 2
             # print(f"В путь добавлена точка с координатами: {y}, {x}. Это смещение: {y - start_y}, {x - start_x}")
             out.append((x - start_x, y - start_y))
             # поиск имеется ли точка в БД, соответствующая этому смещению
@@ -156,7 +223,7 @@ def fill(matrix, x, y):
                         continue
                     new_x = x + dx
                     new_y = y + dy
-                    if 0 <= new_x < matrix.shape[0] and 0 <= new_y < matrix.shape[1]:
+                    if 0 <= new_x < matrix_fill.shape[0] and 0 <= new_y < matrix_fill.shape[1]:
                         stack.append((new_x, new_y))
     return out
 
@@ -166,28 +233,12 @@ def fill(matrix, x, y):
 def save_to_bd():
     # Функция сохраняет изображение в таблицу glaz, начиная от центральной точки, которая = REGION/2+0.5,
     # но перед этим определяет, что находится в центре - если это фон - то ищется точка объекта по спирали
-    global thresh
-    global REGION
     global posl_tg
     global posl_koord
-
-    thresh[thresh == 255] = 1  # Меняем в массиве 255 на 1
-
-    # Определяем, что является чернилами
-    ink = 1 if sum(np.sum(i == 1) for i in thresh) < (len(thresh) * len(thresh[0])) // 2 else 0
-
-    # Меняем чернила на 1, а фон на 0
-    if not ink:
-        mask = thresh ^ 1
-        thresh = mask.astype(np.uint8)
-
-
-    filename = "Preobrazovanniy"
-
-    np.savetxt(f"{PATH}/{filename}.csv", thresh, delimiter=" ,", fmt=" %.0f ")
+    global matrix
 
     """
-    Далее разбор массива thresh, который пройдётся по точкам и запишет уникальный объект в БД.
+    Далее разбор массива matrix, который пройдётся по точкам и запишет уникальный объект в БД.
     Имеются точки сетки. Каждой координате (x,y) соответствует своя точка сетки, но они не записываются в БД.
     Имеются внутренние точки таблицы (glaz), описывающие смещение относительно начальной точки (0, 0): (0, 0), (0, 1), 
     (2,2) и т.п.
@@ -209,10 +260,10 @@ def save_to_bd():
     """
     posl_tg = 0
     # Перебор строк матрицы
-    for i in range(len(thresh)):
+    for i in range(len(matrix)):
         # Перебор элементов в строке
-        for j in range(len(thresh[i])):
-            if thresh[i][j] == 1:
+        for j in range(len(matrix[i])):
+            if matrix[i][j] == 1:
                 # print(f"Координаты: (y = {i}, x = {j})")
                 name_tochki = str(i) + ', ' + str(j)
                 print(f"Имя точки start нового объекта следующее: {name_tochki}")
@@ -220,12 +271,75 @@ def save_to_bd():
                 # присвоить posl_tg - начальная точка
                 posl_tg = 1
                 # sozdat_svyaz(0, 1, name_tochki)
-                fill(thresh, i, j)
+                fill_okonchatelniy(matrix, i, j)
 
 
 
 # stiranie_pamyati()
-save_image()
+
+print('Наведите курсор на объект,\nНажмите Ctrl, чтобы сделать скриншот\n')
+
+# Далее работа по алгоритму new_examole. Найти один объект, преобразовать в новую матрицу
+def on_press(key):
+    # if key == keyboard.Key.ctrl:
+    global FILENAME
+    FILENAME = save_image()
+    listener.stop()
+
+with keyboard.Listener(on_press=on_press) as listener:
+    listener.join()
+# ----------------------------------------------------------------------------
+
+# 3. Преобразовать скриншот в матрицу из 1 и 0, где 0 — это фон, 1 — точки объекта
+matrix = preobrazovanie_img(FILENAME)
+matrix = save_matrix(matrix)
+
+# 4. Методом спирали найти ближайшую к клику мыши точку объекта
+sp = spiral(REGION//2, REGION//2, 3)
+try:
+    while True:
+        x, y = next(sp)
+        if matrix[x][y] == 1:
+            # print(' Координаты точки:', x, y)
+            break
+except StopIteration:
+    print('Не найдено точки объекта')
+    exit()
+
+print('\nИсходный скриншот\n', matrix)
+
+# 5. Получить список кортежей смещений каждой точки объекта относительно левой верхней точки квадрата скриншота.
+#    Полученный список теперь содержит только один объект, точка которого была найдена в п.4. Он мог находиться
+#    в центре сделанного скриншота.
+offset = fill(matrix, x, y)
+
+# 6. Найти минимальное значение смещений по горизонтали и вертикали
+min_y = min(offset, key=lambda x: x[0])[0]
+min_x = min(offset, key=lambda x: x[1])[1]
+
+# 7. Уменьшить все координаты горизонтали и вертикали на их минимальные значения. Таким образом сдвигаем объект в
+#    верхний левый угол.
+offset = [(y - min_y, x - min_x) for y, x in offset]
+
+# 8. Ширина описывающего прямоугольника — макс. горизонтальное смещение + 1, высота макс. вертикальное смещение + 1.
+width = max(offset, key=lambda x: x[1])[1] + 1
+height = max(offset, key=lambda x: x[0])[0] + 1
+print()
+print(f'Ширина: {width}')
+print(f'Высота: {height}')
+
+# Восстановить рисунок из списка смещений в матрице минимальных размеров
+matrix = np.zeros((height, width), dtype=int)
+for dx, dy in offset:
+    matrix[dx][dy] = 1
+print('\nВыбранный объект в матрице минимальных размеров\n', matrix)
+
+# 9. Координаты верхнего левого угла прямоугольника (объекта) на экране — координаты скриншота +
+#    значения найденные в п.6.
+print('\nКоординаты верхнего левого угла прямоугольника (объекта) на экране')
+print(SCR_XY[0] + min_x, SCR_XY[1] + min_y)
+
+
 save_to_bd()
 
 conn.commit()

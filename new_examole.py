@@ -73,7 +73,6 @@ def save_image():
     w = h = REGION
 
     # Сохраняем изображение найденного элемента
-    # ROI = image[y:y+h, x:x+w]
     ROI = image[y:y_pos + h, x:x_pos + w]
     suffix = datetime.datetime.now().strftime("%y%m%d_%H%M%S")
     filename = f'{"_".join([BASENAME, suffix])}.png'
@@ -172,10 +171,10 @@ def fill(matrix, x, y):
 # Это только для демонстрации. Ждет нажатия пробела, чтобы сделать скриншот
 print('Наведите курсор на объект,\nНажмите Ctrl, чтобы сделать скриншот\n')
 def on_press(key):
-    if key == keyboard.Key.ctrl:
-        global FILENAME
-        FILENAME = save_image()
-        listener.stop()
+    # if key == keyboard.Key.ctrl:
+    global FILENAME
+    FILENAME = save_image()
+    listener.stop()
 
 with keyboard.Listener(on_press=on_press) as listener:
     listener.join()
@@ -229,3 +228,4 @@ print('\nВыбранный объект в матрице минимальны�
 #    значения найденные в п.6.
 print('\nКоординаты верхнего левого угла прямоугольника (объекта) на экране')
 print(SCR_XY[0] + min_x, SCR_XY[1] + min_y)
+print(offset)
