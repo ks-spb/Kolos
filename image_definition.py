@@ -225,6 +225,7 @@ def fill_okonchatelniy(matrix_fill, x, y):
                     new_y = y + dy
                     if 0 <= new_x < matrix_fill.shape[0] and 0 <= new_y < matrix_fill.shape[1]:
                         stack.append((new_x, new_y))
+    print(out)
     return out
 
 
@@ -320,6 +321,12 @@ min_x = min(offset, key=lambda x: x[1])[1]
 # 7. Уменьшить все координаты горизонтали и вертикали на их минимальные значения. Таким образом сдвигаем объект в
 #    верхний левый угол.
 offset = [(y - min_y, x - min_x) for y, x in offset]
+
+print(offset)
+# Отсортировать список кортежей по возрастанию по первому элементу (по вертикали), а затем по второму (по горизонтали)
+offset.sort(key=lambda x: (x[0], x[1]))
+print(offset)
+
 
 # 8. Ширина описывающего прямоугольника — макс. горизонтальное смещение + 1, высота макс. вертикальное смещение + 1.
 width = max(offset, key=lambda x: x[1])[1] + 1
