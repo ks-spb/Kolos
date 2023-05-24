@@ -322,9 +322,11 @@ min_x = min(offset, key=lambda x: x[1])[1]
 #    верхний левый угол.
 offset = [(y - min_y, x - min_x) for y, x in offset]
 
+print('\nСписок смещений\n')
 print(offset)
 # Отсортировать список кортежей по возрастанию по первому элементу (по вертикали), а затем по второму (по горизонтали)
 offset.sort(key=lambda x: (x[0], x[1]))
+print('\nСписок смещений отсортированный\n')
 print(offset)
 
 
