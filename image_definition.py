@@ -25,7 +25,6 @@ FILENAME = ""   # Имя файла, в котором хранится изоб
 SCR_XY = (0, 0)  # Координаты на экране левого верхнего угла квадрата с сохраняемым элементом
 thresh = []   # Список, в котором будет храниться обработанное изображение
 posl_tg = 0
-posl_koord = 0
 
 
 def stiranie_pamyati():
@@ -178,105 +177,49 @@ def sozdat_svyaz(id_start: int = 0, id_finish: int = 0, koord_start: int = 0):
     cursor.execute("INSERT INTO svyazi_glaz VALUES (?, ?, ?)", (new_id_svyazi, id_start, id_finish))
 
 
-def fill_okonchatelniy(matrix_fill, x, y):
+def save_to_bd(spisok):
+    """
+    Запись уникального объекта в БД из сортированного списка offset.
+    Имеются внутренние точки таблицы (glaz), описывающие смещение относительно начальной точки (0, 0): (0, 0), (0, 1),
+    (2,2) и т.п.
+    Имеются внутренние временные точки (tg).
+    1. Перебираем список последовательности закраски изображения.
+    2. Найти соответствующую этому смещению точку в БД, если нет - создать
+    3. Найти смежную (tg) между posl_tg и текущей точкой смещения
+        3.1. Если нет - создать
+        3.2. Если есть - присвоить ей posl_tg
+    4. Создать связь между текущей координатой и tg
+    """
+
     """ Обход точек и формирование списка смещения каждой точки от заданной """
     global posl_koord
     global posl_tg
-    start_x, start_y = x, y
-    out = []
-    stack = [(x, y)]
-    while stack:
-        x, y = stack.pop()
-        if matrix_fill[x][y] == 1:
-            matrix_fill[x][y] = 2
-            # print(f"В путь добавлена точка с координатами: {y}, {x}. Это смещение: {y - start_y}, {x - start_x}")
-            out.append((x - start_x, y - start_y))
-            # поиск имеется ли точка в БД, соответствующая этому смещению
-            name_koordinat = str(x) + ', ' + str(y)
-            name_smesheniya = str(x - start_x) + '_' + str(y - start_y)
-            poisk_smesheniya = tuple(cursor.execute("SELECT ID FROM glaz WHERE name = ?", (name_smesheniya,)))
-            posl_koord = name_koordinat
-            if not poisk_smesheniya:
-                # если нет - создать
-                new_sdvig = sozdat_new_tochky(name_smesheniya, 0, 'sdvig', 'zazech_sosedey', 1, 0, 0, posl_koord, 0)
-            else:
-                for poisk_smesheniya1 in poisk_smesheniya:
-                    for poisk_smesheniya2 in poisk_smesheniya1:
-                        new_sdvig = poisk_smesheniya2
-            # найти связующее tg м/у posl_tg и точкой сдвига
-            poisk_svyazyushei_tg_s_new_smeshenie = tuple(cursor.execute(
-                "SELECT ID FROM glaz WHERE rod1 = ? AND rod2 = ?", (posl_tg, new_sdvig)))
-            if not poisk_svyazyushei_tg_s_new_smeshenie:
-                new_tg = sozdat_new_tochky('time_g', 0, 'time', 'zazech_sosedey', 1, 0, 0, posl_tg, new_sdvig)
-                # sozdat_svyaz(0, new_tg, new_smeshenie)
-                sozdat_svyaz(posl_tg, new_tg)
-                sozdat_svyaz(new_sdvig, new_tg)
-                posl_tg = new_tg
-            else:
-                for poisk_svyazyushei_tg_s_new_smeshenie1 in poisk_svyazyushei_tg_s_new_smeshenie:
-                    for poisk_svyazyushei_tg_s_new_smeshenie2 in poisk_svyazyushei_tg_s_new_smeshenie1:
-                        # sozdat_svyaz(0, poisk_svyazyushei_tg_s_new_smeshenie2, new_smeshenie)
-                        posl_tg = poisk_svyazyushei_tg_s_new_smeshenie2
-            for dx in [-1, 0, 1]:
-                for dy in [-1, 0, 1]:
-                    if dx == dy == 0:
-                        continue
-                    new_x = x + dx
-                    new_y = y + dy
-                    if 0 <= new_x < matrix_fill.shape[0] and 0 <= new_y < matrix_fill.shape[1]:
-                        stack.append((new_x, new_y))
-    print(out)
-    return out
+
+    for (y, x) in spisok:
+        name_sdvig = str(y) + "_" + str(x)
+        # print(name_sdvig)
+#       # поиск имеется ли точка в БД, соответствующая этому смещению
+        poisk_smesheniya = tuple(cursor.execute("SELECT ID FROM glaz WHERE name = ?", (name_sdvig,)))
+        if not poisk_smesheniya:
+            # если нет - создать
+            new_sdvig = sozdat_new_tochky(name_sdvig, 0, 'sdvig', 'zazech_sosedey', 1, 0, 0, posl_tg, 0)
+        else:
+            for poisk_smesheniya1 in poisk_smesheniya:
+                new_sdvig = poisk_smesheniya1[0]
+        # найти связующее tg м/у posl_tg и точкой сдвига
+        poisk_svyazyushei_tg_s_new_smeshenie = tuple(cursor.execute(
+            "SELECT ID FROM glaz WHERE rod1 = ? AND rod2 = ?", (posl_tg, new_sdvig)))
+        if not poisk_svyazyushei_tg_s_new_smeshenie:
+            new_tg = sozdat_new_tochky('time_g', 0, 'time', 'zazech_sosedey', 1, 0, 0, posl_tg, new_sdvig)
+            # sozdat_svyaz(0, new_tg, new_smeshenie)
+            sozdat_svyaz(posl_tg, new_tg)
+            sozdat_svyaz(new_sdvig, new_tg)
+            posl_tg = new_tg
+        else:
+            for poisk_svyazyushei_tg_s_new_smeshenie1 in poisk_svyazyushei_tg_s_new_smeshenie:
+                posl_tg = poisk_svyazyushei_tg_s_new_smeshenie1[0]
 
 
-
-
-def save_to_bd():
-    # Функция сохраняет изображение в таблицу glaz, начиная от центральной точки, которая = REGION/2+0.5,
-    # но перед этим определяет, что находится в центре - если это фон - то ищется точка объекта по спирали
-    global posl_tg
-    global posl_koord
-    global matrix
-
-    """
-    Далее разбор массива matrix, который пройдётся по точкам и запишет уникальный объект в БД.
-    Имеются точки сетки. Каждой координате (x,y) соответствует своя точка сетки, но они не записываются в БД.
-    Имеются внутренние точки таблицы (glaz), описывающие смещение относительно начальной точки (0, 0): (0, 0), (0, 1), 
-    (2,2) и т.п.
-    Имеются внутренние временные точки (tg).
-    1. Перебираем лист сохранённого изображения последовательно (слева направо, сверху вниз).
-    2. Когда находим 1 - проверяем записана ли эта точка в таблицу svyzi_glaz в столбце koord_finish:
-     2.1. Если нет - это точка (0, 0):
-        2.1.1. Присвоить posl_tg = 0, 0
-        2.1.2. Создать связь м/у координатой и (0, 0), присвоить координате posl_koord = (х, y)
-        2.1.2. Запустить алгоритм окрашивания
-        2.1.3. Каждый раз, когда будет находиться (1) перекрашивать в 2
-        2.1.4. Найти соответствующую этому смещению точку в БД, если нет - создать
-        2.1.5. Найти смежную (tg) между posl_tg и текущей точкой смещения
-            2.1.5.1. Если нет - создать
-            2.1.5.2. Если есть - присвоить ей posl_tg
-        2.1.6. Создать связь м/у предыдущей координатой и текущей, присвоить текущей posl_koord
-        2.1.7. Создать связь между текущей координатой и tg    
-    2.2. Если есть - эта точка уже обработана - перейти дальше
-    """
-    posl_tg = 0
-    # Перебор строк матрицы
-    for i in range(len(matrix)):
-        # Перебор элементов в строке
-        for j in range(len(matrix[i])):
-            if matrix[i][j] == 1:
-                # print(f"Координаты: (y = {i}, x = {j})")
-                name_tochki = str(i) + ', ' + str(j)
-                print(f"Имя точки start нового объекта следующее: {name_tochki}")
-                # значит эта точка (0, 0)
-                # присвоить posl_tg - начальная точка
-                posl_tg = 1
-                # sozdat_svyaz(0, 1, name_tochki)
-                fill_okonchatelniy(matrix, i, j)
-
-
-
-# stiranie_pamyati()
 
 print('Наведите курсор на объект,\nНажмите Ctrl, чтобы сделать скриншот\n')
 
@@ -322,8 +265,8 @@ min_x = min(offset, key=lambda x: x[1])[1]
 #    верхний левый угол.
 offset = [(y - min_y, x - min_x) for y, x in offset]
 
-print('\nСписок смещений\n')
-print(offset)
+# print('\nСписок смещений\n')
+# print(offset)
 # Отсортировать список кортежей по возрастанию по первому элементу (по вертикали), а затем по второму (по горизонтали)
 offset.sort(key=lambda x: (x[0], x[1]))
 print('\nСписок смещений отсортированный\n')
@@ -349,7 +292,10 @@ print('\nКоординаты верхнего левого угла прямо�
 print(SCR_XY[0] + min_x, SCR_XY[1] + min_y)
 
 
-save_to_bd()
+# stiranie_pamyati()
+save_to_bd(offset)
+
+print(f"posl_tg для записи к posl_t0 такой: {posl_tg}")
 
 conn.commit()
 

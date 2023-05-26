@@ -587,9 +587,6 @@ def concentrator_deystviy():
         # pogasit_vse_tochki()
 
 
-
-
-
 def sbor_deystviya(tp):
     # собирает в обратном порядке сущность от последнего tp и приводит в действие ответ
     # print("Разбирается следующий tp: ", tp)
@@ -821,7 +818,7 @@ while A:
         schetchik = 0
     else:
         if schetchik >= 10:
-            # 2.2.2: зажигается in0, которая горит, если нет вх.сигналов
+            # 2.2.2: зажигается in0, которая горит, если нет вх. сигналов
             cursor.execute("UPDATE tochki SET work = 0 WHERE ID = 3")
             functions()
             schetchik = 0
