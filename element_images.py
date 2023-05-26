@@ -46,7 +46,7 @@ def screenshot(x_reg: int = 0, y_reg: int = 0, region: int = 0):
     return cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
 
-def save_image(x_point :int, y_point :int) -> str:
+def save_image(x_point: int, y_point: int) -> str:
     """ Сохранение изображения кнопки/иконки (элемента) если он еще не сохранен
 
     Функция принимает в качестве аргументов координаты точки на экране.
@@ -58,7 +58,7 @@ def save_image(x_point :int, y_point :int) -> str:
 
     """
 
-    threshold = 0.8 # Порог
+    threshold = 0.8  # Порог
     method = cv2.TM_CCOEFF_NORMED  # Метод расчёта корреляции между изображениями
 
     # Вычисляем координаты квадрата для скриншота
@@ -143,7 +143,7 @@ def pattern_search(name_template: str, x_point: int = 0, y_point: int = 0) -> tu
 
     """
 
-    threshold = 0.8 # Порог
+    threshold = 0.8  # Порог
     method = cv2.TM_CCOEFF_NORMED  # Метод расчёта корреляции между изображениями
 
     # Получение шаблона
@@ -156,7 +156,7 @@ def pattern_search(name_template: str, x_point: int = 0, y_point: int = 0) -> tu
     w, h = template.shape
 
     # Где искать элемент
-    if WHERE_TO_LOOK != 'full':
+    if WHERE_TO_LOOK != 'all':
 
         # Вычисляем координаты квадрата для скриншота
         x_reg = x_point - REGION_FOR_SEARCH // 2
@@ -181,7 +181,7 @@ def pattern_search(name_template: str, x_point: int = 0, y_point: int = 0) -> tu
             # Элемент не найден в заданном месте, а поиск по всему экрану не включен
             raise ElementNotFound('Элемент не найден в указанной области.')
 
-        # Если поиск шаблона в заданных координатах не принес результата any(loc[-1] будет пустым.
+        # Если поиск шаблона в заданных координатах не принес результата any(loc[-1]) будет пустым.
         # Ищем на всем экране если это разрешено
 
     if WHERE_TO_LOOK == 'full' or WHERE_TO_LOOK == 'all':

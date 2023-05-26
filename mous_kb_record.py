@@ -45,7 +45,7 @@ class Recorder:
         """ Запись нажатой клавиши """
         if key == keyboard.Key.esc:
 
-            # Остановка записи по лавише Esc
+            # Остановка записи по клавише Esc
             self.stop()
             self.key_down = ''
             return
