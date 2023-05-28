@@ -8,13 +8,11 @@ import numpy as np
 import pyautogui
 import cv2
 from PIL import Image
-import sqlite3
+from db import cursor
 from pynput import keyboard
 import time
 
 
-conn = sqlite3.connect('Li_db_v1_4.db')
-cursor = conn.cursor()
 # Настройки
 # REGION должен быть больше, чем 17х17, чтобы можно было один раз сделать скриншот и работать с квадратом 17х17.
 # 21 - это 17 + 4 слоя для возможности перемещения.
@@ -234,69 +232,71 @@ with keyboard.Listener(on_press=on_press) as listener:
     listener.join()
 # ----------------------------------------------------------------------------
 
-# 3. Преобразовать скриншот в матрицу из 1 и 0, где 0 — это фон, 1 — точки объекта
-matrix = preobrazovanie_img(FILENAME)
-matrix = save_matrix(matrix)
 
-# 4. Методом спирали найти ближайшую к клику мыши точку объекта
-sp = spiral(REGION//2, REGION//2, 3)
-try:
-    while True:
-        x, y = next(sp)
-        if matrix[x][y] == 1:
-            # print(' Координаты точки:', x, y)
-            break
-except StopIteration:
-    print('Не найдено точки объекта')
-    exit()
+def encode_and_save_to_db_image():
+    filename = save_image()
 
-print('\nИсходный скриншот\n', matrix)
+    # 3. Преобразовать скриншот в матрицу из 1 и 0, где 0 — это фон, 1 — точки объекта
+    matrix = preobrazovanie_img(filename)
+    matrix = save_matrix(matrix)
 
-# 5. Получить список кортежей смещений каждой точки объекта относительно левой верхней точки квадрата скриншота.
-#    Полученный список теперь содержит только один объект, точка которого была найдена в п.4. Он мог находиться
-#    в центре сделанного скриншота.
-offset = fill(matrix, x, y)
+    # 4. Методом спирали найти ближайшую к клику мыши точку объекта
+    sp = spiral(REGION//2, REGION//2, 3)
+    try:
+        while True:
+            x, y = next(sp)
+            if matrix[x][y] == 1:
+                # print(' Координаты точки:', x, y)
+                break
+    except StopIteration:
+        print('Не найдено точки объекта')
+        exit()
 
-# 6. Найти минимальное значение смещений по горизонтали и вертикали
-min_y = min(offset, key=lambda x: x[0])[0]
-min_x = min(offset, key=lambda x: x[1])[1]
+    print('\nИсходный скриншот\n', matrix)
 
-# 7. Уменьшить все координаты горизонтали и вертикали на их минимальные значения. Таким образом сдвигаем объект в
-#    верхний левый угол.
-offset = [(y - min_y, x - min_x) for y, x in offset]
+    # 5. Получить список кортежей смещений каждой точки объекта относительно левой верхней точки квадрата скриншота.
+    #    Полученный список теперь содержит только один объект, точка которого была найдена в п.4. Он мог находиться
+    #    в центре сделанного скриншота.
+    offset = fill(matrix, x, y)
 
-# print('\nСписок смещений\n')
-# print(offset)
-# Отсортировать список кортежей по возрастанию по первому элементу (по вертикали), а затем по второму (по горизонтали)
-offset.sort(key=lambda x: (x[0], x[1]))
-print('\nСписок смещений отсортированный\n')
-print(offset)
+    # 6. Найти минимальное значение смещений по горизонтали и вертикали
+    min_y = min(offset, key=lambda x: x[0])[0]
+    min_x = min(offset, key=lambda x: x[1])[1]
 
+    # 7. Уменьшить все координаты горизонтали и вертикали на их минимальные значения. Таким образом сдвигаем объект в
+    #    верхний левый угол.
+    offset = [(y - min_y, x - min_x) for y, x in offset]
 
-# 8. Ширина описывающего прямоугольника — макс. горизонтальное смещение + 1, высота макс. вертикальное смещение + 1.
-width = max(offset, key=lambda x: x[1])[1] + 1
-height = max(offset, key=lambda x: x[0])[0] + 1
-print()
-print(f'Ширина: {width}')
-print(f'Высота: {height}')
-
-# Восстановить рисунок из списка смещений в матрице минимальных размеров
-matrix = np.zeros((height, width), dtype=int)
-for dx, dy in offset:
-    matrix[dx][dy] = 1
-print('\nВыбранный объект в матрице минимальных размеров\n', matrix)
-
-# 9. Координаты верхнего левого угла прямоугольника (объекта) на экране — координаты скриншота +
-#    значения найденные в п.6.
-print('\nКоординаты верхнего левого угла прямоугольника (объекта) на экране')
-print(SCR_XY[0] + min_x, SCR_XY[1] + min_y)
+    # print('\nСписок смещений\n')
+    # print(offset)
+    # Отсортировать список кортежей по возрастанию по первому элементу (по вертикали), а затем по второму (по горизонтали)
+    offset.sort(key=lambda x: (x[0], x[1]))
+    print('\nСписок смещений отсортированный\n')
+    print(offset)
 
 
-# stiranie_pamyati()
-save_to_bd(offset)
+    # 8. Ширина описывающего прямоугольника — макс. горизонтальное смещение + 1, высота макс. вертикальное смещение + 1.
+    width = max(offset, key=lambda x: x[1])[1] + 1
+    height = max(offset, key=lambda x: x[0])[0] + 1
+    print()
+    print(f'Ширина: {width}')
+    print(f'Высота: {height}')
 
-print(f"posl_tg для записи к posl_t0 такой: {posl_tg}")
+    # Восстановить рисунок из списка смещений в матрице минимальных размеров
+    matrix = np.zeros((height, width), dtype=int)
+    for dx, dy in offset:
+        matrix[dx][dy] = 1
+    print('\nВыбранный объект в матрице минимальных размеров\n', matrix)
 
-conn.commit()
+    # 9. Координаты верхнего левого угла прямоугольника (объекта) на экране — координаты скриншота +
+    #    значения найденные в п.6.
+    print('\nКоординаты верхнего левого угла прямоугольника (объекта) на экране')
+    print(SCR_XY[0] + min_x, SCR_XY[1] + min_y)
 
-conn.close()
+
+    # stiranie_pamyati()
+    save_to_bd(offset)
+
+    print(f"posl_tg для записи к posl_t0 такой: {posl_tg}")
+
+encode_and_save_to_db_image()

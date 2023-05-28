@@ -804,6 +804,7 @@ while A:
         vvedeno_luboe = ''
 
     elif vvedeno_luboe != "":
+        print(vvedeno_luboe, '=========================')
         for vvedeno_luboe1 in vvedeno_luboe:
             poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe1)
 
