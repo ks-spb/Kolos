@@ -8,10 +8,14 @@ import numpy as np
 import pyautogui
 import cv2
 from PIL import Image
-from db import cursor
+# from db import cursor
 from pynput import keyboard
 import time
 
+
+import sqlite3
+conn = sqlite3.connect('Li_db_v1_4.db')
+cursor = conn.cursor()
 
 # Настройки
 # REGION должен быть больше, чем 17х17, чтобы можно было один раз сделать скриншот и работать с квадратом 17х17.
@@ -305,3 +309,6 @@ if __name__ == '__main__':
 # ----------------------------------------------------------------------------
 
 encode_and_save_to_db_image(*SCR_XY)
+
+cursor.commit()
+cursor.close()

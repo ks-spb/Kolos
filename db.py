@@ -15,9 +15,10 @@ class Database:
 
     def execute(self, query, values):
         self.cur.execute(query, values)
-        self.conn.commit()
+        # self.conn.commit()
 
     def __del__(self):
+        self.conn.commit()
         self.conn.close()
 
 
