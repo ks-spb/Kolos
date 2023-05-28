@@ -21,4 +21,4 @@ class Database:
         self.conn.close()
 
 
-cursor = Database.instance('my_database.db')
+cursor = Database.instance('Li_db_v1_4.db')

@@ -46,12 +46,12 @@ def screenshot(x_reg: int = 0, y_reg: int = 0, region: int = 0):
     return cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
 
-def save_image():
+def save_image(x_pos, y_pos):
     """
     Функция определяет положение курсора мыши, делает скриншот квадрата с заданными размерами и сохраняет файл с img
     """
     global SCR_XY
-    x_pos, y_pos = pyautogui.position()
+    # x_pos, y_pos = pyautogui.position()
     # print('Позиция мыши следующая: ', x_pos, y_pos)
 
     # Делаем скриншот нужного квадрата, где центр - координаты мыши
@@ -218,23 +218,12 @@ def save_to_bd(spisok):
                 posl_tg = poisk_svyazyushei_tg_s_new_smeshenie1[0]
 
 
-
-print('Наведите курсор на объект,\nНажмите Ctrl, чтобы сделать скриншот\n')
-
-# Далее работа по алгоритму new_examole. Найти один объект, преобразовать в новую матрицу
-def on_press(key):
-    # if key == keyboard.Key.ctrl:
-    global FILENAME
-    FILENAME = save_image()
-    listener.stop()
-
-with keyboard.Listener(on_press=on_press) as listener:
-    listener.join()
 # ----------------------------------------------------------------------------
 
 
-def encode_and_save_to_db_image():
-    filename = save_image()
+def encode_and_save_to_db_image(x_pos, y_pos):
+
+    filename = save_image(x_pos, y_pos)
 
     # 3. Преобразовать скриншот в матрицу из 1 и 0, где 0 — это фон, 1 — точки объекта
     matrix = preobrazovanie_img(filename)
@@ -299,4 +288,20 @@ def encode_and_save_to_db_image():
 
     print(f"posl_tg для записи к posl_t0 такой: {posl_tg}")
 
-encode_and_save_to_db_image()
+    return posl_tg
+
+if __name__ == '__main__':
+    print('Наведите курсор на объект,\nНажмите Ctrl, чтобы сделать скриншот\n')
+
+    # Далее работа по алгоритму new_examole. Найти один объект, преобразовать в новую матрицу
+    def on_press(key):
+        global SCR_XY
+        x_pos, y_pos = pyautogui.position()
+        SCR_XY = x_pos, y_pos
+        listener.stop()
+
+    with keyboard.Listener(on_press=on_press) as listener:
+        listener.join()
+# ----------------------------------------------------------------------------
+
+encode_and_save_to_db_image(*SCR_XY)
