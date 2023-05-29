@@ -717,18 +717,15 @@ while A:
 
             else:
                 # Запись события мыши
-                vvedeno_luboe.append('Button.' + event['event'])
-                vvedeno_luboe.append(event['key'].split('.')[1])
-                vvedeno_luboe.append(str(event['x']) + '.' + str(event['y']))  # Координаты записываем в одну точку
+                # position.x.y, image.id, Button.up.left,
+                vvedeno_luboe.append('position.' + str(event['x']) + '.' + str(event['y']))
                 if event['event'] == 'down':
-                    vvedeno_luboe.append(event['image'])
-                # vvedeno_luboe.append(str(event['x']))
-                # vvedeno_luboe.append(str(event['y']))
+                    vvedeno_luboe.append('image.' + event['image'])
+                vvedeno_luboe.append('Button.' + event['event'] + '.' + event['key'].split('.')[1])
 
             n += 1
 
         print(vvedeno_luboe, '---------------------------------------------------')
-
         if n:
             print(f'Сохраненo {n} записанных событий', end='\n\n')
         else:

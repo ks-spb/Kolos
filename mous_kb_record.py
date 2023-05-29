@@ -3,7 +3,8 @@ from pynput import keyboard, mouse
 from pynput.keyboard import Key, Controller as kb_Controller
 from pynput.mouse import Button, Controller
 
-from element_images import save_image, pattern_search
+# from element_images import save_image, pattern_search
+from image_definition import encode_and_save_to_db_image
 from exceptions import *
 
 
@@ -17,9 +18,11 @@ mo = Controller()
     Отпущена клавиша 'A': {'type': 'kb', 'event': 'up', 'key': 'A'}
 
     Нажата левая клавиша мыши: {'type': 'mouse', 'event': 'down', 'key': 'Button.left', 'x': 671, 'y': 591, 
-    'image': name}
+    'image': id}
     Нажата правая клавиша мыши: {'type': 'mouse', 'event': 'down', 'key': 'Button.right', 'x': 671, 'y': 591, 
-    'image': name}
+    'image': id}
+    --- Поскольку в новой версии изображение сохраняется в БД, то пишем только id вместо имени файла ---
+    
     Отпущена левая клавиша мыши: {'type': 'mouse', 'event': 'up', 'key': 'Button.left', 'x': 671, 'y': 591}
     Отпущена правая клавиша мыши: {'type': 'mouse', 'event': 'up', 'key': 'Button.right', 'x': 671, 'y': 591}
 """
@@ -82,7 +85,9 @@ class Recorder:
 
         if is_pressed:
             # При нажатии
-            out['image'] = save_image(x, y)  # Сохранить изображение элемента на котором был клик
+            # out['image'] = save_image(x, y)  # Сохранить изображение элемента на котором был клик
+            # Сохранить изображение элемента на котором был клик в БД и вернуть его id в базе
+            out['image'] = encode_and_save_to_db_image(x, y)
 
         self.record.append(out)
 
@@ -176,7 +181,8 @@ class Play:
                     try:
                         x = action['x']
                         y = action['y']
-                        x, y = pattern_search(action['image'], x, y)  # Поиск элемента на экране
+                        # TODO эта строка для работы с файлами, а теперь будем работать с БД
+                        # x, y = pattern_search(action['image'], x, y)  # Поиск элемента на экране
                         mo.position = (x, y)
                         self.button_up[action['key']] = (x, y)  # Координаты отпускания для левой или правой клавиш мыши
                         exec(f"mo.press({insert})")
