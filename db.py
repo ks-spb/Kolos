@@ -13,9 +13,10 @@ class Database:
         self.conn = sqlite3.connect(db_name)
         self.cur = self.conn.cursor()
 
-    def execute(self, query, values):
-        self.cur.execute(query, values)
-        # self.conn.commit()
+    def execute(self, query, values=None):
+        if values:
+            return self.cur.execute(query, values)
+        return self.cur.execute(query)
 
     def __del__(self):
         self.conn.commit()
