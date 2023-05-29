@@ -308,7 +308,7 @@ if __name__ == '__main__':
         listener.join()
 # ----------------------------------------------------------------------------
 
-encode_and_save_to_db_image(*SCR_XY)
+    encode_and_save_to_db_image(*SCR_XY)
 
 # conn.commit()
 # conn.close()
