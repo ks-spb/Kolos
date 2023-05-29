@@ -1,12 +1,14 @@
 import sqlite3
+from db import cursor
 from time import sleep
 
 from mous_kb_record import rec, play
 from exceptions import *
 
 
-conn = sqlite3.connect('Li_db_v1_4.db')
-cursor = conn.cursor()
+# conn = sqlite3.connect('Li_db_v1_4.db')
+# cursor = conn.cursor()
+
 A = True
 posledniy_t = 0
 posledniy_t_0 = 3   # переменная содержит ID последней временной точки t0
@@ -833,7 +835,7 @@ while A:
 # обязательно весь текст по работе с базой данных вписывать до этих двух строчек
 # test1
 
-conn.commit()
-
-conn.close()
+# conn.commit()
+#
+# conn.close()
 import diagram
