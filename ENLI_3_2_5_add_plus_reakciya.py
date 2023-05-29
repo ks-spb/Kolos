@@ -1,5 +1,5 @@
 import sqlite3
-from db import cursor
+from db import Database
 from time import sleep
 
 from mous_kb_record import rec, play
@@ -7,7 +7,7 @@ from exceptions import *
 
 
 # conn = sqlite3.connect('Li_db_v1_4.db')
-# cursor = conn.cursor()
+cursor = Database('Li_db_v1_4.db')
 
 A = True
 posledniy_t = 0
@@ -722,7 +722,7 @@ while A:
                 # position.x.y, image.id, Button.up.left,
                 vvedeno_luboe.append('position.' + str(event['x']) + '.' + str(event['y']))
                 if event['event'] == 'down':
-                    vvedeno_luboe.append('image.' + event['image'])
+                    vvedeno_luboe.append('image.' + str(event['image']))
                 vvedeno_luboe.append('Button.' + event['event'] + '.' + event['key'].split('.')[1])
 
             n += 1
@@ -750,6 +750,7 @@ while A:
 
     if vvedeno_luboe == ('3'):
         # Включение записи
+        cursor.commit()  # Сохраняем изменения в БД
         sleep(1)
         rec.start()
         # source = None  # Запись сохранится в месте ввода

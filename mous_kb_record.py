@@ -6,6 +6,7 @@ from pynput.mouse import Button, Controller
 # from element_images import save_image, pattern_search
 from image_definition import encode_and_save_to_db_image
 from exceptions import *
+from db import Database
 
 
 kb = kb_Controller()
@@ -26,7 +27,6 @@ mo = Controller()
     Отпущена левая клавиша мыши: {'type': 'mouse', 'event': 'up', 'key': 'Button.left', 'x': 671, 'y': 591}
     Отпущена правая клавиша мыши: {'type': 'mouse', 'event': 'up', 'key': 'Button.right', 'x': 671, 'y': 591}
 """
-
 
 class Recorder:
     """ Прослушивание мыши и клавиатуры и запись событий с них """

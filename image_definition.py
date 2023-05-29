@@ -8,7 +8,7 @@ import numpy as np
 import pyautogui
 import cv2
 from PIL import Image
-from db import cursor
+from db import Database
 from pynput import keyboard
 import time
 
@@ -27,6 +27,8 @@ FILENAME = ""   # Имя файла, в котором хранится изоб
 SCR_XY = (0, 0)  # Координаты на экране левого верхнего угла квадрата с сохраняемым элементом
 thresh = []   # Список, в котором будет храниться обработанное изображение
 posl_tg = 0
+
+cursor = Database('Li_db_v1_4.db')
 
 
 def stiranie_pamyati():
@@ -292,6 +294,7 @@ def encode_and_save_to_db_image(x_pos, y_pos):
 
     print(f"posl_tg для записи к posl_t0 такой: {posl_tg}")
 
+    cursor.commit()
     return posl_tg
 
 if __name__ == '__main__':
@@ -303,6 +306,7 @@ if __name__ == '__main__':
         x_pos, y_pos = pyautogui.position()
         SCR_XY = x_pos, y_pos
         listener.stop()
+
 
     with keyboard.Listener(on_press=on_press) as listener:
         listener.join()
