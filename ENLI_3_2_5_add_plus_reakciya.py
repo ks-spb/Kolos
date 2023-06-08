@@ -1,12 +1,9 @@
-import sqlite3
 from db import Database
 from time import sleep
 
 from mous_kb_record import rec, play
-from exceptions import *
 
 
-# conn = sqlite3.connect('Li_db_v1_4.db')
 cursor = Database('Li_db_v1_4.db')
 
 A = True
@@ -321,10 +318,12 @@ def out_red(text):
     # 'left', 'elem_230228_163525.png', 'Button.up', 'left']
     i = 0
     while i < len(text):
-
+        # print(f"Такой приходит текст: {text}")
+    # TO DO нужно разобраться в том какой текст приходит и как он дальше распределяется
+    # TO DO в тексте имеется ещё одна строчка position - нужно убрать
         if '.' in text[i]:
             item = text[i].split('.')
-
+            print(f'Преобразовали текст в item: {item}')
             if item[0] == 'Key':
                 # Читаем и готовим событие для клавиатуры
                 event = {'type': 'kb'}
@@ -336,14 +335,21 @@ def out_red(text):
                 # Читаем и готовим событие для мыши
                 event = {'type': 'mouse'}
                 event['event'] = item[1]
-                event['key'] = 'Button.' + text[i+1]
-                x, y = text[i+2].split('.')
-                if event['event'] == 'down':
-                    event['image'] = text[i + 3]
-                    i += 1
-                i += 3  # У событий вверх и вниз разная длина, поэтому счетчик увеличиваем соответственно
-                event['x'] = int(x)
-                event['y'] = int(y)
+                # print(f'event такой 1: {event}')
+                print(f'i сейчас такой = {i}')
+                event['key'] = 'Button.' + item[1]
+                print(f'event такой 2: {event}')
+
+                # Закомментировал - т.к. дальше происходит добавление в команду координат x и y
+
+                # print(f"В х и у передаётся следующее: {text[i+2]}")
+                # x, y = text[i+2].split('.')
+                # if event['event'] == 'down':
+                #     event['image'] = text[i + 3]
+                #     i += 1
+                # i += 3  # У событий вверх и вниз разная длина, поэтому счетчик увеличиваем соответственно
+                # event['x'] = int(x)
+                # event['y'] = int(y)
 
             else:
                 i += 1
@@ -423,6 +429,7 @@ def concentrator_deystviy():
     # 3.2.4 - соединение вместе и горящих и не горящих (tp) с последующим перебором вариантов
     list_tp = []
     list_signal_tp = []
+    list_isklucheniya_deystviy = []
     poisk_drygih_tp = tuple(cursor.execute("SELECT ID FROM tochki WHERE signal > 0 AND name = 'time_p'"))
     print("Нашли следующие возможные (tp), у которых signal > 0 AND name = 'time_p': ", poisk_drygih_tp)
     if poisk_drygih_tp != ():
@@ -501,7 +508,8 @@ def concentrator_deystviy():
                                                 # запустить обратный сбор сущности tp и зажигание с первой (.)
                                                 list_otric_reac += poisk_svyazi_s_reakciey1
                                                 # print('Лист отрицательных связей такой: list_otric_reac', list_otric_reac)
-                                                # print('Найдена отрицательная реакция и действие отменено: ', poisk_tp)
+                                                print('Найдена отрицательная реакция и действие отменено: ', poisk_tp)
+                                                list_isklucheniya_deystviy += poisk_tp
                                                 # 3.2.1 - погасить отработанные (...)
                                                 cursor.execute("UPDATE tochki SET work = 0 AND signal = 0 WHERE ID = ?",
                                                                poisk_tp)
@@ -536,7 +544,7 @@ def concentrator_deystviy():
         for list_deystviy1 in list_deystviy:
             # поиск связей с текущим ID (tp) и (t0)
             print("Лист действий, такой ID передаётся: ", list_deystviy1)
-            print("otmena_minus_deystviya: ", otmena_minus_deystviya)
+            # print("otmena_minus_deystviya: ", otmena_minus_deystviya)
             if otmena_minus_deystviya != 1:
                 # приходится ID передавать в кортеже
                 list_deystviy1_kortez = (list_deystviy1,)
@@ -572,6 +580,8 @@ def concentrator_deystviy():
                         otmena_minus_deystviya = 1
                         break
                 else:
+                    # из листа действий убирается найденные раньше уже совершаемые действия от текущего (t0), т.е.
+                    # исключается полное повторение
                     sbor_deystviya(list_deystviy1)
                     otmena_minus_deystviya = 1
                     break
@@ -581,11 +591,15 @@ def concentrator_deystviy():
         if otmena_minus_deystviya != 1:
             if list_minus_deystviy != []:
                 print('list_minus_deystviy = ', list_minus_deystviy)
-                if len(list_minus_deystviy) != 1:
+                for value in list_isklucheniya_deystviy:
+                    while value in list_minus_deystviy:
+                        list_minus_deystviy.remove(value)
+                print(f'А стал такой: {list_deystviy}')
+                if len(list_minus_deystviy) != 0:
                     sbor_deystviya(list_minus_deystviy[0])
-                else:
-                    for list_minus_deystviy1 in list_minus_deystviy:
-                        sbor_deystviya(list_minus_deystviy1)
+                # else:
+                #     for list_minus_deystviy1 in list_minus_deystviy:
+                #         sbor_deystviya(list_minus_deystviy1)
         # pogasit_vse_tochki()
 
 
@@ -830,13 +844,5 @@ while A:
             functions()
     ymenshenie_signal()
 
-
-
-# -------------------------------------------------------------------------------------------
-# обязательно весь текст по работе с базой данных вписывать до этих двух строчек
-# test1
-
-# conn.commit()
-#
-# conn.close()
-import diagram
+# import diagram
+# Диаграмма не работает
