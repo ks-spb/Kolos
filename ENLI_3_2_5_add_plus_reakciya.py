@@ -720,8 +720,8 @@ while A:
             else:
                 # Запись события мыши
                 # position.x.y, image.id, Button.up.left,
-                vvedeno_luboe.append('position.' + str(event['x']) + '.' + str(event['y']))
                 if event['event'] == 'down':
+                    vvedeno_luboe.append('position.' + str(event['x']) + '.' + str(event['y']))
                     vvedeno_luboe.append('image.' + str(event['image']))
                 vvedeno_luboe.append('Button.' + event['event'] + '.' + event['key'].split('.')[1])
 
