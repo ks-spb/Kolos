@@ -709,7 +709,7 @@ while A:
         vvedeno_luboe = []
         source = None
         n = 0
-        print('------------- Запись перед выводом по клавише 5', rec.record)
+
         for event in rec.record:
 
             if event['type'] == 'kb':
@@ -720,14 +720,14 @@ while A:
             else:
                 # Запись события мыши
                 # position.x.y, image.id, Button.up.left,
+                vvedeno_luboe.append('position.' + str(event['x']) + '.' + str(event['y']))
                 if event['event'] == 'down':
-                    vvedeno_luboe.append('position.' + str(event['x']) + '.' + str(event['y']))
                     vvedeno_luboe.append('image.' + str(event['image']))
                 vvedeno_luboe.append('Button.' + event['event'] + '.' + event['key'].split('.')[1])
 
             n += 1
 
-        print('----------- Что будет записано в БД', vvedeno_luboe)
+        print(vvedeno_luboe, '---------------------------------------------------')
         if n:
             print(f'Сохраненo {n} записанных событий', end='\n\n')
         else:
@@ -839,4 +839,4 @@ while A:
 # conn.commit()
 #
 # conn.close()
-# import diagram
+import diagram
