@@ -76,6 +76,7 @@ class Recorder:
         self.record.append({'type': 'kb', 'event': 'up', 'key': out})
 
     def on_click(self, x, y, button, is_pressed):
+        print(x, y, button, is_pressed)
         """ Запись нажатия кнопки мыши клавиши """
         out = {'type': 'mouse'}
         out['event'] = 'down' if is_pressed else 'up'
@@ -90,7 +91,7 @@ class Recorder:
             out['image'] = encode_and_save_to_db_image(x, y)
 
         self.record.append(out)
-
+        print('--------- Что в rec после клика ', self.record)
 
 rec = Recorder()  # Создаем объект записи
 
