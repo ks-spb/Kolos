@@ -34,11 +34,10 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
     global posledniy_t
     global posledniy_t_0
     global posledniy_tp
-    poisk_img = '.png'
-    # symbol = 'mozg_deyst'
+    poisk_sobytiya = '.'
+    print(f'Передали на обработку следующее: {symbol}')
     nayti_id = cursor.execute("SELECT ID FROM tochki WHERE name = ? AND type = 'mozg'", (symbol, )).fetchone()
     # print("poisk_bykvi_iz_vvedeno_v2. ID у входящей точки такой: ", nayti_id)
-
     if not nayti_id:
         # print("poisk_bykvi_iz_vvedeno_v2. Такого ID нету")
         new_tochka_name = sozdat_new_tochky(symbol, 0, 'mozg', 'zazech_sosedey', 1, 0, 10, 0, 0, " ")
@@ -61,25 +60,27 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
             # print('Создаётся новая связь posledniy_tp: ', posledniy_tp, ' и new_tochka_time_p: ', new_tochka_time_p)
             sozdat_svyaz(posledniy_tp, new_tochka_time_p, 1)
         posledniy_tp = new_tochka_time_p
-        # 14.03.23 - добавлено отдельное создание (t0) для (img)
-        if poisk_img in symbol:
+        # 14.03.23 - добавлено отдельное создание (t0) для записанных событий
+        if poisk_sobytiya in symbol:
             new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
                                                   new_tochka_time_t, '')
             sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
             sozdat_svyaz(new_tochka_time_t, new_tochka_time_0, 1)
             posledniy_t_0 = new_tochka_time_0
+            posledniy_tp = 0
     else:  # если есть такая буква с таким ID
         if nayti_id:
             cursor.execute("UPDATE tochki SET work = 1 WHERE ID = (?)", nayti_id)
             # print("Зажглась точка в проверке наличия точек: ", nayti_id)
             proverka_nalichiya_svyazey_in(nayti_id[0], symbol)
             # 14.03.23 - добавлено отдельное создание (t0) для (img)
-            if poisk_img in symbol:
+            if poisk_sobytiya in symbol:
                 new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
                                                       nayti_id[0], '')
                 sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
                 sozdat_svyaz(nayti_id[0], new_tochka_time_0, 1)
                 posledniy_t_0 = new_tochka_time_0
+                posledniy_tp = 0
 
 
 
