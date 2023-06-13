@@ -33,7 +33,7 @@ cursor = Database('Li_db_v1_4.db')
 
 def stiranie_pamyati():
     # Удаление лишних строчек в таблицах БД
-    print("Запущено стирание памяти")
+    # print("Запущено стирание памяти")
     cursor.execute("DELETE FROM glaz WHERE ID > 1")
     cursor.execute("DELETE FROM svyazi_glaz WHERE ID > 1")
 
@@ -247,7 +247,7 @@ def encode_and_save_to_db_image(x_pos, y_pos):
         print('Не найдено точки объекта')
         exit()
 
-    print('\nИсходный скриншот\n', matrix)
+    # print('\nИсходный скриншот\n', matrix)
 
     # 5. Получить список кортежей смещений каждой точки объекта относительно левой верхней точки квадрата скриншота.
     #    Полученный список теперь содержит только один объект, точка которого была найдена в п.4. Он мог находиться
@@ -266,33 +266,33 @@ def encode_and_save_to_db_image(x_pos, y_pos):
     # print(offset)
     # Отсортировать список кортежей по возрастанию по первому элементу (по вертикали), а затем по второму (по горизонтали)
     offset.sort(key=lambda x: (x[0], x[1]))
-    print('\nСписок смещений отсортированный\n')
-    print(offset)
+    # print('\nСписок смещений отсортированный\n')
+    # print(offset)
 
 
     # 8. Ширина описывающего прямоугольника — макс. горизонтальное смещение + 1, высота макс. вертикальное смещение + 1.
     width = max(offset, key=lambda x: x[1])[1] + 1
     height = max(offset, key=lambda x: x[0])[0] + 1
-    print()
-    print(f'Ширина: {width}')
-    print(f'Высота: {height}')
+    # print()
+    # print(f'Ширина: {width}')
+    # print(f'Высота: {height}')
 
     # Восстановить рисунок из списка смещений в матрице минимальных размеров
     matrix = np.zeros((height, width), dtype=int)
     for dx, dy in offset:
         matrix[dx][dy] = 1
-    print('\nВыбранный объект в матрице минимальных размеров\n', matrix)
+    # print('\nВыбранный объект в матрице минимальных размеров\n', matrix)
 
     # 9. Координаты верхнего левого угла прямоугольника (объекта) на экране — координаты скриншота +
     #    значения найденные в п.6.
-    print('\nКоординаты верхнего левого угла прямоугольника (объекта) на экране')
-    print(SCR_XY[0] + min_x, SCR_XY[1] + min_y)
+    # print('\nКоординаты верхнего левого угла прямоугольника (объекта) на экране')
+    # print(SCR_XY[0] + min_x, SCR_XY[1] + min_y)
 
 
     # stiranie_pamyati()
     save_to_bd(offset)
 
-    print(f"posl_tg для записи к posl_t0 такой: {posl_tg}")
+    # print(f"posl_tg для записи к posl_t0 такой: {posl_tg}")
 
     cursor.commit()
     return posl_tg

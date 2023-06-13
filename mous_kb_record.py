@@ -182,7 +182,6 @@ class Play:
                     try:
                         x = action['x']
                         y = action['y']
-                        # TODO эта строка для работы с файлами, а теперь будем работать с БД
                         # x, y = pattern_search(action['image'], x, y)  # Поиск элемента на экране
                         mo.position = (x, y)
                         self.button_up[action['key']] = (x, y)  # Координаты отпускания для левой или правой клавиш мыши
