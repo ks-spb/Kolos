@@ -536,6 +536,12 @@ def concentrator_deystviy():
             else:
                 B = False
             schetchik_B += 1
+    # print(f'list_isklucheniya_deystviy = {list_isklucheniya_deystviy}')
+    for value in list_isklucheniya_deystviy:
+        while value in list_deystviy:
+            list_deystviy.remove(value)
+    # Удаление дублей из листа действий
+    list_deystviy = list(set(list_deystviy))
     print('Лист действий: ', list_deystviy)
     if list_deystviy != []:   # 3.2.3 - было if posl_tp != ()
         list_minus_deystviy = []
@@ -544,7 +550,7 @@ def concentrator_deystviy():
         # не верного ответа
         for list_deystviy1 in list_deystviy:
             # поиск связей с текущим ID (tp) и (t0)
-            print("Лист действий, такой ID передаётся: ", list_deystviy1)
+            # print("Лист действий, такой ID передаётся: ", list_deystviy1)
             # print("otmena_minus_deystviya: ", otmena_minus_deystviya)
             if otmena_minus_deystviya != 1:
                 # приходится ID передавать в кортеже
@@ -576,10 +582,11 @@ def concentrator_deystviy():
                             # если были найдены связи с (-)
                             list_minus_deystviy += list_deystviy1_kortez
                     if list_minus_deystviy == []:
-                        print("Не найдена связь с (-) - значит применяется действие: ", list_deystviy1)
-                        sbor_deystviya(list_deystviy1)
-                        otmena_minus_deystviya = 1
-                        break
+                        if otmena_minus_deystviya != 1:
+                            print("Не найдена связь с (-) - значит применяется действие: ", list_deystviy1)
+                            sbor_deystviya(list_deystviy1)
+                            otmena_minus_deystviya = 1
+                            break
                 else:
                     # из листа действий убирается найденные раньше уже совершаемые действия от текущего (t0), т.е.
                     # исключается полное повторение
@@ -588,7 +595,7 @@ def concentrator_deystviy():
                     break
         # если цикл дошёл до этой строчки - значит не были найдены (tp) с (+) или без связи с (-) и применяется первая
         # из (tp), связанная с (-)
-        print("otmena_minus_deystviya == ", otmena_minus_deystviya)
+        # print("otmena_minus_deystviya == ", otmena_minus_deystviya)
         if otmena_minus_deystviya != 1:
             if list_minus_deystviy != []:
                 print('list_minus_deystviy = ', list_minus_deystviy)
@@ -610,6 +617,11 @@ def sbor_deystviya(tp):
     global posledniy_t_0
     B = True
     tp_kortez = (tp, )
+
+    # 14.06.23 - добавление гашения (tp), чтобы не было повторяющихся ответов.
+    print(f'Попытка погасить точку действия: {tp}')
+    cursor.execute("UPDATE tochki SET work = 0 AND signal = 0 WHERE ID = ?", tp_kortez)
+
     # 3.2.2 - добавляется поиск уже имеющегося t0 и проверяется - имеется ли связь с posl_t0
     poisk_svyazi_tp_s_t0 = tuple(cursor.execute("SELECT ID FROM tochki WHERE rod1 = ? AND name = 'time_0' AND rod2 = ?",
                                                 (posledniy_t_0, tp)))
@@ -710,7 +722,7 @@ while A:
     proverka_signal_porog()   # проверка и зажигание точек, если signal >= porog
     concentrator_deystviy()
 
-    print("Сейчас ", source)
+    # print("Сейчас ", source)
     if source == 'input':
     # Ввод строки с клаиатуры, запись побуквенно
         vvedeno_luboe = input("Введите текст: ")

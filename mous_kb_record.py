@@ -76,7 +76,7 @@ class Recorder:
         self.record.append({'type': 'kb', 'event': 'up', 'key': out})
 
     def on_click(self, x, y, button, is_pressed):
-        print(x, y, button, is_pressed)
+        # print(x, y, button, is_pressed)
         """ Запись нажатия кнопки мыши клавиши """
         out = {'type': 'mouse'}
         out['event'] = 'down' if is_pressed else 'up'
