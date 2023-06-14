@@ -10,6 +10,7 @@ A = True
 posledniy_t = 0
 posledniy_t_0 = 3   # переменная содержит ID последней временной точки t0
 posledniy_tp = 0
+posledniy_otvet = 0
 
 source = None  # Получает значение источника ввода None - клавиатура, 'rec' -  запись клавиатуры и мыши
 
@@ -67,6 +68,7 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
             sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
             sozdat_svyaz(new_tochka_time_t, new_tochka_time_0, 1)
             posledniy_t_0 = new_tochka_time_0
+            sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
             posledniy_tp = 0
     else:  # если есть такая буква с таким ID
         if nayti_id:
@@ -80,6 +82,7 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
                 sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
                 sozdat_svyaz(nayti_id[0], new_tochka_time_0, 1)
                 posledniy_t_0 = new_tochka_time_0
+                sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
                 posledniy_tp = 0
 
 
@@ -307,6 +310,7 @@ def print1(ID):
 
 
 def out_red(text):
+    global posledniy_otvet
     print("\033[31m {}".format(' '))
     print("\033[31m {}".format(text))
     print("\033[0m {}".format("**********************************"))
@@ -424,7 +428,9 @@ def concentrator_deystviy():
     # 3. Проверка имеется ли связь между t0 от in и t0 от tp
     # 4. Если имеется - проверить есть ли связь с (-)
     global posledniy_t_0
-    posledniy_t_0_kortez = (posledniy_t_0, )
+    global posledniy_otvet
+    global schetchik
+
     list_otric_reac = []
     list_deystviy = []
     # 3.2.4 - соединение вместе и горящих и не горящих (tp) с последующим перебором вариантов
@@ -435,107 +441,114 @@ def concentrator_deystviy():
     print("Нашли следующие возможные (tp), у которых signal > 0 AND name = 'time_p': ", poisk_drygih_tp)
     if poisk_drygih_tp != ():
         for poisk_drygih_tp1 in poisk_drygih_tp:
-            # найдём signal у этих (tp)
-            list_tp += poisk_drygih_tp1
-            poisk_signal_tp = tuple(cursor.execute("SELECT signal FROM tochki WHERE ID = ?", poisk_drygih_tp1))
-            # print("Сигнал у tp следующий: ", poisk_signal_tp)
-            for poisk_signal_tp1 in poisk_signal_tp:
-                list_signal_tp += poisk_signal_tp1
-        new_list_signal_tp, new_list_tp = zip(*sorted(zip(list_signal_tp, list_tp)))
-        # print('Новый new_list_signal_tp: ', new_list_signal_tp, " Был таким: ", list_signal_tp)
-        # print('Новый list_tp: ', new_list_tp, " Был таким: ", list_tp)
-        # 3.2.4 - добавлен перебор вариантов действия (tp)
-        schetchik_B = 0
-        while B:
-            list_t0 = []
-            list_svyazi_s_posl_t0 = []
-            # print('Длина списка new_list_tp = ', len(new_list_tp), ' а если уменьшить на 1 : ', len(new_list_tp)-1)
-            if len(new_list_tp)-1 >= schetchik_B:
-                # print("schetchik_B = ", schetchik_B)
-                poisk_tp = (new_list_tp[schetchik_B],)
-                # print("tp по которому будет проводиться поиск возможных действий: ", poisk_tp)
-                poisk_svyazi_s_t0 = tuple(cursor.execute("SELECT id_start FROM svyazi WHERE id_finish = ?", poisk_tp))
-                for poisk_svyazi_s_t01 in poisk_svyazi_s_t0:
-                    # print("Найдены следующие связи tp c другими точками: ", poisk_svyazi_s_t01)
-                    # из всех найденных связей оставим только связи с t0
-                    poisk_t0 = tuple(cursor.execute("SELECT ID FROM tochki WHERE ID = ? AND name = 'time_0'",
-                                                    poisk_svyazi_s_t01))
-                    for poisk_t01 in poisk_t0:
-                        list_t0 += poisk_t01
-                # print("Лист проверки на наличие связи с t0: ", list_t0)
-                if list_t0 == []:
-                    # проверить имеется ли связь с 4
-                    poisk_svyazi_s_4 = tuple(cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 4",
-                                                            poisk_tp))
-                    # print('Найдены следующие связи с (4): ', poisk_svyazi_s_4)
-                    if poisk_svyazi_s_4 != ():
-                        # print('Добавлено действие из-за наличия связи с (4)', poisk_tp)
-                        list_deystviy += poisk_tp
-                        # B = False # 3.2.5 - погасил
-                    else:
-                        # 3.2.5 - добавлено гашение сигнала, чтобы убрать "лишние" (tp)
-                        # print('Погашена лишняя tp: ', poisk_tp)
-                        cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = ?", poisk_tp)
-                else:
-                    # Проверка - имеется ли связь с posl_t0 и найденным t0
-                    for list_t01 in list_t0:
-                        list_t01_kortez = (list_t01, )
-                        # print('Поиск связи между posledniy_t_0 = ', posledniy_t_0, 'и list_t01 = ', list_t01)
-                        poisk_svyazi_s_posl_t0 = tuple(
-                            cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = ?",
-                                           (posledniy_t_0, list_t01)))
-                        # print('poisk_svyazi_s_posl_t0 = ', poisk_svyazi_s_posl_t0)
-                        # не ищется ID... разделяю на 2 фильтр
-                        if poisk_svyazi_s_posl_t0 != ():
-                            for poisk_svyazi_s_posl_t01 in poisk_svyazi_s_posl_t0:
-                                for poisk_svyazi_s_posl_t02 in poisk_svyazi_s_posl_t01:
-                                    poisk_svyazi_s_posl_t03 = tuple(
-                                        cursor.execute("SELECT ID FROM svyazi WHERE id_finish = ? AND ID = ?",
-                                                       (list_t01, poisk_svyazi_s_posl_t02)))
-                                    # print('poisk_svyazi_s_posl_t03 = ', poisk_svyazi_s_posl_t03)
-                                    if poisk_svyazi_s_posl_t03 != ():
-                                        # 3.2.5 - если имеется у этой tp связь с posl_to - это нужно зафиксировать,
-                                        # чтобы другие связи не попали в лист действий
-                                        list_svyazi_s_posl_t0 += poisk_svyazi_s_posl_t03
-                                        # а если связь есть - то нужно проверить имеются ли реакции на данное действие (ответ)
-                                        poisk_svyazi_s_reakciey = tuple(
-                                            cursor.execute("SELECT id_finish FROM svyazi WHERE id_start = ?",
-                                                           list_t01_kortez))
-                                        # print('Поиск связи с реакцией: ', poisk_svyazi_s_reakciey)
-                                        for poisk_svyazi_s_reakciey1 in poisk_svyazi_s_reakciey:
-                                            # print('poisk_svyazi_s_reakciey1 = ', poisk_svyazi_s_reakciey1)
-                                            if poisk_svyazi_s_reakciey1 == (2,):
-                                                # если найдена (-) реакция - то не нужно применять это действие.
-                                                # запустить обратный сбор сущности tp и зажигание с первой (.)
-                                                list_otric_reac += poisk_svyazi_s_reakciey1
-                                                # print('Лист отрицательных связей такой: list_otric_reac', list_otric_reac)
-                                                print('Найдена отрицательная реакция и действие отменено: ', poisk_tp)
-                                                list_isklucheniya_deystviy += poisk_tp
-                                                # 3.2.1 - погасить отработанные (...)
-                                                cursor.execute("UPDATE tochki SET work = 0 AND signal = 0 WHERE ID = ?",
-                                                               poisk_tp)
-                                            elif poisk_svyazi_s_reakciey1 == (1, ):
-                                                # если нашлась (+) реакция - то нужно применить именно это действие
-                                                list_deystviy = []
-                                                list_deystviy += poisk_tp
-                                                # print('Найдена положительная реакция и действие применено: ', poisk_tp)
-                                                pogasit_vse_tochki()
-                                                B = False
-                        else:
-                            list_deystviy += poisk_tp
-                            # print('List_deystviy 4 стал следующим: ', list_deystviy)
-                    # 3.2.5 - если tp не применялось и нет опыта - то добавить его в лист действий
-                    if list_otric_reac == []:
-                        list_deystviy += poisk_tp
-                        # print('List_deystviy 2 стал следующим: ', list_deystviy)
-                        # 3.2.5 - возможно проверки на отсутствие отрицательных реакций будет достаточно, чтобы не
-                        # дублировать действия
-                        # if list_svyazi_s_posl_t0 == []:
-                        #     list_deystviy += poisk_tp
-                        #     print('List_deystviy 5 стал следующим: ', list_deystviy)
+            # 14.06.23 - добавление отсеивания совершённых ранее действий, чтобы не было зацикливания
+            print(f'Сравниваем текущую (tp) = {poisk_drygih_tp1} и последний ответ = {(posledniy_otvet,)}')
+            if poisk_drygih_tp1 == (posledniy_otvet,):
+                print('Последний ответ равен текущему ответу - проигнорировать ответ')
             else:
-                B = False
-            schetchik_B += 1
+                # если ответ не равен последнему ответу - то сохраним это действие, как возможное
+                # найдём signal у этих (tp)
+                list_tp += poisk_drygih_tp1
+                poisk_signal_tp = tuple(cursor.execute("SELECT signal FROM tochki WHERE ID = ?", poisk_drygih_tp1))
+                # print("Сигнал у tp следующий: ", poisk_signal_tp)
+                for poisk_signal_tp1 in poisk_signal_tp:
+                    list_signal_tp += poisk_signal_tp1
+        if list_tp != []:
+            new_list_signal_tp, new_list_tp = zip(*sorted(zip(list_signal_tp, list_tp)))
+            # print('Новый new_list_signal_tp: ', new_list_signal_tp, " Был таким: ", list_signal_tp)
+            # print('Новый list_tp: ', new_list_tp, " Был таким: ", list_tp)
+            # 3.2.4 - добавлен перебор вариантов действия (tp)
+            schetchik_B = 0
+            while B:
+                list_t0 = []
+                list_svyazi_s_posl_t0 = []
+                # print('Длина списка new_list_tp = ', len(new_list_tp), ' а если уменьшить на 1 : ', len(new_list_tp)-1)
+                if len(new_list_tp)-1 >= schetchik_B:
+                    # print("schetchik_B = ", schetchik_B)
+                    poisk_tp = (new_list_tp[schetchik_B],)
+                    # print("tp по которому будет проводиться поиск возможных действий: ", poisk_tp)
+                    poisk_svyazi_s_t0 = tuple(cursor.execute("SELECT id_start FROM svyazi WHERE id_finish = ?", poisk_tp))
+                    for poisk_svyazi_s_t01 in poisk_svyazi_s_t0:
+                        # print("Найдены следующие связи tp c другими точками: ", poisk_svyazi_s_t01)
+                        # из всех найденных связей оставим только связи с t0
+                        poisk_t0 = tuple(cursor.execute("SELECT ID FROM tochki WHERE ID = ? AND name = 'time_0'",
+                                                        poisk_svyazi_s_t01))
+                        for poisk_t01 in poisk_t0:
+                            list_t0 += poisk_t01
+                    # print("Лист проверки на наличие связи с t0: ", list_t0)
+                    if list_t0 == []:
+                        # проверить имеется ли связь с 4
+                        poisk_svyazi_s_4 = tuple(cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 4",
+                                                                poisk_tp))
+                        # print('Найдены следующие связи с (4): ', poisk_svyazi_s_4)
+                        if poisk_svyazi_s_4 != ():
+                            # print('Добавлено действие из-за наличия связи с (4)', poisk_tp)
+                            list_deystviy += poisk_tp
+                            # B = False # 3.2.5 - погасил
+                        else:
+                            # 3.2.5 - добавлено гашение сигнала, чтобы убрать "лишние" (tp)
+                            # print('Погашена лишняя tp: ', poisk_tp)
+                            cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = ?", poisk_tp)
+                    else:
+                        # Проверка - имеется ли связь с posl_t0 и найденным t0
+                        for list_t01 in list_t0:
+                            list_t01_kortez = (list_t01, )
+                            # print('Поиск связи между posledniy_t_0 = ', posledniy_t_0, 'и list_t01 = ', list_t01)
+                            poisk_svyazi_s_posl_t0 = tuple(
+                                cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = ?",
+                                               (posledniy_t_0, list_t01)))
+                            # print('poisk_svyazi_s_posl_t0 = ', poisk_svyazi_s_posl_t0)
+                            # не ищется ID... разделяю на 2 фильтр
+                            if poisk_svyazi_s_posl_t0 != ():
+                                for poisk_svyazi_s_posl_t01 in poisk_svyazi_s_posl_t0:
+                                    for poisk_svyazi_s_posl_t02 in poisk_svyazi_s_posl_t01:
+                                        poisk_svyazi_s_posl_t03 = tuple(
+                                            cursor.execute("SELECT ID FROM svyazi WHERE id_finish = ? AND ID = ?",
+                                                           (list_t01, poisk_svyazi_s_posl_t02)))
+                                        # print('poisk_svyazi_s_posl_t03 = ', poisk_svyazi_s_posl_t03)
+                                        if poisk_svyazi_s_posl_t03 != ():
+                                            # 3.2.5 - если имеется у этой tp связь с posl_to - это нужно зафиксировать,
+                                            # чтобы другие связи не попали в лист действий
+                                            list_svyazi_s_posl_t0 += poisk_svyazi_s_posl_t03
+                                            # а если связь есть - то нужно проверить имеются ли реакции на данное действие (ответ)
+                                            poisk_svyazi_s_reakciey = tuple(
+                                                cursor.execute("SELECT id_finish FROM svyazi WHERE id_start = ?",
+                                                               list_t01_kortez))
+                                            # print('Поиск связи с реакцией: ', poisk_svyazi_s_reakciey)
+                                            for poisk_svyazi_s_reakciey1 in poisk_svyazi_s_reakciey:
+                                                # print('poisk_svyazi_s_reakciey1 = ', poisk_svyazi_s_reakciey1)
+                                                if poisk_svyazi_s_reakciey1 == (2,):
+                                                    # если найдена (-) реакция - то не нужно применять это действие.
+                                                    # запустить обратный сбор сущности tp и зажигание с первой (.)
+                                                    list_otric_reac += poisk_svyazi_s_reakciey1
+                                                    # print('Лист отрицательных связей такой: list_otric_reac', list_otric_reac)
+                                                    print('Найдена отрицательная реакция и действие отменено: ', poisk_tp)
+                                                    list_isklucheniya_deystviy += poisk_tp
+                                                    # 3.2.1 - погасить отработанные (...)
+                                                    cursor.execute("UPDATE tochki SET work = 0 AND signal = 0 WHERE ID = ?",
+                                                                   poisk_tp)
+                                                elif poisk_svyazi_s_reakciey1 == (1, ):
+                                                    # если нашлась (+) реакция - то нужно применить именно это действие
+                                                    list_deystviy = []
+                                                    list_deystviy += poisk_tp
+                                                    # print('Найдена положительная реакция и действие применено: ', poisk_tp)
+                                                    pogasit_vse_tochki()
+                                                    B = False
+                            else:
+                                list_deystviy += poisk_tp
+                                # print('List_deystviy 4 стал следующим: ', list_deystviy)
+                        # 3.2.5 - если tp не применялось и нет опыта - то добавить его в лист действий
+                        if list_otric_reac == []:
+                            list_deystviy += poisk_tp
+                            # print('List_deystviy 2 стал следующим: ', list_deystviy)
+                            # 3.2.5 - возможно проверки на отсутствие отрицательных реакций будет достаточно, чтобы не
+                            # дублировать действия
+                            # if list_svyazi_s_posl_t0 == []:
+                            #     list_deystviy += poisk_tp
+                            #     print('List_deystviy 5 стал следующим: ', list_deystviy)
+                else:
+                    B = False
+                schetchik_B += 1
     # print(f'list_isklucheniya_deystviy = {list_isklucheniya_deystviy}')
     for value in list_isklucheniya_deystviy:
         while value in list_deystviy:
@@ -615,12 +628,13 @@ def sbor_deystviya(tp):
     # собирает в обратном порядке сущность от последнего tp и приводит в действие ответ
     # print("Разбирается следующий tp: ", tp)
     global posledniy_t_0
+    global posledniy_otvet
     B = True
     tp_kortez = (tp, )
 
-    # 14.06.23 - добавление гашения (tp), чтобы не было повторяющихся ответов.
-    print(f'Попытка погасить точку действия: {tp}')
-    cursor.execute("UPDATE tochki SET work = 0 AND signal = 0 WHERE ID = ?", tp_kortez)
+    #14.06.23 - ввод запоминания последнего ответа, для блокирования повторов
+    posledniy_otvet = tp
+    print(f'Последний ответ стал равен: {posledniy_otvet}')
 
     # 3.2.2 - добавляется поиск уже имеющегося t0 и проверяется - имеется ли связь с posl_t0
     poisk_svyazi_tp_s_t0 = tuple(cursor.execute("SELECT ID FROM tochki WHERE rod1 = ? AND name = 'time_0' AND rod2 = ?",
@@ -698,10 +712,17 @@ def sozdat_svyaz_s_4():
         sozdat_svyaz(posledniy_tp, 4, 1)
 
 
+def sozdat_svyaz_s_4_ot_luboy_tochki(tochka):
+    # в функцию передаётся ID точки и соединяет с (4), если такой связи нет - тем самым создавая сущность
+    poisk_svyazi_s_4 = tuple(cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 4", (tochka,)))
+    if poisk_svyazi_s_4 == ():
+        # если такой связи нет - создать
+        sozdat_svyaz(tochka, 4, 1)
+
 
 def ymenshenie_signal ():
     # функция находит все (.), где сигнал более 0 и уменьшает на 0,1
-    ymenshenie_signal_ = tuple(cursor.execute("SELECT ID FROM tochki WHERE signal >= 0.1",))
+    # ymenshenie_signal_ = tuple(cursor.execute("SELECT ID FROM tochki WHERE signal >= 0.1",))
     cursor.execute("UPDATE tochki SET signal = signal - 0.1 WHERE signal >= 0.1 AND signal < 1")
     cursor.execute("UPDATE tochki SET signal = signal - 0.01 WHERE signal >= 0 AND signal < 0.1")  #3.2.4 - added
     # print("Уменьшен сигнал у следующих точек: ", ymenshenie_signal_)
@@ -853,6 +874,8 @@ while A:
             posledniy_t_0 = 3
             print("Posl_to теперь 4 : ", posledniy_t_0)
             print("-----------------------------------Переход в (3)-------------------------------------")
+        elif schetchik == 1:
+            posledniy_otvet = 0
         else:
             functions()
     ymenshenie_signal()

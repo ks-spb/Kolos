@@ -265,8 +265,8 @@ def encode_and_save_to_db_image(x_pos, y_pos):
     # print(offset)
     # Отсортировать список кортежей по возрастанию по первому элементу (по вертикали), а затем по второму (по горизонтали)
     offset.sort(key=lambda x: (x[0], x[1]))
-    print('\nСписок смещений отсортированный\n')
-    print(offset)
+    # print('\nСписок смещений отсортированный\n')
+    # print(offset)
 
 
     # 8. Ширина описывающего прямоугольника — макс. горизонтальное смещение + 1, высота макс. вертикальное смещение + 1.
@@ -280,7 +280,7 @@ def encode_and_save_to_db_image(x_pos, y_pos):
     matrix = np.zeros((height, width), dtype=int)
     for dx, dy in offset:
         matrix[dx][dy] = 1
-    print('\nВыбранный объект в матрице минимальных размеров\n', matrix)
+    # print('\nВыбранный объект в матрице минимальных размеров\n', matrix)
 
     # 9. Координаты верхнего левого угла прямоугольника (объекта) на экране — координаты скриншота +
     #    значения найденные в п.6.
@@ -291,7 +291,7 @@ def encode_and_save_to_db_image(x_pos, y_pos):
     # stiranie_pamyati()
     save_to_bd(offset)
 
-    print(f"posl_tg для записи к posl_t0 такой: {posl_tg}")
+    # print(f"posl_tg для записи к posl_t0 такой: {posl_tg}")
     posl_tg1 = posl_tg
     posl_tg = 0
 
