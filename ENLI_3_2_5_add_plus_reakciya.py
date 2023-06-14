@@ -745,12 +745,15 @@ while A:
     proverka_signal_porog()   # проверка и зажигание точек, если signal >= porog
     concentrator_deystviy()
 
-    # print("Сейчас ", source)
-    if source == 'input':
-    # Ввод строки с клаиатуры, запись побуквенно
-        vvedeno_luboe = input("Введите текст: ")
+    # 14.06.23 - возврат к необходимости нажимать enter на каждом цикле
+    vvedeno_luboe = input("Введите текст: ")
 
-    elif source == 'rec':
+    # print("Сейчас ", source)
+    # if source == 'input':
+    # # Ввод строки с клаиатуры, запись побуквенно
+    #     vvedeno_luboe = input("Введите текст: ")
+
+    if source == 'rec':
         # Источник события мыши и клавиатуры. Чтение из объекта rec
         # Формат записи
         # Для клавиатуры: 'Key.down'/'Key.up', Клавиша (символ или название)
@@ -791,7 +794,7 @@ while A:
             source = 'input'
             vvedeno_luboe = ''
         rec.key_down = ''
-        sleep(1)
+        # sleep(1)
     print("")
 
     # print('ввели: ', vvedeno_luboe)
