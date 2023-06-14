@@ -70,6 +70,7 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
             posledniy_t_0 = new_tochka_time_0
             sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
             posledniy_tp = 0
+            posledniy_t = 0
     else:  # если есть такая буква с таким ID
         if nayti_id:
             cursor.execute("UPDATE tochki SET work = 1 WHERE ID = (?)", nayti_id)
@@ -84,6 +85,7 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
                 posledniy_t_0 = new_tochka_time_0
                 sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
                 posledniy_tp = 0
+                posledniy_t = 0
 
 
 
