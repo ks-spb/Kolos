@@ -36,6 +36,7 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
     global posledniy_t_0
     global posledniy_tp
     poisk_sobytiya = '.'
+    poisk_position = 'position'
     print(f'Передали на обработку следующее: {symbol}')
     nayti_id = cursor.execute("SELECT ID FROM tochki WHERE name = ? AND type = 'mozg'", (symbol, )).fetchone()
     # print("poisk_bykvi_iz_vvedeno_v2. ID у входящей точки такой: ", nayti_id)
@@ -61,31 +62,26 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
             # print('Создаётся новая связь posledniy_tp: ', posledniy_tp, ' и new_tochka_time_p: ', new_tochka_time_p)
             sozdat_svyaz(posledniy_tp, new_tochka_time_p, 1)
         posledniy_tp = new_tochka_time_p
+
         # 14.03.23 - добавлено отдельное создание (t0) для записанных событий
-        if poisk_sobytiya in symbol:
-            new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
-                                                  new_tochka_time_t, '')
-            sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
-            sozdat_svyaz(new_tochka_time_t, new_tochka_time_0, 1)
-            posledniy_t_0 = new_tochka_time_0
-            sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
-            posledniy_tp = 0
-            posledniy_t = 0
+        # if poisk_sobytiya in symbol:
+        #     new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
+        #                                           new_tochka_time_t, '')
+        #     sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
+        #     sozdat_svyaz(new_tochka_time_t, new_tochka_time_0, 1)
+        #     posledniy_t_0 = new_tochka_time_0
+        #     sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
+        #     posledniy_tp = 0
+        #     posledniy_t = 0
     else:  # если есть такая буква с таким ID
         if nayti_id:
             cursor.execute("UPDATE tochki SET work = 1 WHERE ID = (?)", nayti_id)
-            # print("Зажглась точка в проверке наличия точек: ", nayti_id)
+            print("Зажглась точка в проверке наличия точек: ", nayti_id)
             proverka_nalichiya_svyazey_in(nayti_id[0], symbol)
             # 14.03.23 - добавлено отдельное создание (t0) для (img)
-            if poisk_sobytiya in symbol:
-                new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
-                                                      nayti_id[0], '')
-                sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
-                sozdat_svyaz(nayti_id[0], new_tochka_time_0, 1)
-                posledniy_t_0 = new_tochka_time_0
-                sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
-                posledniy_tp = 0
-                posledniy_t = 0
+            # if poisk_sobytiya in symbol:
+            #     posledniy_tp = 0
+            #     posledniy_t = 0
 
 
 
@@ -326,8 +322,7 @@ def out_red(text):
     i = 0
     while i < len(text):
         # print(f"Такой приходит текст: {text}")
-    # TO DO нужно разобраться в том какой текст приходит и как он дальше распределяется
-    # TO DO в тексте имеется ещё одна строчка position - нужно убрать
+
         if '.' in text[i]:
             item = text[i].split('.')
             print(f'Преобразовали текст в item: {item}')
@@ -859,7 +854,20 @@ while A:
     elif vvedeno_luboe != "":
         print(vvedeno_luboe, '=========================')
         for vvedeno_luboe1 in vvedeno_luboe:
-            poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe1)
+            # 16.06.23 - связываем сущность одной команды с t0, обнуляем tp и t
+            if '.' in vvedeno_luboe1:
+                new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
+                                                          posledniy_t, '')
+                sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
+                sozdat_svyaz(posledniy_t, new_tochka_time_0, 1)
+                posledniy_t_0 = new_tochka_time_0
+                sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
+                posledniy_tp = 0
+                posledniy_t = 0
+                for vvedeno_luboe2 in vvedeno_luboe1.split('.'):
+                    poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe2)
+            else:
+                poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe1)
 
         vvedeno_luboe = ''
         proverka_nalichiya_svyazey_t_t_o()
