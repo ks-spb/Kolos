@@ -76,7 +76,7 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
     else:  # если есть такая буква с таким ID
         if nayti_id:
             cursor.execute("UPDATE tochki SET work = 1 WHERE ID = (?)", nayti_id)
-            print("Зажглась точка в проверке наличия точек: ", nayti_id)
+            # print("Зажглась точка в проверке наличия точек: ", nayti_id)
             proverka_nalichiya_svyazey_in(nayti_id[0], symbol)
             # 14.03.23 - добавлено отдельное создание (t0) для (img)
             # if poisk_sobytiya in symbol:
@@ -196,6 +196,10 @@ def proverka_nalichiya_svyazey_t_t_o():
             new_t = sozdat_new_tochky('time_0', 0, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, posledniy_t, " ")
             # print("Создана новая (т): ", new_t, " где rod1 = ", posledniy_t_0, " и rod2 = ", posledniy_t)
             sozdat_svyaz(posledniy_t_0, new_t, 1)  # weight was 0.1
+
+            # 19.06.23 - добавление создания обратной связи от (t0) к (t)
+            sozdat_svyaz(new_t, posledniy_t_0, 1)  # weight was 0.1
+
             sozdat_svyaz(posledniy_t, new_t, 1)  # weight was 0.1
             # v3.0.0 - posledniy_t становится новая связующая (.) м/у внешней горящей и старым posledniy_t
             posledniy_t_0 = new_t
@@ -892,6 +896,7 @@ while A:
         else:
             functions()
     ymenshenie_signal()
+
 
 # import diagram
 # Диаграмма не работает
