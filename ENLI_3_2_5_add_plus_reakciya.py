@@ -193,16 +193,12 @@ def proverka_nalichiya_svyazey_t_t_o():
 
         # print('list_poiska_t0  2 : ', list_poiska_t0)
         if list_poiska_t0 == []:
-            new_t = sozdat_new_tochky('time_0', 0, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, posledniy_t, " ")
+            new_t0 = sozdat_new_tochky('time_0', 0, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, posledniy_t, " ")
             # print("Создана новая (т): ", new_t, " где rod1 = ", posledniy_t_0, " и rod2 = ", posledniy_t)
-            sozdat_svyaz(posledniy_t_0, new_t, 1)  # weight was 0.1
-
-            # 19.06.23 - добавление создания обратной связи от (t0) к (t)
-            sozdat_svyaz(new_t, posledniy_t_0, 1)  # weight was 0.1
-
-            sozdat_svyaz(posledniy_t, new_t, 1)  # weight was 0.1
+            sozdat_svyaz(posledniy_t_0, new_t0, 1)  # weight was 0.1
+            sozdat_svyaz(posledniy_t, new_t0, 1)  # weight was 0.1
             # v3.0.0 - posledniy_t становится новая связующая (.) м/у внешней горящей и старым posledniy_t
-            posledniy_t_0 = new_t
+            posledniy_t_0 = new_t0
             # print("Posl_to теперь 2 : ", posledniy_t_0)
         posledniy_t = 0
         # posledniy_tp = 0   # 06.03.23 - добавлено
@@ -423,11 +419,7 @@ def ymenshit_svyazi():
 
 def concentrator_deystviy():
     B = True
-    # функция для поиска горящих (tp), которые должны быть проверены на возможность действия в первую очередь
-    # 1. Находятся горящие (tp)
-    # 2. Эти (tp) отсеиваются, если не имеют связи с (t0)
-    # 3. Проверка имеется ли связь между t0 от in и t0 от tp
-    # 4. Если имеется - проверить есть ли связь с (-)
+    # 19.06.23 - изменение функции. Теперь из текущего состояния t0 нужно найти возможные действия
     global posledniy_t_0
     global posledniy_otvet
     global schetchik
