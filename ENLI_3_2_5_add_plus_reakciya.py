@@ -197,6 +197,7 @@ def proverka_nalichiya_svyazey_t_t_o():
             # print("Создана новая (т): ", new_t, " где rod1 = ", posledniy_t_0, " и rod2 = ", posledniy_t)
             sozdat_svyaz(posledniy_t_0, new_t0, 1)  # weight was 0.1
             sozdat_svyaz(posledniy_t, new_t0, 1)  # weight was 0.1
+            sozdat_svyaz(new_t0, posledniy_tp, 1)  # 21.06.23 - Добавил дублирующую связь от t0 к tp
             # v3.0.0 - posledniy_t становится новая связующая (.) м/у внешней горящей и старым posledniy_t
             posledniy_t_0 = new_t0
             # print("Posl_to теперь 2 : ", posledniy_t_0)
@@ -419,7 +420,6 @@ def ymenshit_svyazi():
 
 def concentrator_deystviy():
     B = True
-    # 19.06.23 - изменение функции. Теперь из текущего состояния t0 нужно найти возможные действия
     global posledniy_t_0
     global posledniy_otvet
     global schetchik
@@ -617,6 +617,83 @@ def concentrator_deystviy():
         # pogasit_vse_tochki()
 
 
+def create_dict(point_list, work_dict=dict()):
+    """ Рекурсивная функция получающая все связи в виде словаря из БД """
+    for point in point_list:
+        # Выбрать id_finish из связей, где id_finish = ID в табл. точки и id_start = point и name = time_0.
+        points = cursor.execute(
+            "SELECT svyazi.id_finish "
+            "FROM svyazi JOIN tochki "
+            "ON svyazi.id_finish = tochki.id "
+            "WHERE svyazi.id_start = ? AND tochki.name = 'time_0'", (point,)).fetchall()
+        nodes = [row[0] for row in points]
+        if nodes:
+            work_dict[point] = nodes
+            create_dict(work_dict[point], work_dict)
+    return work_dict
+
+
+def all_paths(tree, node):
+    """ Рекурсивная функция получающая все пути из дерева """
+    if node not in tree:
+        return [[node]]
+    paths = []
+    for child_node in tree[node]:
+        for path in all_paths(tree, child_node):
+            paths.append([node] + path)
+    return paths
+
+
+def proshivka_po_derevy():
+    """ Проверка возможности применения действий по пути из дерева. Если нет связи с 2 - можно применять, если
+    есть связь с 1 - нужно применить."""
+    global posledniy_t_0
+    tree = []
+    tree = create_dict([posledniy_t_0])  # Получаем выборку связей в виде словаря (дерево)
+    # print(tree)
+    print("Возможные пути действий: ", all_paths(tree, posledniy_t_0))
+    # Проверка имеется ли связь с 1 или 2 у точек на пути
+    for path in all_paths(tree, posledniy_t_0):
+        if len(path) > 1:
+            print(f'Проверка пути: {path}, 2я точка такая: {path[1]}')
+            svyaz_s_1 = []
+            svyaz_s_2 = []
+            for tochka in path:
+                proverka_nalichiya_svyazi_s_1 = tuple(cursor.execute(
+                    "SELECT id_start FROM svyazi WHERE id_finish = 1 AND id_start = ?", (tochka,)))
+                for proverka_nalichiya_svyazi_s_1_1 in proverka_nalichiya_svyazi_s_1:
+                    print(f'Присоединение к svyaz_s_1: {proverka_nalichiya_svyazi_s_1_1[0]}')
+                    svyaz_s_1.append(proverka_nalichiya_svyazi_s_1_1[0])
+                proverka_nalichiya_svyazi_s_2 = tuple(cursor.execute(
+                    "SELECT id_start FROM svyazi WHERE id_finish = 2 AND id_start = ?", (tochka,)))
+                for proverka_nalichiya_svyazi_s_2_1 in proverka_nalichiya_svyazi_s_2:
+                    print(f'Присоединение к svyaz_s_2: {proverka_nalichiya_svyazi_s_2_1[0]}')
+                    svyaz_s_2.append(proverka_nalichiya_svyazi_s_2_1[0])
+            if svyaz_s_1 and not svyaz_s_2:
+                # Если имеется связь с (+) - то применить этот путь
+                poisk_tp_v_pervoy_tochke_pyti = tuple(cursor.execute("SELECT svyazi.id_finish "
+                "FROM svyazi JOIN tochki "
+                "ON svyazi.id_finish = tochki.id "
+                "WHERE svyazi.id_start = ? AND tochki.name = 'time_p'", (path[1],)))
+                print(f'Применить действие, если t0 - start: {poisk_tp_v_pervoy_tochke_pyti}')
+                if poisk_tp_v_pervoy_tochke_pyti:
+                    sbor_deystviya(poisk_tp_v_pervoy_tochke_pyti)
+                    break
+                else:
+                    # Если нет связи, где t0 - старт, то возможно имеется связь, где эта t0- финиш
+                    poisk_tp_v_pervoy_tochke_pyti_fin = tuple(cursor.execute(
+                        "SELECT svyazi.id_start "
+                         "FROM svyazi JOIN tochki "
+                         "ON svyazi.id_start = tochki.id "
+                         "WHERE svyazi.id_finish = ? AND tochki.name = 'time_p'",
+                         (path[1],)))
+                    print(f'Применить действие, если t0 - finish: {poisk_tp_v_pervoy_tochke_pyti_fin}')
+                    if poisk_tp_v_pervoy_tochke_pyti_fin:
+                        for poisk_tp_v_pervoy_tochke_pyti_fin1 in poisk_tp_v_pervoy_tochke_pyti_fin:
+                            sbor_deystviya(poisk_tp_v_pervoy_tochke_pyti_fin1[0])
+                            break
+
+
 def sbor_deystviya(tp):
     # собирает в обратном порядке сущность от последнего tp и приводит в действие ответ
     # print("Разбирается следующий tp: ", tp)
@@ -734,7 +811,8 @@ while A:
     print("schetchik = ", schetchik)
     posledniy_t_0_kortez = (posledniy_t_0,)
     proverka_signal_porog()   # проверка и зажигание точек, если signal >= porog
-    concentrator_deystviy()
+    # concentrator_deystviy()
+    proshivka_po_derevy()
 
     # 14.06.23 - возврат к необходимости нажимать enter на каждом цикле
     vvedeno_luboe = input("Введите текст: ")
