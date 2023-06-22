@@ -7,6 +7,7 @@ cursor = Database('Li_db_v1_4.db')
 def create_dict(point_list, work_dict=dict()):
     """ Рекурсивная функция получающая все связи в виде словаря из БД """
     for point in point_list:
+        # Выбрать id_finish из связей, где id_finish = ID в табл. точки и id_start = point и name = time_0.
         points = cursor.execute(
             "SELECT svyazi.id_finish "
             "FROM svyazi JOIN tochki "
