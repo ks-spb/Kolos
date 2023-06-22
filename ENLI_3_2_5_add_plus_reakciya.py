@@ -35,8 +35,7 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
     global posledniy_t
     global posledniy_t_0
     global posledniy_tp
-    poisk_sobytiya = '.'
-    poisk_position = 'position'
+
     print(f'Передали на обработку следующее: {symbol}')
     nayti_id = cursor.execute("SELECT ID FROM tochki WHERE name = ? AND type = 'mozg'", (symbol, )).fetchone()
     # print("poisk_bykvi_iz_vvedeno_v2. ID у входящей точки такой: ", nayti_id)
@@ -62,26 +61,12 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
             # print('Создаётся новая связь posledniy_tp: ', posledniy_tp, ' и new_tochka_time_p: ', new_tochka_time_p)
             sozdat_svyaz(posledniy_tp, new_tochka_time_p, 1)
         posledniy_tp = new_tochka_time_p
-
-        # 14.03.23 - добавлено отдельное создание (t0) для записанных событий
-        # if poisk_sobytiya in symbol:
-        #     new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
-        #                                           new_tochka_time_t, '')
-        #     sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
-        #     sozdat_svyaz(new_tochka_time_t, new_tochka_time_0, 1)
-        #     posledniy_t_0 = new_tochka_time_0
-        #     sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
-        #     posledniy_tp = 0
-        #     posledniy_t = 0
     else:  # если есть такая буква с таким ID
         if nayti_id:
             cursor.execute("UPDATE tochki SET work = 1 WHERE ID = (?)", nayti_id)
             # print("Зажглась точка в проверке наличия точек: ", nayti_id)
             proverka_nalichiya_svyazey_in(nayti_id[0], symbol)
-            # 14.03.23 - добавлено отдельное создание (t0) для (img)
-            # if poisk_sobytiya in symbol:
-            #     posledniy_tp = 0
-            #     posledniy_t = 0
+
 
 
 
@@ -524,9 +509,14 @@ def concentrator_deystviy():
                                                     # если нашлась (+) реакция - то нужно применить именно это действие
                                                     list_deystviy = []
                                                     list_deystviy += poisk_tp
-                                                    # print('Найдена положительная реакция и действие применено: ', poisk_tp)
+                                                    print(f'Найдена положительная реакция и действие применено: '
+                                                          f'{poisk_tp}. Остальные точки погашены')
                                                     pogasit_vse_tochki()
                                                     B = False
+                                                else:
+                                                    # если нет связи с (+-), но имеется связь с posl_t0 - нужно добавить
+                                                    # это действие в poisk_tp
+                                                    list_deystviy += poisk_tp
                             else:
                                 list_deystviy += poisk_tp
                                 # print('List_deystviy 4 стал следующим: ', list_deystviy)
@@ -653,23 +643,27 @@ def proshivka_po_derevy():
     # print(tree)
     print("Возможные пути действий: ", all_paths(tree, posledniy_t_0))
     # Проверка имеется ли связь с 1 или 2 у точек на пути
+    found = False
     for path in all_paths(tree, posledniy_t_0):
         if len(path) > 1:
             print(f'Проверка пути: {path}, 2я точка такая: {path[1]}')
             svyaz_s_1 = []
             svyaz_s_2 = []
             for tochka in path:
+                print(f'Рассматриваем точку: {tochka}')
                 proverka_nalichiya_svyazi_s_1 = tuple(cursor.execute(
                     "SELECT id_start FROM svyazi WHERE id_finish = 1 AND id_start = ?", (tochka,)))
+                print(f'Нашли следующие связи c 1: {proverka_nalichiya_svyazi_s_1}')
                 for proverka_nalichiya_svyazi_s_1_1 in proverka_nalichiya_svyazi_s_1:
                     print(f'Присоединение к svyaz_s_1: {proverka_nalichiya_svyazi_s_1_1[0]}')
                     svyaz_s_1.append(proverka_nalichiya_svyazi_s_1_1[0])
                 proverka_nalichiya_svyazi_s_2 = tuple(cursor.execute(
                     "SELECT id_start FROM svyazi WHERE id_finish = 2 AND id_start = ?", (tochka,)))
+                print(f'Нашли следующие связи c 2: {proverka_nalichiya_svyazi_s_2}')
                 for proverka_nalichiya_svyazi_s_2_1 in proverka_nalichiya_svyazi_s_2:
                     print(f'Присоединение к svyaz_s_2: {proverka_nalichiya_svyazi_s_2_1[0]}')
                     svyaz_s_2.append(proverka_nalichiya_svyazi_s_2_1[0])
-            if svyaz_s_1 and not svyaz_s_2:
+            if svyaz_s_1 and not svyaz_s_2 or not svyaz_s_1:
                 # Если имеется связь с (+) - то применить этот путь
                 poisk_tp_v_pervoy_tochke_pyti = tuple(cursor.execute("SELECT svyazi.id_finish "
                 "FROM svyazi JOIN tochki "
@@ -677,8 +671,10 @@ def proshivka_po_derevy():
                 "WHERE svyazi.id_start = ? AND tochki.name = 'time_p'", (path[1],)))
                 print(f'Применить действие, если t0 - start: {poisk_tp_v_pervoy_tochke_pyti}')
                 if poisk_tp_v_pervoy_tochke_pyti:
-                    sbor_deystviya(poisk_tp_v_pervoy_tochke_pyti)
-                    break
+                    for poisk_tp_v_pervoy_tochke_pyti1 in poisk_tp_v_pervoy_tochke_pyti:
+                        sbor_deystviya(poisk_tp_v_pervoy_tochke_pyti1[0])
+                        found = True   # выход из внешнего цикла
+                        break
                 else:
                     # Если нет связи, где t0 - старт, то возможно имеется связь, где эта t0- финиш
                     poisk_tp_v_pervoy_tochke_pyti_fin = tuple(cursor.execute(
@@ -691,7 +687,10 @@ def proshivka_po_derevy():
                     if poisk_tp_v_pervoy_tochke_pyti_fin:
                         for poisk_tp_v_pervoy_tochke_pyti_fin1 in poisk_tp_v_pervoy_tochke_pyti_fin:
                             sbor_deystviya(poisk_tp_v_pervoy_tochke_pyti_fin1[0])
+                            found = True  # выход из внешнего цикла
                             break
+            if found:
+                break  # выход из внешнего цикла
 
 
 def sbor_deystviya(tp):
