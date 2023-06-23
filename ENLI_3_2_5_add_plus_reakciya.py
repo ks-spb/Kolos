@@ -1,5 +1,6 @@
 from db import Database
 from time import sleep
+import random
 
 from mous_kb_record import rec, play
 
@@ -539,72 +540,52 @@ def concentrator_deystviy():
     # Удаление дублей из листа действий
     list_deystviy = list(set(list_deystviy))
     print('Лист действий: ', list_deystviy)
-    if list_deystviy != []:   # 3.2.3 - было if posl_tp != ()
-        list_minus_deystviy = []
-        otmena_minus_deystviya = 0    #переменная, чтобы не происходил ответ, если он уже имеется
-        # 13.02.23 - добавляю поиск отрицательных реакций у найденных действий, чтобы снизить возможность повторного
-        # не верного ответа
+    if list_deystviy != []:
+        vliyanie_na_deystvie = []
         for list_deystviy1 in list_deystviy:
             # поиск связей с текущим ID (tp) и (t0)
             # print("Лист действий, такой ID передаётся: ", list_deystviy1)
-            # print("otmena_minus_deystviya: ", otmena_minus_deystviya)
-            if otmena_minus_deystviya != 1:
-                # приходится ID передавать в кортеже
-                list_deystviy1_kortez = (list_deystviy1,)
-                # # 16.03.23 - добавил гашение этой точки действия, чтобы убрать повторы
-                # cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = ?", list_deystviy1_kortez)
-                # cursor.execute("UPDATE tochki SET work = 0 WHERE ID = ?", list_deystviy1_kortez)
-                poisk_svyazi_ID_s_t0 = tuple(cursor.execute("SELECT ID FROM tochki WHERE rod2 = ? AND name = 'time_0'",
-                                                               list_deystviy1_kortez))
-                # print("Найдены следующие связи (tp): ", list_deystviy1, " и (to): ", poisk_svyazi_ID_s_t0)
-                # найдём связи с (+)-реакцией, если имеются связи с (t0), а если не имеются - то применим это действие:
-                if poisk_svyazi_ID_s_t0 != ():
-                    for poisk_svyazi_ID_s_t01 in poisk_svyazi_ID_s_t0:
-                        poisk_svyazi_t0_s_reakciey = tuple(cursor.execute(
-                            "SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 1", poisk_svyazi_ID_s_t01))
-                        # print("Найдены связи (t0) и (+): ", poisk_svyazi_t0_s_reakciey)
-                        # если есть связь с (+) - то применим это действие
-                        if poisk_svyazi_t0_s_reakciey != ():
-                            print("Найдена связь с (+) - значит применяется действие: ", list_deystviy1)
-                            sbor_deystviya(list_deystviy1)
-                            otmena_minus_deystviya = 1
-                            break   # прекращение цикла
-                        # если связи с (+) нет - то ищем связь с (-)
-                        poisk_svyazi_t0_s_minus = tuple(cursor.execute(
-                            "SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 2", poisk_svyazi_ID_s_t01))
-                        # если связи с (-) нет - то применим это действие, а если есть - то впишем его в список
-                        # print("Найдены ли связи с (-): ", poisk_svyazi_t0_s_minus)
-                        if poisk_svyazi_t0_s_minus != ():
-                            # если были найдены связи с (-)
-                            list_minus_deystviy += list_deystviy1_kortez
-                    if list_minus_deystviy == []:
-                        if otmena_minus_deystviya != 1:
-                            print("Не найдена связь с (-) - значит применяется действие: ", list_deystviy1)
-                            sbor_deystviya(list_deystviy1)
-                            otmena_minus_deystviya = 1
-                            break
-                else:
-                    # из листа действий убирается найденные раньше уже совершаемые действия от текущего (t0), т.е.
-                    # исключается полное повторение
-                    sbor_deystviya(list_deystviy1)
-                    otmena_minus_deystviya = 1
-                    break
-        # если цикл дошёл до этой строчки - значит не были найдены (tp) с (+) или без связи с (-) и применяется первая
-        # из (tp), связанная с (-)
-        # print("otmena_minus_deystviya == ", otmena_minus_deystviya)
-        if otmena_minus_deystviya != 1:
-            if list_minus_deystviy != []:
-                print('list_minus_deystviy = ', list_minus_deystviy)
-                for value in list_isklucheniya_deystviy:
-                    while value in list_minus_deystviy:
-                        list_minus_deystviy.remove(value)
-                print(f'А стал такой: {list_deystviy}')
-                if len(list_minus_deystviy) != 0:
-                    sbor_deystviya(list_minus_deystviy[0])
-                # else:
-                #     for list_minus_deystviy1 in list_minus_deystviy:
-                #         sbor_deystviya(list_minus_deystviy1)
-        # pogasit_vse_tochki()
+            # поиск положительных и отрицательных реакций, их вычитание и запись в лист для дальнейшего выбора (tp)
+            vliyanie_na_deystvie.append(poisk_pol_i_otric_reakciy(list_deystviy1))
+            # print(f'Было добавлено к ID: {list_deystviy1}, следующее влияние: {poisk_pol_i_otric_reakciy(list_deystviy1)}')
+        # выбор действия, исходя из влияния
+        # print(f'Получилось следующее влияние на действия: {vliyanie_na_deystvie}')
+        choice = random.choices(list_deystviy, weights=vliyanie_na_deystvie, k=1)[0]
+        print(f'Случайный ответ следующий: {choice}')
+        sbor_deystviya(choice)
+
+
+
+def poisk_pol_i_otric_reakciy(ID):
+    """Поиск связанных с текущим ID реакций и вычитание из положительных - отрицательных."""
+    # выбрать id_finish, где id_start - это ID, а id_finish должен быть t0
+    poisk_t0 = cursor.execute(
+        "SELECT svyazi.id_finish "
+        "FROM svyazi JOIN tochki "
+        "ON svyazi.id_finish = tochki.id "
+        "WHERE svyazi.id_start = ? AND tochki.name = 'time_0'", (ID,)).fetchall()
+    svyazi_s_1 = []
+    svyazi_s_2 = []
+    # print(f'Найдены следующие (to): {poisk_t0}, связанные с {ID}')
+    for poisk_t01 in poisk_t0:
+        # найти и просуммировать связи (t0) с (1)
+        poisk_svyazi_s_1 = tuple(cursor.execute(
+                            "SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 1", poisk_t01))
+        if poisk_svyazi_s_1:
+            for poisk_svyazi_s_11 in poisk_svyazi_s_1:
+                svyazi_s_1.append(poisk_svyazi_s_11[0])
+        poisk_svyazi_s_2 = tuple(cursor.execute(
+            "SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 2", poisk_t01))
+        if poisk_svyazi_s_2:
+            for poisk_svyazi_s_21 in poisk_svyazi_s_2:
+                svyazi_s_2.append(poisk_svyazi_s_21[0])
+    # print(f'Найдены положительные реакции: {svyazi_s_1}, найдены отрицательные реакции: {svyazi_s_2}')
+    poloz_minus_otric = len(svyazi_s_1) - len(svyazi_s_2)
+    # print(f'Получилось влияние на ответ: {poloz_minus_otric}')
+    if poloz_minus_otric == 0:
+        vliyanie = 1
+    return vliyanie
+
 
 
 def create_dict(point_list, work_dict=dict()):
@@ -734,12 +715,11 @@ def proshivka_po_derevy():
                             sbor_deystviya(poisk_tp_v_pervoy_tochke_pyti_fin1[0], vozmozhnie_deystviya1)
                             found1 = True
                             break
-            else:
-                print(f'Запущена функция Концентратор действий, т.к. все возможные действия - отрицательные')
-                concentrator_deystviy()
-                break
             if found1:
                 break
+        print(f'Запущена функция Концентратор действий, т.к. все возможные действия - отрицательные')
+        concentrator_deystviy()
+
     else:
         # не было найдено продолжения - запустить поиск из горящих (tp)
         print(f'Запущена функция Концентратор действий')
@@ -1013,6 +993,7 @@ while A:
         posledniy_t = 0
         # print("Было введено vvedeno_luboe: ", vvedeno_luboe)
         schetchik = 0
+        # proshivka_po_derevy()
     else:
         if schetchik >= 10:
             # 2.2.2: зажигается in0, которая горит, если нет вх. сигналов
