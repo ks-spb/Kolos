@@ -20,10 +20,10 @@ def stiranie_pamyati():
     global posledniy_t
     global posledniy_t_0
     global posledniy_tp
-    # Удаление лишних строчек в таблице точки, где ID>5. 5 - это последняя (.) реакции "хоро"
+    # Удаление лишних строчек в таблице точки, где ID>10 - это точка и реакция на 0, которая постоянно записывается.
     print("Запущено стирание памяти")
-    cursor.execute("DELETE FROM tochki WHERE ID > 9")
-    cursor.execute("DELETE FROM svyazi WHERE ID > 12") # удаление лишних строчек в таблице связи, где ID>2. 2 - это связь м/у 5 и 1.
+    cursor.execute("DELETE FROM tochki WHERE ID > 10")
+    cursor.execute("DELETE FROM svyazi WHERE ID > 15")
     cursor.execute("UPDATE tochki SET puls = 0 AND freq = 10 AND signal = 0 AND work = 0")
     posledniy_t_0 = 3
     posledniy_t = 0
@@ -36,7 +36,7 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
     global posledniy_t_0
     global posledniy_tp
 
-    print(f'Передали на обработку следующее: {symbol}')
+    # print(f'Передано на обработку следующее: {symbol}')
     nayti_id = cursor.execute("SELECT ID FROM tochki WHERE name = ? AND type = 'mozg'", (symbol, )).fetchone()
     # print("poisk_bykvi_iz_vvedeno_v2. ID у входящей точки такой: ", nayti_id)
     if not nayti_id:
@@ -179,7 +179,7 @@ def proverka_nalichiya_svyazey_t_t_o():
         # print('list_poiska_t0  2 : ', list_poiska_t0)
         if list_poiska_t0 == []:
             new_t0 = sozdat_new_tochky('time_0', 0, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, posledniy_t, " ")
-            print("Создана новая (t0): ", new_t0, " где rod1 = ", posledniy_t_0, " и rod2 = ", posledniy_t)
+            # print("Создана новая (t0): ", new_t0, " где rod1 = ", posledniy_t_0, " и rod2 = ", posledniy_t)
             sozdat_svyaz(posledniy_t_0, new_t0, 1)  # weight was 0.1
             sozdat_svyaz(posledniy_t, new_t0, 1)  # weight was 0.1
             sozdat_svyaz(new_t0, posledniy_tp, 1)  # 21.06.23 - Добавил дублирующую связь от t0 к tp
@@ -420,7 +420,7 @@ def concentrator_deystviy():
     if poisk_drygih_tp != ():
         for poisk_drygih_tp1 in poisk_drygih_tp:
             # 14.06.23 - добавление отсеивания совершённых ранее действий, чтобы не было зацикливания
-            print(f'Сравниваем текущую (tp) = {poisk_drygih_tp1} и последний ответ = {(posledniy_otvet,)}')
+            # print(f'Сравниваем текущую (tp) = {poisk_drygih_tp1} и последний ответ = {(posledniy_otvet,)}')
             if poisk_drygih_tp1 == (posledniy_otvet,):
                 print('Последний ответ равен текущему ответу - проигнорировать ответ')
             else:
@@ -551,9 +551,9 @@ def concentrator_deystviy():
             if otmena_minus_deystviya != 1:
                 # приходится ID передавать в кортеже
                 list_deystviy1_kortez = (list_deystviy1,)
-                # 16.03.23 - добавил гашение этой точки действия, чтобы убрать повторы
-                cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = ?", list_deystviy1_kortez)
-                cursor.execute("UPDATE tochki SET work = 0 WHERE ID = ?", list_deystviy1_kortez)
+                # # 16.03.23 - добавил гашение этой точки действия, чтобы убрать повторы
+                # cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = ?", list_deystviy1_kortez)
+                # cursor.execute("UPDATE tochki SET work = 0 WHERE ID = ?", list_deystviy1_kortez)
                 poisk_svyazi_ID_s_t0 = tuple(cursor.execute("SELECT ID FROM tochki WHERE rod2 = ? AND name = 'time_0'",
                                                                list_deystviy1_kortez))
                 # print("Найдены следующие связи (tp): ", list_deystviy1, " и (to): ", poisk_svyazi_ID_s_t0)
@@ -642,7 +642,7 @@ def proshivka_po_derevy():
     vozmozhnie_deystviya = []
     otricatelnie_deystviya = []
     # print(tree)
-    print("Возможные пути действий: ", all_paths(tree, posledniy_t_0))
+    print("Возможный путь действий: ", all_paths(tree, posledniy_t_0))
     # Проверка имеется ли связь с 1 или 2 у точек на пути
     found = False
     for path in all_paths(tree, posledniy_t_0):
@@ -702,12 +702,13 @@ def proshivka_po_derevy():
 
     # Если алгоритм дошёл до сюда - значит не был найден удовлетворительный путь - применить первое действие из возможных
     found1 = False
+    print(f'Возможные действия: {vozmozhnie_deystviya}')
     if vozmozhnie_deystviya:
         for vozmozhnie_deystviya1 in vozmozhnie_deystviya:
             # Проверить является ли эта точка отрицательной.
-            # print(f'Проверка имеется ли возможное действие ({vozmozhnie_deystviya1}) в списке отрицательных: {otricatelnie_deystviya}')
+            print(f'Проверка имеется ли возможное действие ({vozmozhnie_deystviya1}) в списке отрицательных: {otricatelnie_deystviya}')
             if not vozmozhnie_deystviya1 in otricatelnie_deystviya:
-                # print(f'Применить возможное действие: {vozmozhnie_deystviya1}')
+                print(f'Применить возможное действие: {vozmozhnie_deystviya1}')
                 poisk_tp_v_pervoy_tochke_pyti = tuple(cursor.execute("SELECT svyazi.id_finish "
                                                                      "FROM svyazi JOIN tochki "
                                                                      "ON svyazi.id_finish = tochki.id "
@@ -733,18 +734,27 @@ def proshivka_po_derevy():
                             sbor_deystviya(poisk_tp_v_pervoy_tochke_pyti_fin1[0], vozmozhnie_deystviya1)
                             found1 = True
                             break
+            else:
+                print(f'Запущена функция Концентратор действий, т.к. все возможные действия - отрицательные')
+                concentrator_deystviy()
+                break
             if found1:
                 break
-
-
+    else:
+        # не было найдено продолжения - запустить поиск из горящих (tp)
+        print(f'Запущена функция Концентратор действий')
+        concentrator_deystviy()
 
 def sbor_deystviya(tp, t0=None):
     # собирает в обратном порядке сущность от последнего tp и приводит в действие ответ
-    # print("Разбирается следующий tp: ", tp)
+    print("Разбирается следующий tp для ответа: ", tp)
     global posledniy_t_0
     global posledniy_otvet
     B = True
     tp_kortez = (tp, )
+
+    # 22.06.23 - гашение ответов, для блокировки повторов.
+    cursor.execute("UPDATE tochki SET work = 0 AND signal = 0 WHERE ID = ?", (tp,))
 
     #14.06.23 - ввод запоминания последнего ответа, для блокирования повторов
     posledniy_otvet = tp
@@ -838,7 +848,7 @@ def sozdat_svyaz_s_4_ot_luboy_tochki(tochka):
         sozdat_svyaz(tochka, 4, 1)
 
 
-def ymenshenie_signal ():
+def ymenshenie_signal():
     # функция находит все (.), где сигнал более 0 и уменьшает на 0,1
     # ymenshenie_signal_ = tuple(cursor.execute("SELECT ID FROM tochki WHERE signal >= 0.1",))
     cursor.execute("UPDATE tochki SET signal = signal - 0.1 WHERE signal >= 0.1 AND signal < 1")
@@ -958,7 +968,7 @@ while A:
                                                    posledniy_t_0_kortez))
         if poisk_svyazi_t0_s_2 == ():
             sozdat_svyaz(posledniy_t_0, 2, 1)
-        # pogasit_vse_tochki()
+        pogasit_vse_tochki()
         source = None
         vvedeno_luboe = ''
 
