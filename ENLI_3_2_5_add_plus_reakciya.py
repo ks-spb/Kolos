@@ -417,7 +417,7 @@ def concentrator_deystviy():
     list_signal_tp = []
     list_isklucheniya_deystviy = []
     poisk_drygih_tp = tuple(cursor.execute("SELECT ID FROM tochki WHERE signal > 0 AND name = 'time_p'"))
-    print("Нашли следующие возможные (tp), у которых signal > 0 AND name = 'time_p': ", poisk_drygih_tp)
+    # print("Нашли следующие возможные (tp), у которых signal > 0 AND name = 'time_p': ", poisk_drygih_tp)
     if poisk_drygih_tp != ():
         for poisk_drygih_tp1 in poisk_drygih_tp:
             # 14.06.23 - добавление отсеивания совершённых ранее действий, чтобы не было зацикливания
@@ -623,7 +623,8 @@ def proshivka_po_derevy():
     vozmozhnie_deystviya = []
     otricatelnie_deystviya = []
     # print(tree)
-    print("Возможный путь действий: ", all_paths(tree, posledniy_t_0))
+    # print("Возможный путь действий: ", all_paths(tree, posledniy_t_0))
+    print("Количество возможных путей действий: ", len(all_paths(tree, posledniy_t_0)))
     # Проверка имеется ли связь с 1 или 2 у точек на пути
     found = False
     for path in all_paths(tree, posledniy_t_0):
@@ -676,18 +677,21 @@ def proshivka_po_derevy():
                             found = True  # выход из внешнего цикла
                             break
             else:
-                # Добавить вторую точку в возможные действия
-                vozmozhnie_deystviya.append(path[1])
+                # Добавить вторую точку в возможные действия, перед этим проверим имеется ли уже такая точка в этом листе
+                # print(f'Проверка имеется ли точка {path[1]} в возможных действиях: {vozmozhnie_deystviya}')
+                if not path[1] in vozmozhnie_deystviya:
+                    vozmozhnie_deystviya.append(path[1])
             if found:
                 break  # выход из внешнего цикла
 
     # Если алгоритм дошёл до сюда - значит не был найден удовлетворительный путь - применить первое действие из возможных
     found1 = False
-    print(f'Возможные действия: {vozmozhnie_deystviya}')
+    # print(f'Возможные действия: {vozmozhnie_deystviya}')
+    print(f'Количество возможных действий: {len(vozmozhnie_deystviya)}')
     if vozmozhnie_deystviya:
         for vozmozhnie_deystviya1 in vozmozhnie_deystviya:
             # Проверить является ли эта точка отрицательной.
-            print(f'Проверка имеется ли возможное действие ({vozmozhnie_deystviya1}) в списке отрицательных: {otricatelnie_deystviya}')
+            # print(f'Проверка имеется ли возможное действие ({vozmozhnie_deystviya1}) в списке отрицательных: {otricatelnie_deystviya}')
             if not vozmozhnie_deystviya1 in otricatelnie_deystviya:
                 print(f'Применить возможное действие: {vozmozhnie_deystviya1}')
                 poisk_tp_v_pervoy_tochke_pyti = tuple(cursor.execute("SELECT svyazi.id_finish "
@@ -717,8 +721,9 @@ def proshivka_po_derevy():
                             break
             if found1:
                 break
-        print(f'Запущена функция Концентратор действий, т.к. все возможные действия - отрицательные')
-        concentrator_deystviy()
+        if not found1:
+            print(f'Запущена функция Концентратор действий, т.к. все возможные действия - отрицательные')
+            concentrator_deystviy()
 
     else:
         # не было найдено продолжения - запустить поиск из горящих (tp)
