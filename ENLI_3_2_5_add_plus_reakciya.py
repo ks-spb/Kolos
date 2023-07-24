@@ -987,6 +987,7 @@ while A:
                 posledniy_tp = 0
                 posledniy_t = 0
             else:
+                print('------------------ Буква ', vvedeno_luboe1)
                 poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe1)
 
         vvedeno_luboe = ''
