@@ -19,7 +19,6 @@ if background_color != 0:
 
 num_labels, labels_im = cv2.connectedComponents(img)
 print (img)
-print(labels_im)
 
 # Создаём словарь, в котором будем хранить координаты пикселей, принадлежащих каждой компоненте связности
 components = {}
