@@ -4,11 +4,8 @@ import pyautogui
 import os, sys
 import numpy as np
 import cv2
-import time
-from PIL import Image
-import datetime
 
-# time.sleep(2)
+
 # Задаем уровень качества (чем меньше число, тем ниже качество)
 quality = 1  # Можете выбрать значение от 1 до 95
 
@@ -32,13 +29,12 @@ def screenshot(x_reg: int = 0, y_reg: int = 0, region: int = 0):
 
 
 # Открытие изображение
-image = screenshot()
-# image = 'C:\python\Kolos\elements_img\elem_230721_130631.png'
-# image = cv2.imread(image)
+# image = screenshot()
+image = cv2.imread(os.path.join(PATH, 'sample.png'))
 image = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2GRAY)
 img = cv2.threshold(image, 127, 255, cv2.THRESH_BINARY)[1] # ensure binary
 
-# Делаем фон черным.
+# Делаем фон черным
 # Строим гистограмму изображения
 hist = cv2.calcHist([img], [0], None, [256], [0, 256])
 # Определяем значение пикселя, которое соответствует наибольшему пику, это фон

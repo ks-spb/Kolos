@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 
-# Открытие изображение C:\python\Kolos\elements_img\elem_230721_130631.png
+# Открытие изображение C:\python\Kolos\elements_img\sample.png
 image = 'C:\python\Kolos\elements_img\elem_230721_130631.png'
 img = cv2.imread(image, 0)
 img = cv2.threshold(img, 127, 255, cv2.THRESH_BINARY)[1] # ensure binary
