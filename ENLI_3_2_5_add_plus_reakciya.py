@@ -501,7 +501,7 @@ def concentrator_deystviy():
                                                     # запустить обратный сбор сущности tp и зажигание с первой (.)
                                                     list_otric_reac += poisk_svyazi_s_reakciey1
                                                     # print('Лист отрицательных связей такой: list_otric_reac', list_otric_reac)
-                                                    print('Найдена отрицательная реакция и действие отменено: ', poisk_tp)
+                                                    # print('Найдена отрицательная реакция и действие отменено: ', poisk_tp)
                                                     list_isklucheniya_deystviy += poisk_tp
                                                     # 3.2.1 - погасить отработанные (...)
                                                     cursor.execute("UPDATE tochki SET work = 0 AND signal = 0 WHERE ID = ?",
@@ -686,7 +686,7 @@ def proshivka_po_derevy():
 
     # Если алгоритм дошёл до сюда - значит не был найден удовлетворительный путь - применить первое действие из возможных
     found1 = False
-    # print(f'Возможные действия: {vozmozhnie_deystviya}')
+    print(f'Возможные действия: {vozmozhnie_deystviya}')
     print(f'Количество возможных действий: {len(vozmozhnie_deystviya)}')
     if vozmozhnie_deystviya:
         for vozmozhnie_deystviya1 in vozmozhnie_deystviya:
@@ -729,6 +729,7 @@ def proshivka_po_derevy():
         # не было найдено продолжения - запустить поиск из горящих (tp)
         print(f'Запущена функция Концентратор действий')
         concentrator_deystviy()
+
 
 def sbor_deystviya(tp, t0=None):
     # собирает в обратном порядке сущность от последнего tp и приводит в действие ответ
@@ -948,7 +949,9 @@ while A:
 
     elif vvedeno_luboe == ('2'):
         # нужно проверить имеется ли уже связь м/у t0 и tp
-        print("Состояние перед (-) реакцией было такое: ", posledniy_t_0, "    С ней и создаётся связь")
+        print("Состояние перед (-) реакцией было такое: ", posledniy_t_0, posledniy_t_0_kortez, ". С ней и создаётся связь")
+        posledniy_t_0_kortez = (posledniy_t_0,)
+        # print("posledniy_t_0_kortez: ", posledniy_t_0_kortez)
         poisk_svyazi_t0_s_2 = tuple(cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 2",
                                                    posledniy_t_0_kortez))
         if poisk_svyazi_t0_s_2 == ():
@@ -960,6 +963,7 @@ while A:
     elif vvedeno_luboe == ('1'):
         # нужно проверить имеется ли уже связь м/у t0 и tp
         print("Состояние перед (+) реакцией было такое: ", posledniy_t_0, "    С ней и создаётся связь")
+        posledniy_t_0_kortez = (posledniy_t_0,)
         poisk_svyazi_t0_s_2 = tuple(cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 1",
                                                    posledniy_t_0_kortez))
         if poisk_svyazi_t0_s_2 == ():
