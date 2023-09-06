@@ -10,7 +10,8 @@ import cv2
 from PIL import Image
 from db import Database
 from pynput import keyboard
-import time
+
+from screen import screen
 
 
 # import sqlite3
@@ -29,6 +30,7 @@ thresh = []   # Список, в котором будет храниться о
 posl_tg = 0
 
 cursor = Database('Li_db_v1_4.db')
+
 
 
 def stiranie_pamyati():
@@ -227,6 +229,11 @@ def save_to_bd(spisok):
 
 
 def encode_and_save_to_db_image(x_pos, y_pos):
+    """ Получение координат клика мыши
+     """
+    print(screen.get_screen())
+    print(screen.list_search(x_pos, y_pos))
+
     global posl_tg
     filename = save_image(x_pos, y_pos)
 

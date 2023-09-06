@@ -2,11 +2,12 @@ from time import sleep
 from pynput import keyboard, mouse
 from pynput.keyboard import Key, Controller as kb_Controller
 from pynput.mouse import Button, Controller
+import pyautogui
 
 # from element_images import save_image, pattern_search
 from image_definition import encode_and_save_to_db_image
 from exceptions import *
-from db import Database
+from screen import screen
 
 
 kb = kb_Controller()
@@ -22,6 +23,7 @@ mo = Controller()
     'image': id}
     Нажата правая клавиша мыши: {'type': 'mouse', 'event': 'down', 'key': 'Button.right', 'x': 671, 'y': 591, 
     'image': id}
+    Перемещение мыши: {'type': 'mouse', 'event': 'move', 'image': hash}
     --- Поскольку в новой версии изображение сохраняется в БД, то пишем только id вместо имени файла ---
     
     Отпущена левая клавиша мыши: {'type': 'mouse', 'event': 'up', 'key': 'Button.left', 'x': 671, 'y': 591}
@@ -34,6 +36,7 @@ class Recorder:
     status = False  # Чтение с мыши и клавиатуры запрещено
     record = []  # В списке в порядке поступления хранятся события мыши и клавиатуры в виде кортежа словарей
     key_down = ''  # Помнит, какая клавиша нажата, для использования во внешних модулях
+    queue_hashes = None  # Передаем сюда ссылку на очередь с элементами экрана
 
     def start(self):
         """ Начать запись """
@@ -76,22 +79,20 @@ class Recorder:
         self.record.append({'type': 'kb', 'event': 'up', 'key': out})
 
     def on_click(self, x, y, button, is_pressed):
-        # print(x, y, button, is_pressed)
-        """ Запись нажатия кнопки мыши клавиши """
-        out = {'type': 'mouse'}
-        out['event'] = 'down' if is_pressed else 'up'
-        out['key'] = str(button)
-        out['x'] = x
-        out['y'] = y
+        """ Запись нажатия и отпускания кнопки мыши происходит,
+        если определен объект на котором был клик
+        В данной версии записывается команда перемещения мыши """
+        if not is_pressed:
+            return  # Если кнопка отпущена, то ничего не записываем
 
-        if is_pressed:
-            # При нажатии
-            # out['image'] = save_image(x, y)  # Сохранить изображение элемента на котором был клик
-            # Сохранить изображение элемента на котором был клик в БД и вернуть его id в базе
-            out['image'] = encode_and_save_to_db_image(x, y)
+        hash_element = screen.list_search(x, y)  # Поиск элемента на экране по координатам клика
+        if not hash_element:
+            # Если элемент не найден, то выходим
+            return
 
+        # Записываем перемещение мыши
+        out = {'type': 'mouse', 'event': 'move', 'image': hash_element}
         self.record.append(out)
-        print('--------- Что в rec после клика ', self.record)
 
 rec = Recorder()  # Создаем объект записи
 
@@ -147,6 +148,15 @@ class Play:
 
     def play_one(self, action):
         """ Воспроизведение одного действия """
+
+        if action['event'] == 'move':
+            # Перемещение мыши к заданной позиции
+            # Позиция определяется по центру элемента хэш которого указан в action['image']
+            res = screen.get_element(action['image'])
+            if res:
+                pyautogui.moveTo(*res, 0.3)
+
+            return
 
         # Подготовка к распознаванию как отдельных символов, так и специальных клавиш
         insert = action['key']

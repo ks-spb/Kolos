@@ -1,21 +1,12 @@
 from db import Database
 from time import sleep
 import random
+from multiprocessing import Process, Queue, Manager
 
 from mous_kb_record import rec, play
+from screen_monitoring import process_changes
+from screen import screen
 
-
-cursor = Database('Li_db_v1_4.db')
-
-A = True
-posledniy_t = 0
-posledniy_t_0 = 3   # переменная содержит ID последней временной точки t0
-posledniy_tp = 0
-posledniy_otvet = 0
-
-source = None  # Получает значение источника ввода None - клавиатура, 'rec' -  запись клавиатуры и мыши
-
-# print("Posl_to теперь 1 : ", posledniy_t_0)
 
 def stiranie_pamyati():
     global posledniy_t
@@ -842,183 +833,205 @@ def ymenshenie_signal():
     # print("Уменьшен сигнал у следующих точек: ", ymenshenie_signal_)
 
 
-schetchik = 0
+if __name__ == '__main__':
 
-while A:
-    if rec.status:
-        # Блокируем основную программу, пока идет запись
-        sleep(0.001)
-        continue
+    # Запуск процесса наблюдения за экраном
+    print('Запуск процесса наблюдения за экраном')
+    manager = Manager()
+    queue_hashes = manager.Queue()  # Очередь для передачи списка хэшей элементов
+    queue_img = Queue()  # Очередь для передачи скриншота в np
+    p1 = Process(name='ElementSearch', target=process_changes, args=(queue_hashes, queue_img,))
+    p1.start()
 
-    schetchik += 1
-    print('************************************************************************')
-    print("schetchik = ", schetchik)
-    posledniy_t_0_kortez = (posledniy_t_0,)
-    proverka_signal_porog()   # проверка и зажигание точек, если signal >= porog
-    # concentrator_deystviy()
-    proshivka_po_derevy()
+    screen.queue_hashes = queue_hashes  # Определяем приемник описания экранов
+    # -----------------------------------------------------------
 
-    # 14.06.23 - возврат к необходимости нажимать enter на каждом цикле
-    # vvedeno_luboe = input("Введите текст: ")
+    cursor = Database('Li_db_v1_4.db')
 
-    print("Сейчас ", source)
-    if source == 'input':
-    # Ввод строки с клаиатуры, запись побуквенно
-        vvedeno_luboe = input("Введите текст: ")
+    A = True
+    posledniy34_t = 0
+    posledniy_t_0 = 3  # переменная содержит ID последней временной точки t0
+    posledniy_tp = 0
+    posledniy_otvet = 0
 
-    elif source == 'rec':
-        # Источник события мыши и клавиатуры. Чтение из объекта rec
-        # Формат записи
-        # Для клавиатуры: 'Key.down'/'Key.up', Клавиша (символ или название)
-        # Для мыши: 'Button.down'/'Button.up', 'left'/'right', 'x.y', 'image' (имя изображения элемента)
+    source = None  # Получает значение источника ввода None - клавиатура, 'rec' -  запись клавиатуры и мыши
 
-        vvedeno_luboe = []
-        source = None
-        n = 0
+    schetchik = 0
 
-        for event in rec.record:
+    while A:
+        if rec.status:
+            # Блокируем основную программу, пока идет запись
+            sleep(0.001)
+            continue
 
-            if event['type'] == 'kb':
-                # Запись события клавиатуры
-                vvedeno_luboe.append('Key.' + event['event'])
-                vvedeno_luboe.append(event['key'])
+        schetchik += 1
+        print('************************************************************************')
+        print("schetchik = ", schetchik)
+        posledniy_t_0_kortez = (posledniy_t_0,)
+        proverka_signal_porog()   # проверка и зажигание точек, если signal >= porog
+        # concentrator_deystviy()
+        proshivka_po_derevy()
 
+        # 14.06.23 - возврат к необходимости нажимать enter на каждом цикле
+        # vvedeno_luboe = input("Введите текст: ")
+
+        print("Сейчас ", source)
+        if source == 'input':
+        # Ввод строки с клаиатуры, запись побуквенно
+            vvedeno_luboe = input("Введите текст: ")
+
+        elif source == 'rec':
+            # Источник события мыши и клавиатуры. Чтение из объекта rec
+            # Формат записи
+            # Для клавиатуры: 'Key.down'/'Key.up', Клавиша (символ или название)
+            # Для мыши: 'Button.down'/'Button.up', 'left'/'right', 'x.y', 'image' (имя изображения элемента)
+
+            vvedeno_luboe = []
+            source = None
+            n = 0
+
+            for event in rec.record:
+
+                if event['type'] == 'kb':
+                    # Запись события клавиатуры
+                    vvedeno_luboe.append('Key.' + event['event'])
+                    vvedeno_luboe.append(event['key'])
+
+                else:
+                    # Запись события мыши
+                    # position.x.y, image.id, Button.up.left,
+                    if event['event'] == 'down':
+                        vvedeno_luboe.append('position.' + str(event['x']) + '.' + str(event['y']))
+                        vvedeno_luboe.append('image.' + str(event['image']))
+                    vvedeno_luboe.append('Button.' + event['event'] + '.' + event['key'].split('.')[1])
+
+                n += 1
+
+            print(vvedeno_luboe, '---------------------------------------------------')
+            if n:
+                print(f'Сохраненo {n} записанных событий', end='\n\n')
             else:
-                # Запись события мыши
-                # position.x.y, image.id, Button.up.left,
-                if event['event'] == 'down':
-                    vvedeno_luboe.append('position.' + str(event['x']) + '.' + str(event['y']))
-                    vvedeno_luboe.append('image.' + str(event['image']))
-                vvedeno_luboe.append('Button.' + event['event'] + '.' + event['key'].split('.')[1])
+                print('Нет событий для записи', end='\n\n')
 
-            n += 1
-
-        print(vvedeno_luboe, '---------------------------------------------------')
-        if n:
-            print(f'Сохраненo {n} записанных событий', end='\n\n')
         else:
-            print('Нет событий для записи', end='\n\n')
 
-    else:
+            if rec.key_down in '0123459':
+                vvedeno_luboe = rec.key_down
+            elif rec.key_down == 'Key.space':
+                source = 'input'
+                vvedeno_luboe = ''
+            rec.key_down = ''
+            sleep(1)
+        print("")
 
-        if rec.key_down in '0123459':
-            vvedeno_luboe = rec.key_down
-        elif rec.key_down == 'Key.space':
-            source = 'input'
+        # print('ввели: ', vvedeno_luboe)
+        if vvedeno_luboe == ('0'):
+            A = False
+            continue
+
+        if vvedeno_luboe == ('3'):
+            # Включение записи
+            cursor.commit()  # Сохраняем изменения в БД
+            sleep(1)
+            rec.start()
+            # source = None  # Запись сохранится в месте ввода
+            continue
+
+        if vvedeno_luboe == ('4'):
+            # Показать запись
+            sleep(1)
+            for i in rec.record:
+                print(i)
+                try:
+                    play.play_one(i)
+                except:
+                    print('Выполнение скрипта остановлено')
+                    break
+            source = None
             vvedeno_luboe = ''
-        rec.key_down = ''
-        sleep(1)
-    print("")
+            continue
 
-    # print('ввели: ', vvedeno_luboe)
-    if vvedeno_luboe == ('0'):
-        A = False
+        if vvedeno_luboe == ('5'):
+            # Сохранение записи
+            source = 'rec'  # Запись сохранится в месте ввода
+            vvedeno_luboe = ''
+            # continue
 
-    if vvedeno_luboe == ('3'):
-        # Включение записи
-        cursor.commit()  # Сохраняем изменения в БД
-        sleep(1)
-        rec.start()
-        # source = None  # Запись сохранится в месте ввода
-        continue
+        elif vvedeno_luboe == ('9'):
+            stiranie_pamyati()
+            source = None
+            vvedeno_luboe = ''
 
-    if vvedeno_luboe == ('4'):
-        # Показать запись
-        sleep(1)
-        for i in rec.record:
-            print(i)
-            try:
-                play.play_one(i)
-            except:
-                print('Выполнение скрипта остановлено')
-                break
-        source = None
-        vvedeno_luboe = ''
-        continue
+        elif vvedeno_luboe == ('2'):
+            # нужно проверить имеется ли уже связь м/у t0 и tp
+            print("Состояние перед (-) реакцией было такое: ", posledniy_t_0, posledniy_t_0_kortez, ". С ней и создаётся связь")
+            posledniy_t_0_kortez = (posledniy_t_0,)
+            # print("posledniy_t_0_kortez: ", posledniy_t_0_kortez)
+            poisk_svyazi_t0_s_2 = tuple(cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 2",
+                                                       posledniy_t_0_kortez))
+            if poisk_svyazi_t0_s_2 == ():
+                sozdat_svyaz(posledniy_t_0, 2, 1)
+            pogasit_vse_tochki()
+            source = None
+            vvedeno_luboe = ''
 
-    if vvedeno_luboe == ('5'):
-        # Сохранение записи
-        source = 'rec'  # Запись сохранится в месте ввода
-        vvedeno_luboe = ''
-        # continue
+        elif vvedeno_luboe == ('1'):
+            # нужно проверить имеется ли уже связь м/у t0 и tp
+            print("Состояние перед (+) реакцией было такое: ", posledniy_t_0, "    С ней и создаётся связь")
+            posledniy_t_0_kortez = (posledniy_t_0,)
+            poisk_svyazi_t0_s_2 = tuple(cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 1",
+                                                       posledniy_t_0_kortez))
+            if poisk_svyazi_t0_s_2 == ():
+                sozdat_svyaz(posledniy_t_0, 1, 1)
+            # pogasit_vse_tochki()
+            source = None
+            vvedeno_luboe = ''
 
-    elif vvedeno_luboe == ('9'):
-        stiranie_pamyati()
-        source = None
-        vvedeno_luboe = ''
+        elif vvedeno_luboe != "":
+            print(vvedeno_luboe, '=========================')
+            for vvedeno_luboe1 in vvedeno_luboe:
+                # 16.06.23 - связываем сущность одной команды с t0, обнуляем tp и t
+                if '.' in vvedeno_luboe1:
+                    for vvedeno_luboe2 in vvedeno_luboe1.split('.'):
+                        poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe2)
+                    # print(f'Обработка vvedeno_luboe1 ({vvedeno_luboe1})')
+                    new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
+                                                          posledniy_t, '')
+                    # print(f'Создана новая t0: {new_tochka_time_0}')
+                    sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
+                    sozdat_svyaz(posledniy_t, new_tochka_time_0, 1)
+                    sozdat_svyaz(new_tochka_time_0, posledniy_tp, 1)
+                    posledniy_t_0 = new_tochka_time_0
+                    sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
+                    posledniy_tp = 0
+                    posledniy_t = 0
+                else:
+                    print('------------------ Буква ', vvedeno_luboe1)
+                    poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe1)
 
-    elif vvedeno_luboe == ('2'):
-        # нужно проверить имеется ли уже связь м/у t0 и tp
-        print("Состояние перед (-) реакцией было такое: ", posledniy_t_0, posledniy_t_0_kortez, ". С ней и создаётся связь")
-        posledniy_t_0_kortez = (posledniy_t_0,)
-        # print("posledniy_t_0_kortez: ", posledniy_t_0_kortez)
-        poisk_svyazi_t0_s_2 = tuple(cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 2",
-                                                   posledniy_t_0_kortez))
-        if poisk_svyazi_t0_s_2 == ():
-            sozdat_svyaz(posledniy_t_0, 2, 1)
-        pogasit_vse_tochki()
-        source = None
-        vvedeno_luboe = ''
-
-    elif vvedeno_luboe == ('1'):
-        # нужно проверить имеется ли уже связь м/у t0 и tp
-        print("Состояние перед (+) реакцией было такое: ", posledniy_t_0, "    С ней и создаётся связь")
-        posledniy_t_0_kortez = (posledniy_t_0,)
-        poisk_svyazi_t0_s_2 = tuple(cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 1",
-                                                   posledniy_t_0_kortez))
-        if poisk_svyazi_t0_s_2 == ():
-            sozdat_svyaz(posledniy_t_0, 1, 1)
-        # pogasit_vse_tochki()
-        source = None
-        vvedeno_luboe = ''
-
-    elif vvedeno_luboe != "":
-        print(vvedeno_luboe, '=========================')
-        for vvedeno_luboe1 in vvedeno_luboe:
-            # 16.06.23 - связываем сущность одной команды с t0, обнуляем tp и t
-            if '.' in vvedeno_luboe1:
-                for vvedeno_luboe2 in vvedeno_luboe1.split('.'):
-                    poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe2)
-                # print(f'Обработка vvedeno_luboe1 ({vvedeno_luboe1})')
-                new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
-                                                      posledniy_t, '')
-                # print(f'Создана новая t0: {new_tochka_time_0}')
-                sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
-                sozdat_svyaz(posledniy_t, new_tochka_time_0, 1)
-                sozdat_svyaz(new_tochka_time_0, posledniy_tp, 1)
-                posledniy_t_0 = new_tochka_time_0
-                sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
-                posledniy_tp = 0
-                posledniy_t = 0
-            else:
-                print('------------------ Буква ', vvedeno_luboe1)
-                poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe1)
-
-        vvedeno_luboe = ''
-        proverka_nalichiya_svyazey_t_t_o()
-        functions()
-        # 3.2.1 - зафиксировать создание новой сущности, создав связь м/у posl_tp и (4)
-        sozdat_svyaz_s_4()
-        posledniy_tp = 0
-        posledniy_t = 0
-        # print("Было введено vvedeno_luboe: ", vvedeno_luboe)
-        schetchik = 0
-        # proshivka_po_derevy()
-    else:
-        if schetchik >= 10:
-            # 2.2.2: зажигается in0, которая горит, если нет вх. сигналов
-            cursor.execute("UPDATE tochki SET work = 0 WHERE ID = 3")
+            vvedeno_luboe = ''
+            proverka_nalichiya_svyazey_t_t_o()
             functions()
+            # 3.2.1 - зафиксировать создание новой сущности, создав связь м/у posl_tp и (4)
+            sozdat_svyaz_s_4()
+            posledniy_tp = 0
+            posledniy_t = 0
+            # print("Было введено vvedeno_luboe: ", vvedeno_luboe)
             schetchik = 0
-            posledniy_t_0 = 3
-            # print("Posl_to теперь 4 : ", posledniy_t_0)
-            print("-----------------------------------Переход в (3)-------------------------------------")
-        elif schetchik == 1:
-            posledniy_otvet = 0
+            # proshivka_po_derevy()
         else:
-            functions()
-    ymenshenie_signal()
+            if schetchik >= 10:
+                # 2.2.2: зажигается in0, которая горит, если нет вх. сигналов
+                cursor.execute("UPDATE tochki SET work = 0 WHERE ID = 3")
+                functions()
+                schetchik = 0
+                posledniy_t_0 = 3
+                # print("Posl_to теперь 4 : ", posledniy_t_0)
+                print("-----------------------------------Переход в (3)-------------------------------------")
+            elif schetchik == 1:
+                posledniy_otvet = 0
+            else:
+                functions()
+        ymenshenie_signal()
 
-
-# import diagram
-# Диаграмма не работает
+    p1.terminate()
