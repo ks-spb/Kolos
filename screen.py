@@ -55,5 +55,4 @@ class Screen:
         return element[0] + x, element[1] + y
 
 
-
 screen = Screen()  # Создаем объект для хранения информации об элементах текущего экрана

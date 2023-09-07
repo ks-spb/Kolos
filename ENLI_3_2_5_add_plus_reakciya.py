@@ -22,7 +22,6 @@ def stiranie_pamyati():
     posledniy_tp = 0
 
 
-
 def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у буквы из списка введённых
     global posledniy_t
     global posledniy_t_0
@@ -297,6 +296,7 @@ def out_red(text):
     # Для мыши 4 элемента: 'Button.down'/'Button.up', 'left'/'right', 'x.y',  'image' (имя изображения элемента)
     # Пример: ['Button.down', 'left', 'elem_230307_144451.png', 'Button.up', 'left', 'Button.down',
     # 'left', 'elem_230228_163525.png', 'Button.up', 'left']
+    # Для перемещения мыши: 'move.image' (image - хэш элемента)
     i = 0
     while i < len(text):
         # print(f"Такой приходит текст: {text}")
@@ -319,6 +319,9 @@ def out_red(text):
                 print(f'i сейчас такой = {i}')
                 event['key'] = 'Button.' + item[1]
                 print(f'event такой 2: {event}')
+
+            elif item[0] == 'move':
+                event = {'type': 'mouse', 'event': 'move', 'image': item[1]}
 
                 # Закомментировал - т.к. дальше происходит добавление в команду координат x и y
 
@@ -885,6 +888,7 @@ if __name__ == '__main__':
             # Формат записи
             # Для клавиатуры: 'Key.down'/'Key.up', Клавиша (символ или название)
             # Для мыши: 'Button.down'/'Button.up', 'left'/'right', 'x.y', 'image' (имя изображения элемента)
+            # Для мыши: 'move.image' (image - хэш элемента)
 
             vvedeno_luboe = []
             source = None
@@ -900,10 +904,11 @@ if __name__ == '__main__':
                 else:
                     # Запись события мыши
                     # position.x.y, image.id, Button.up.left,
-                    if event['event'] == 'down':
-                        vvedeno_luboe.append('position.' + str(event['x']) + '.' + str(event['y']))
-                        vvedeno_luboe.append('image.' + str(event['image']))
-                    vvedeno_luboe.append('Button.' + event['event'] + '.' + event['key'].split('.')[1])
+                    if event['event'] == 'move':
+                        vvedeno_luboe.append('move.' + event['image'])
+                    #     vvedeno_luboe.append('position.' + str(event['x']) + '.' + str(event['y']))
+                    #     vvedeno_luboe.append('image.' + str(event['image']))
+                    # vvedeno_luboe.append('Button.' + event['event'] + '.' + event['key'].split('.')[1])
 
                 n += 1
 
