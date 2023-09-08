@@ -23,11 +23,14 @@ name 'хоро'             - серый
 """
 
 # Включить/выключить отображение групп IN и OUT
-point_in = False
-point_out = False
+point_in = True
+point_out = True
 
 class Point:
     """ Точки """
+
+    delete_nodes = list()  # Список точек, которые необходимо удалить
+
     def __init__(self, id, name, type, name_2):
 
         self.id = id
@@ -66,6 +69,7 @@ class Point:
         elif type == 'print':
             # Вывод
             if not point_out:
+                self.delete_nodes.append(id)
                 raise
             self.group = 'out'
             color = 'mediumorchid'
@@ -73,6 +77,7 @@ class Point:
         else:
             # Входящие
             if not point_in:
+                self.delete_nodes.append(id)
                 raise
             self.group = 'in'
             color = 'cadetblue'
@@ -88,10 +93,9 @@ with contextlib.closing(sqlite3.connect('Li_db_v1_4.db')) as conn:
     nodes = conn.execute("SELECT ID, name, type, name2 FROM tochki")
     connections = conn.execute("SELECT id_start, id_finish FROM svyazi WHERE id > 2")
 
-    with Diagram('My Diagram', direction='TB'): # LR или TB
+    with Diagram('My Diagram', direction='TB'):  # LR или TB
 
-        points = [Point('0', 'time', '', "")]  # Все точки
-
+        points = {0: Point('0', 'time', '', "")}
 
         for db_tuple in nodes.fetchall():
             # Сокращаем названия событий
@@ -110,11 +114,12 @@ with contextlib.closing(sqlite3.connect('Li_db_v1_4.db')) as conn:
 
                 to_obj.append(i)
             try:
-                points.append(Point(*to_obj))
+                points[to_obj[0]] = Point(*to_obj)
             except:
                 # При создании объекта возникло исключение
                 pass
 
-
         for one, two in connections.fetchall():
+            if one in Point.delete_nodes or two in Point.delete_nodes:
+                continue
             points[one].node >> points[two].node
