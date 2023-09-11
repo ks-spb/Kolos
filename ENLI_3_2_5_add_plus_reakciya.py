@@ -14,8 +14,8 @@ def stiranie_pamyati():
     global posledniy_tp
     # Удаление лишних строчек в таблице точки, где ID>10 - это точка и реакция на 0, которая постоянно записывается.
     print("Запущено стирание памяти")
-    cursor.execute("DELETE FROM tochki WHERE ID > 10")
-    cursor.execute("DELETE FROM svyazi WHERE ID > 15")
+    cursor.execute("DELETE FROM tochki WHERE ID > 4")
+    cursor.execute("DELETE FROM svyazi WHERE ID > 2")
     cursor.execute("UPDATE tochki SET puls = 0 AND freq = 10 AND signal = 0 AND work = 0")
     posledniy_t_0 = 3
     posledniy_t = 0
@@ -852,7 +852,7 @@ if __name__ == '__main__':
     cursor = Database('Li_db_v1_4.db')
 
     A = True
-    posledniy34_t = 0
+    posledniy_t = 0
     posledniy_t_0 = 3  # переменная содержит ID последней временной точки t0
     posledniy_tp = 0
     posledniy_otvet = 0
@@ -958,7 +958,6 @@ if __name__ == '__main__':
 
         if vvedeno_luboe == ('5'):
             # Сохранение записи
-            posledniy_t = 0   # 07.09.23 - добавил, чтобы убрать ошибку при нажатии цифры 5
             source = 'rec'  # Запись сохранится в месте ввода
             vvedeno_luboe = ''
             # continue
@@ -1006,7 +1005,7 @@ if __name__ == '__main__':
                     # print(f'Создана новая t0: {new_tochka_time_0}')
                     sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
                     sozdat_svyaz(posledniy_t, new_tochka_time_0, 1)
-                    sozdat_svyaz(new_tochka_time_0, posledniy_tp, 1)
+                    sozdat_svyaz(new_tochka_time_0, posledniy_tp, 1)   # 21.06.23 была добавлена дублирующая связь с tp (есть ещё одна)
                     posledniy_t_0 = new_tochka_time_0
                     sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
                     posledniy_tp = 0
