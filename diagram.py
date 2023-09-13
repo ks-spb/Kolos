@@ -66,6 +66,11 @@ class Point:
             self.group = 'reaction'
             color = 'silver'
 
+        elif name == 'нейтр':
+            # Реакция нейтрально
+            self.group = 'reaction'
+            color = 'silver'
+
         elif type == 'print':
             # Вывод
             if not point_out:
@@ -91,7 +96,7 @@ with contextlib.closing(sqlite3.connect('Li_db_v1_4.db')) as conn:
 
     # 15.03.23 - добавлено name2
     nodes = conn.execute("SELECT ID, name, type, name2 FROM tochki")
-    connections = conn.execute("SELECT id_start, id_finish FROM svyazi WHERE id > 2")
+    connections = conn.execute("SELECT id_start, id_finish FROM svyazi WHERE id > 3")
 
     with Diagram('My Diagram', direction='TB'):  # LR или TB
 
