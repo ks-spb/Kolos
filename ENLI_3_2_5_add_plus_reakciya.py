@@ -33,21 +33,23 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
     if not nayti_id:
         # print("poisk_bykvi_iz_vvedeno_v2. Такого ID нету")
         new_tochka_name = sozdat_new_tochky(symbol, 0, 'mozg', 'zazech_sosedey', 1, 0, 10, 0, 0, " ")
-        # print("Создали новую точку in: ", new_tochka_name)
+        print("Создали новую точку in: ", new_tochka_name)
         new_tochka_print = sozdat_new_tochky(symbol, 0, 'print', "print1", 1, 0, 0, new_tochka_name, 0, " ")
         new_tochka_time_t = sozdat_new_tochky('time', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
                                               posledniy_t, symbol)
         new_tochka_time_p = sozdat_new_tochky('time_p', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
                                             posledniy_tp, symbol)
         # нужно создать между ними связь
-        sozdat_svyaz(0, new_tochka_time_t, 1)
         sozdat_svyaz(new_tochka_name, new_tochka_time_t, 1)
         sozdat_svyaz(new_tochka_time_t, new_tochka_time_p, 1)
         sozdat_svyaz(new_tochka_time_p, new_tochka_print, 1)
         sozdat_svyaz(new_tochka_name, new_tochka_print, 1)  # 3.2.3 - эта связь нужна, чтобы создавалась сущность (tp)
         if posledniy_t != 0:
             sozdat_svyaz(posledniy_t, new_tochka_time_t, 1)  # weight was 0.1 in 2.3.1
+        else:
+            sozdat_svyaz(0, new_tochka_time_t, 1)
         posledniy_t = new_tochka_time_t
+        print(f"posledniy_t при вводе in стал равен = {posledniy_t}")
         if posledniy_tp != 0:
             # print('Создаётся новая связь posledniy_tp: ', posledniy_tp, ' и new_tochka_time_p: ', new_tochka_time_p)
             sozdat_svyaz(posledniy_tp, new_tochka_time_p, 1)
@@ -77,8 +79,8 @@ def proverka_nalichiya_svyazey_in(tochka_1, symbol):
                 # print("Найдены следующие связи с nayti_tochki_signal_porog1: ", nayti_svyazi_s_signal_porog)
                 for nayti_svyazi_s_signal_porog1 in nayti_svyazi_s_signal_porog:
                     for nayti_svyazi_s_signal_porog2 in nayti_svyazi_s_signal_porog1:
-                        # print("posledniy_t = ", posledniy_t)
-                        # print("nayti_svyazi_s_signal_porog2= ", nayti_svyazi_s_signal_porog2)
+                        print("posledniy_t = ", posledniy_t)
+                        print("nayti_svyazi_s_signal_porog2 (введённое in)= ", nayti_svyazi_s_signal_porog2)
                         proverka_nalichiya_svyazi = tuple(cursor.execute(
                             "SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = ?", (
                                 posledniy_t, nayti_svyazi_s_signal_porog2)))
@@ -90,8 +92,8 @@ def proverka_nalichiya_svyazey_in(tochka_1, symbol):
                     # print("то есть proverka_list не пустой и всё равно прошли дальше?")
                     new_t = sozdat_new_tochky('time', 1, 'time', 'zazech_sosedey', 1, 0, 0,
                                               tochka_1, posledniy_t, symbol)
-                    # print("Создана новая (т): ", new_t, " где rod1 = ", tochka_1, " и rod2 = ", posledniy_t)
-                    sozdat_svyaz(tochka_1, new_t, 1)  # weight was 0.1
+                    print(f"Создана новая (т): {new_t}, где rod1 = {tochka_1} (точка in) и rod2 = {posledniy_t} (posledniy_t)")
+                    sozdat_svyaz(tochka_1, new_t, 1)   # weight was 0.1
                     sozdat_svyaz(posledniy_t, new_t, 1)  # weight was 0.1
                     proverka_list = []
                     # v3.0.0 - posledniy_t становится новая связующая (.) м/у внешней горящей и старым posledniy_t
@@ -1036,7 +1038,7 @@ if __name__ == '__main__':
             posledniy_tp = 0
             posledniy_t = 0
             posledniy_t_0 = 3
-        elif vvedeno_luboe == ('5'):
+        elif vvedeno_luboe == ('8'):
             # запуск автоматического срабатывания счётчика без нажатия enter
             source = None
         elif vvedeno_luboe != "":
