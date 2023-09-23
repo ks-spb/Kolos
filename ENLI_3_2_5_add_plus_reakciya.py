@@ -876,13 +876,13 @@ if __name__ == '__main__':
 
     # Запуск процесса наблюдения за экраном
     print('Запуск процесса наблюдения за экраном')
-    manager = Manager()
+    manager = Manager()  # Управление доступом к общим объектам
     queue_hashes = manager.Queue()  # Очередь для передачи списка хэшей элементов
     queue_img = Queue()  # Очередь для передачи скриншота в np
     p1 = Process(name='ElementSearch', target=process_changes, args=(queue_hashes, queue_img,))
     p1.start()
 
-    screen.queue_hashes = queue_hashes  # Определяем приемник описания экранов
+    screen.queue_hashes = queue_hashes  # Передаем источник экранов в их приемник в основном потоке
     # -----------------------------------------------------------
 
     cursor = Database('Li_db_v1_4.db')
@@ -894,7 +894,7 @@ if __name__ == '__main__':
     posledniy_otvet = 0
 
     source = None  # Получает значение источника ввода None - клавиатура, 'rec' -  запись клавиатуры и мыши
-
+    last_update_screen = 0  # Время последнего обновления экрана
     schetchik = 0
 
     while A:
@@ -902,6 +902,25 @@ if __name__ == '__main__':
             # Блокируем основную программу, пока идет запись
             sleep(0.001)
             continue
+
+        # -------------------------------------------------------
+        # Активация и деактивация точек в соответствии с экраном
+        # -------------------------------------------------------
+        if screen.last_update != last_update_screen:
+            # Если экран обновился (определяется по времени), то обновляем точки
+            last_update_screen = screen.last_update
+            # Деактивация точек относящихся к элементам экрана
+            cursor.execute("UPDATE 'tochki' SET work = 0 WHERE type = 'mozg' AND length(name) = 16")
+            # Активация точек относящихся к элементам экрана, которые есть на текущем экране
+            for h in screen.get_all_hashes():
+                cursor.execute("UPDATE 'tochki' SET work = 1 WHERE type = 'mozg' AND name = ?", (h,))
+        # -------------------------------------------------------
+
+        # Прочитать из БД и распечатать точки, которые могли быть изменены
+        points = cursor.execute("SELECT * FROM tochki WHERE work = 1").fetchall()
+        print(points)
+
+
 
         schetchik += 1
         print('************************************************************************')
