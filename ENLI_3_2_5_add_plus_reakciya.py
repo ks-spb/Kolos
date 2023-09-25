@@ -289,7 +289,7 @@ def print1(ID):
 def out_red(text):
     global posledniy_otvet
     print("\033[31m {}".format(' '))
-    print("\033[31m {}".format(text))
+    print("\033[31m {}".format(text), '------------------')
     print("\033[0m {}".format("**********************************"))
 
     # Воспроизведение событий клавиатуры и мыши.
@@ -298,7 +298,7 @@ def out_red(text):
     # Для мыши 4 элемента: 'Button.down'/'Button.up', 'left'/'right', 'x.y',  'image' (имя изображения элемента)
     # Пример: ['Button.down', 'left', 'elem_230307_144451.png', 'Button.up', 'left', 'Button.down',
     # 'left', 'elem_230228_163525.png', 'Button.up', 'left']
-    # Для перемещения мыши: 'move.image' (image - хэш элемента)
+    # Для клика мыши сейчас только: 'click.image' (image - хэш элемента)
     i = 0
     while i < len(text):
         # print(f"Такой приходит текст: {text}")
@@ -322,8 +322,8 @@ def out_red(text):
                 event['key'] = 'Button.' + item[1]
                 print(f'event такой 2: {event}')
 
-            elif item[0] == 'move':
-                event = {'type': 'mouse', 'event': 'move', 'image': item[1]}
+            elif item[0] == 'click':
+                event = {'type': 'mouse', 'event': 'click', 'image': item[1]}
 
                 # Закомментировал - т.к. дальше происходит добавление в команду координат x и y
 
@@ -339,6 +339,17 @@ def out_red(text):
             else:
                 i += 1
                 continue
+            try:
+                play.play_one(event)  # Воспроизводим событие
+            except:
+                print('Выполнение скрипта остановлено')
+                break
+
+            continue
+
+        elif text[i] == 'click':
+            event = {'type': 'mouse', 'event': 'click', 'image': text[i+1]}
+            i += 1
             try:
                 play.play_one(event)  # Воспроизводим событие
             except:
@@ -943,7 +954,7 @@ if __name__ == '__main__':
             # Формат записи
             # Для клавиатуры: 'Key.down'/'Key.up', Клавиша (символ или название)
             # Для мыши: 'Button.down'/'Button.up', 'left'/'right', 'x.y', 'image' (имя изображения элемента)
-            # Для мыши: 'move.image' (image - хэш элемента)
+            # Для мыши: 'click.image' (image - хэш элемента)
 
             vvedeno_luboe = []
             source = None
@@ -959,8 +970,8 @@ if __name__ == '__main__':
                 else:
                     # Запись события мыши
                     # position.x.y, image.id, Button.up.left,
-                    if event['event'] == 'move':
-                        vvedeno_luboe.append('move.' + event['image'])
+                    if event['event'] == 'click':
+                        vvedeno_luboe.append('click.' + event['image'])
                     #     vvedeno_luboe.append('position.' + str(event['x']) + '.' + str(event['y']))
                     #     vvedeno_luboe.append('image.' + str(event['image']))
                     # vvedeno_luboe.append('Button.' + event['event'] + '.' + event['key'].split('.')[1])

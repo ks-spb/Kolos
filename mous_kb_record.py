@@ -19,11 +19,11 @@ mo = Controller()
     Нажата клавиша 'A': {'type': 'kb', 'event': 'down', 'key': 'A'}
     Отпущена клавиша 'A': {'type': 'kb', 'event': 'up', 'key': 'A'}
 
-    Нажата левая клавиша мыши: {'type': 'mouse', 'event': 'down', 'key': 'Button.left', 'x': 671, 'y': 591, 
+    xxxНажата левая клавиша мыши: {'type': 'mouse', 'event': 'down', 'key': 'Button.left', 'x': 671, 'y': 591, 
     'image': id}
     Нажата правая клавиша мыши: {'type': 'mouse', 'event': 'down', 'key': 'Button.right', 'x': 671, 'y': 591, 
     'image': id}
-    Перемещение мыши: {'type': 'mouse', 'event': 'move', 'image': hash}
+    Нажата левая клавиша мыши: {'type': 'mouse', 'event': 'click', 'image': hash}
     --- Поскольку в новой версии изображение сохраняется в БД, то пишем только id вместо имени файла ---
     
     Отпущена левая клавиша мыши: {'type': 'mouse', 'event': 'up', 'key': 'Button.left', 'x': 671, 'y': 591}
@@ -90,7 +90,7 @@ class Recorder:
             return
 
         # Записываем перемещение мыши
-        out = {'type': 'mouse', 'event': 'move', 'image': hash_element}
+        out = {'type': 'mouse', 'event': 'click', 'image': hash_element}
         self.record.append(out)
 
 rec = Recorder()  # Создаем объект записи
@@ -148,12 +148,13 @@ class Play:
     def play_one(self, action):
         """ Воспроизведение одного действия """
 
-        if action['event'] == 'move':
+        if action['event'] == 'click':
             # Перемещение мыши к заданной позиции
             # Позиция определяется по центру элемента хэш которого указан в action['image']
             res = screen.get_element(action['image'])
             if res:
                 pyautogui.moveTo(*res, 0.3)
+                pyautogui.click(*res, button='left')
 
             return
 
