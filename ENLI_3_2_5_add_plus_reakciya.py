@@ -33,7 +33,7 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
     if not nayti_id:
         # print("poisk_bykvi_iz_vvedeno_v2. Такого ID нету")
         new_tochka_name = sozdat_new_tochky(symbol, 0, 'mozg', 'zazech_sosedey', 1, 0, 10, 0, 0, " ")
-        print("Создали новую точку in: ", new_tochka_name)
+        # print("Создали новую точку in: ", new_tochka_name)
         new_tochka_print = sozdat_new_tochky(symbol, 0, 'print', "print1", 1, 0, 0, new_tochka_name, 0, " ")
         new_tochka_time_t = sozdat_new_tochky('time', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
                                               posledniy_t, symbol)
@@ -49,7 +49,7 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
         else:
             sozdat_svyaz(0, new_tochka_time_t, 1)
         posledniy_t = new_tochka_time_t
-        print(f"posledniy_t при вводе in стал равен = {posledniy_t}")
+        # print(f"posledniy_t при вводе in стал равен = {posledniy_t}")
         if posledniy_tp != 0:
             # print('Создаётся новая связь posledniy_tp: ', posledniy_tp, ' и new_tochka_time_p: ', new_tochka_time_p)
             sozdat_svyaz(posledniy_tp, new_tochka_time_p, 1)
@@ -79,8 +79,8 @@ def proverka_nalichiya_svyazey_in(tochka_1, symbol):
                 # print("Найдены следующие связи с nayti_tochki_signal_porog1: ", nayti_svyazi_s_signal_porog)
                 for nayti_svyazi_s_signal_porog1 in nayti_svyazi_s_signal_porog:
                     for nayti_svyazi_s_signal_porog2 in nayti_svyazi_s_signal_porog1:
-                        print("posledniy_t = ", posledniy_t)
-                        print("nayti_svyazi_s_signal_porog2 (введённое in)= ", nayti_svyazi_s_signal_porog2)
+                        # print("posledniy_t = ", posledniy_t)
+                        # print("nayti_svyazi_s_signal_porog2 (введённое in)= ", nayti_svyazi_s_signal_porog2)
                         proverka_nalichiya_svyazi = tuple(cursor.execute(
                             "SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = ?", (
                                 posledniy_t, nayti_svyazi_s_signal_porog2)))
@@ -171,14 +171,19 @@ def proverka_nalichiya_svyazey_t_t_o():
 
         # print('list_poiska_t0  2 : ', list_poiska_t0)
         if list_poiska_t0 == []:
-            new_t0 = sozdat_new_tochky('time_0', 0, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, posledniy_t, " ")
-            # print("Создана новая (t0): ", new_t0, " где rod1 = ", posledniy_t_0, " и rod2 = ", posledniy_t)
-            sozdat_svyaz(posledniy_t_0, new_t0, 1)  # weight was 0.1
-            sozdat_svyaz(posledniy_t, new_t0, 1)  # weight was 0.1
-            sozdat_svyaz(new_t0, posledniy_tp, 1)  # 21.06.23 - Добавил дублирующую связь от t0 к tp
-            # v3.0.0 - posledniy_t становится новая связующая (.) м/у внешней горящей и старым posledniy_t
-            posledniy_t_0 = new_t0
-            # print("Posl_to теперь 2 : ", posledniy_t_0)
+            # 25.09.23 - Добавление 'name2' к t0, для возможности отсеивания по этому параметру
+            name2 = cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (posledniy_t,))
+            for name2_1 in name2:
+                print(f'Найден name2: {name2_1} у точки: {posledniy_t}')
+                new_t0 = sozdat_new_tochky('time_0', 0, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, posledniy_t,
+                                           name2_1[0])
+                print("Создана новая (t0): ", new_t0, " где rod1 = ", posledniy_t_0, " и rod2 = ", posledniy_t)
+                sozdat_svyaz(posledniy_t_0, new_t0, 1)  # weight was 0.1
+                sozdat_svyaz(posledniy_t, new_t0, 1)  # weight was 0.1
+                sozdat_svyaz(new_t0, posledniy_tp, 1)  # 21.06.23 - Добавил дублирующую связь от t0 к tp
+                # v3.0.0 - posledniy_t становится новая связующая (.) м/у внешней горящей и старым posledniy_t
+                posledniy_t_0 = new_t0
+                # print("Posl_to теперь 2 : ", posledniy_t_0)
         posledniy_t = 0
         # posledniy_tp = 0   # 06.03.23 - добавлено
 
@@ -189,10 +194,34 @@ def proverka_signal_porog():
     # 2.3.0 - ранее в nayti_tochki_signal_porog искались только (р), теперь сделал, чтобы находились все (...)
     # print("proverka_signal_porog. Нашли точки, у которых signal выше чем porog", nayti_tochki_signal_porog)
     for nayti_tochki_signal_porog1 in nayti_tochki_signal_porog:
-        # print("proverka_signal_porog. Нашли точки: ", nayti_tochki_signal_porog1, " у которых сигнал signal выше чем porog")
+        # print("proverka_signal_porog. Нашли точки: ", nayti_tochki_signal_porog1, " у которых signal выше чем porog")
         # print("zazech_sosedey. Проверка porog, какой у этой точки porog", nayti_tochki_signal_porog_proverka_signal)
-        cursor.execute("UPDATE tochki SET work = 1 WHERE ID = (?)", nayti_tochki_signal_porog1)
-        cursor.execute("UPDATE tochki SET signal = 0.9 WHERE ID = (?)", nayti_tochki_signal_porog1)
+        # 22.09.23 - ограничение на зажигание (t) и (tp), если не горят соответствующие (in) объекты:
+        # поиск name2 - в нём хранится информация о хэше объекта
+        nayti_name2 = tuple(cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", nayti_tochki_signal_porog1))
+        if nayti_name2:
+            for nayti_name2_1 in nayti_name2:
+                print(f"Нашли следующий name2: {nayti_name2_1} у точки: {nayti_tochki_signal_porog1}, "
+                      f"длина name2={len(nayti_name2_1)}")
+                # если длина name2 = 16 - то это хэш
+                if len(nayti_name2_1[0]) == 16:
+                    # проверить горит ли такой же (in):
+                    nayti_in = tuple(cursor.execute("SELECT ID FROM tochki WHERE name = ? AND work >= 1", nayti_name2[0]))
+                    print(f"Длина name2 = 16, найден соответствующий (in): {nayti_in}")
+                    # если (in) горит - значит можно зажигать эту (t) или (tp):
+                    if nayti_in:
+                        print("Этот (in) горит")
+                        cursor.execute("UPDATE tochki SET work = 1 WHERE ID = (?)", nayti_tochki_signal_porog1)
+                        cursor.execute("UPDATE tochki SET signal = 0.9 WHERE ID = (?)", nayti_tochki_signal_porog1)
+                    else:
+                        # если (in) не горит - погасить сигнал у этой (t)
+                        print("Этот (in) не горит")
+                        cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = (?)", nayti_tochki_signal_porog1)
+                else:
+                    # если длина name2 не 16 - действуем по старому
+                    print("Длина name2 не равна 16")
+                    cursor.execute("UPDATE tochki SET work = 1 WHERE ID = (?)", nayti_tochki_signal_porog1)
+                    cursor.execute("UPDATE tochki SET signal = 0.9 WHERE ID = (?)", nayti_tochki_signal_porog1)
 
 
 
@@ -655,30 +684,50 @@ def proshivka_po_derevy():
             svyaz_s_1 = []
             svyaz_s_2 = []
             svyaz_s_5 = []
+            svyaz_s_img = []
             for tochka in path:
-                # print(f'Рассматриваем точку: {tochka}')
-                proverka_nalichiya_svyazi_s_1 = tuple(cursor.execute(
-                    "SELECT id_start FROM svyazi WHERE id_finish = 1 AND id_start = ?", (tochka,)))
-                # print(f'Нашли следующие связи c 1: {proverka_nalichiya_svyazi_s_1}')
-                for proverka_nalichiya_svyazi_s_1_1 in proverka_nalichiya_svyazi_s_1:
-                    # print(f'Присоединение к svyaz_s_1: {proverka_nalichiya_svyazi_s_1_1[0]}')
-                    svyaz_s_1.append(proverka_nalichiya_svyazi_s_1_1[0])
-                proverka_nalichiya_svyazi_s_2 = tuple(cursor.execute(
-                    "SELECT id_start FROM svyazi WHERE id_finish = 2 AND id_start = ?", (tochka,)))
-                # print(f'Нашли следующие связи c 2: {proverka_nalichiya_svyazi_s_2}')
-                for proverka_nalichiya_svyazi_s_2_1 in proverka_nalichiya_svyazi_s_2:
-                    # print(f'Присоединение к svyaz_s_2: {proverka_nalichiya_svyazi_s_2_1[0]}')
-                    svyaz_s_2.append(proverka_nalichiya_svyazi_s_2_1[0])
-                    # если была найдена отрицательная реакция и эта точка является второй в пути
-                    if proverka_nalichiya_svyazi_s_2_1[0] == path[1]:
-                        # print(f'Добавилось отрицательное действие- т.к. оно второе в пути: {proverka_nalichiya_svyazi_s_2_1}')
-                        otricatelnie_deystviya.append(proverka_nalichiya_svyazi_s_2_1[0])
-                proverka_nalichiya_svyazi_s_5 = tuple(cursor.execute(
-                    "SELECT id_start FROM svyazi WHERE id_finish = 5 AND id_start = ?", (tochka,)))
-                # print(f'Нашли следующие связи c 5: {proverka_nalichiya_svyazi_s_5}')
-                for proverka_nalichiya_svyazi_s_5_1 in proverka_nalichiya_svyazi_s_5:
-                    # print(f'Присоединение к svyaz_s_1: {proverka_nalichiya_svyazi_s_1_1[0]}')
-                    svyaz_s_5.append(proverka_nalichiya_svyazi_s_5_1[0])
+                # 22.09.23 - ограничение на зажигание (t) и (tp), если не горят соответствующие (in) объекты:
+                # поиск name2 - в нём хранится информация о хэше объекта
+                nayti_name2 = tuple(cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (tochka,)))
+                if nayti_name2:
+                    for nayti_name2_1 in nayti_name2:
+                        print(f"Нашли следующий name2: {nayti_name2_1} у точки: {tochka}, длина name2={len(nayti_name2_1[0])}")
+                        # если длина name2 = 16 - то это хэш
+                        if len(nayti_name2_1[0]) == 16:
+                            # проверить горит ли такой же (in):
+                            nayti_in = tuple(
+                                cursor.execute("SELECT ID FROM tochki WHERE name = ? AND work >= 1", nayti_name2[0]))
+                            print(f"Длина name2 = 16, найден соответствующий (in): {nayti_in}")
+                            if not nayti_in:
+                                svyaz_s_img.append(tochka)
+                                print(f'Добавлена точка в svyaz_s_img, теперь список такой: {svyaz_s_img}')
+                                print("Этот (in) не горит - пропуск точки, переход к следующей")
+                                break
+                        else:
+                            print(f"Длина name2 у точки: {tochka} не равна 16 - цикл идёт по старому")
+                            # print(f'Рассматриваем точку: {tochka}')
+                            proverka_nalichiya_svyazi_s_1 = tuple(cursor.execute(
+                                "SELECT id_start FROM svyazi WHERE id_finish = 1 AND id_start = ?", (tochka,)))
+                            # print(f'Нашли следующие связи c 1: {proverka_nalichiya_svyazi_s_1}')
+                            for proverka_nalichiya_svyazi_s_1_1 in proverka_nalichiya_svyazi_s_1:
+                                # print(f'Присоединение к svyaz_s_1: {proverka_nalichiya_svyazi_s_1_1[0]}')
+                                svyaz_s_1.append(proverka_nalichiya_svyazi_s_1_1[0])
+                            proverka_nalichiya_svyazi_s_2 = tuple(cursor.execute(
+                                "SELECT id_start FROM svyazi WHERE id_finish = 2 AND id_start = ?", (tochka,)))
+                            # print(f'Нашли следующие связи c 2: {proverka_nalichiya_svyazi_s_2}')
+                            for proverka_nalichiya_svyazi_s_2_1 in proverka_nalichiya_svyazi_s_2:
+                                # print(f'Присоединение к svyaz_s_2: {proverka_nalichiya_svyazi_s_2_1[0]}')
+                                svyaz_s_2.append(proverka_nalichiya_svyazi_s_2_1[0])
+                                # если была найдена отрицательная реакция и эта точка является второй в пути
+                                if proverka_nalichiya_svyazi_s_2_1[0] == path[1]:
+                                    # print(f'Добавилось отрицательное действие- т.к. оно второе в пути: {proverka_nalichiya_svyazi_s_2_1}')
+                                    otricatelnie_deystviya.append(proverka_nalichiya_svyazi_s_2_1[0])
+                            proverka_nalichiya_svyazi_s_5 = tuple(cursor.execute(
+                                "SELECT id_start FROM svyazi WHERE id_finish = 5 AND id_start = ?", (tochka,)))
+                            # print(f'Нашли следующие связи c 5: {proverka_nalichiya_svyazi_s_5}')
+                            for proverka_nalichiya_svyazi_s_5_1 in proverka_nalichiya_svyazi_s_5:
+                                # print(f'Присоединение к svyaz_s_1: {proverka_nalichiya_svyazi_s_1_1[0]}')
+                                svyaz_s_5.append(proverka_nalichiya_svyazi_s_5_1[0])
             if svyaz_s_1 and not svyaz_s_2:
                 # Если имеется связь с (+) - то применить этот путь
                 poisk_tp_v_pervoy_tochke_pyti = tuple(cursor.execute("SELECT svyazi.id_finish "
@@ -707,7 +756,7 @@ def proshivka_po_derevy():
                             break
             else:
                 # Добавить вторую точку в возможные действия, перед этим проверим имеется ли уже такая точка в этом листе
-                # print(f'Проверка имеется ли точка {path[1]} в возможных действиях: {vozmozhnie_deystviya}')
+                print(f'Проверка имеется ли точка {path[1]} в возможных действиях: {vozmozhnie_deystviya}')
                 if not path[1] in vozmozhnie_deystviya:
                     vozmozhnie_deystviya.append(path[1])
             if found:
@@ -717,38 +766,42 @@ def proshivka_po_derevy():
     found1 = False
     # print(f'Возможные действия: {vozmozhnie_deystviya}')
     # print(f'Количество возможных действий: {len(vozmozhnie_deystviya)}')
+    # print(f'svyaz_s_img такой: {svyaz_s_img}')
     if vozmozhnie_deystviya:
         for vozmozhnie_deystviya1 in vozmozhnie_deystviya:
             # Проверить является ли эта точка отрицательной.
-            # print(f'Проверка имеется ли возможное действие ({vozmozhnie_deystviya1}) в списке отрицательных: {otricatelnie_deystviya}')
+            print(f'Проверка имеется ли возможное действие {vozmozhnie_deystviya1} в списках: '
+                  f'{(otricatelnie_deystviya, svyaz_s_5, svyaz_s_img)}')
             if not vozmozhnie_deystviya1 in otricatelnie_deystviya:
-                if not vozmozhnie_deystviya1 in svyaz_s_5:   # 12.09.23 Добавил отсеивание по нейтральным действиям
-                    # print(f'Применить возможное действие: {vozmozhnie_deystviya1}')
-                    poisk_tp_v_pervoy_tochke_pyti = tuple(cursor.execute("SELECT svyazi.id_finish "
-                                                                         "FROM svyazi JOIN tochki "
-                                                                         "ON svyazi.id_finish = tochki.id "
-                                                                         "WHERE svyazi.id_start = ? AND tochki.name = 'time_p'",
-                                                                         (vozmozhnie_deystviya1,)))
-                    # print(f'Применить действие, если t0 - start: {poisk_tp_v_pervoy_tochke_pyti}')
-                    if poisk_tp_v_pervoy_tochke_pyti:
-                        for poisk_tp_v_pervoy_tochke_pyti1 in poisk_tp_v_pervoy_tochke_pyti:
-                            sbor_deystviya(poisk_tp_v_pervoy_tochke_pyti1[0], vozmozhnie_deystviya1)
-                            found1 = True
-                            break
-                    else:
-                        # Если нет связи, где t0 - старт, то возможно имеется связь, где эта t0- финиш
-                        poisk_tp_v_pervoy_tochke_pyti_fin = tuple(cursor.execute(
-                            "SELECT svyazi.id_start "
-                            "FROM svyazi JOIN tochki "
-                            "ON svyazi.id_start = tochki.id "
-                            "WHERE svyazi.id_finish = ? AND tochki.name = 'time_p'",
-                            (vozmozhnie_deystviya1,)))
-                        # print(f'Применить действие, если t0 - finish: {poisk_tp_v_pervoy_tochke_pyti_fin}')
-                        if poisk_tp_v_pervoy_tochke_pyti_fin:
-                            for poisk_tp_v_pervoy_tochke_pyti_fin1 in poisk_tp_v_pervoy_tochke_pyti_fin:
-                                sbor_deystviya(poisk_tp_v_pervoy_tochke_pyti_fin1[0], vozmozhnie_deystviya1)
+                if not vozmozhnie_deystviya1 in svyaz_s_5:
+                    if not vozmozhnie_deystviya1 in svyaz_s_img:
+                        # 12.09.23 Добавил отсеивание по нейтральным действиям и отсеивание, если не горит (in img)
+                        print(f'Применить возможное действие: {vozmozhnie_deystviya1}')
+                        poisk_tp_v_pervoy_tochke_pyti = tuple(cursor.execute("SELECT svyazi.id_finish "
+                                                                             "FROM svyazi JOIN tochki "
+                                                                             "ON svyazi.id_finish = tochki.id "
+                                                                             "WHERE svyazi.id_start = ? AND tochki.name = 'time_p'",
+                                                                             (vozmozhnie_deystviya1,)))
+                        # print(f'Применить действие, если t0 - start: {poisk_tp_v_pervoy_tochke_pyti}')
+                        if poisk_tp_v_pervoy_tochke_pyti:
+                            for poisk_tp_v_pervoy_tochke_pyti1 in poisk_tp_v_pervoy_tochke_pyti:
+                                sbor_deystviya(poisk_tp_v_pervoy_tochke_pyti1[0], vozmozhnie_deystviya1)
                                 found1 = True
                                 break
+                        else:
+                            # Если нет связи, где t0 - старт, то возможно имеется связь, где эта t0- финиш
+                            poisk_tp_v_pervoy_tochke_pyti_fin = tuple(cursor.execute(
+                                "SELECT svyazi.id_start "
+                                "FROM svyazi JOIN tochki "
+                                "ON svyazi.id_start = tochki.id "
+                                "WHERE svyazi.id_finish = ? AND tochki.name = 'time_p'",
+                                (vozmozhnie_deystviya1,)))
+                            # print(f'Применить действие, если t0 - finish: {poisk_tp_v_pervoy_tochke_pyti_fin}')
+                            if poisk_tp_v_pervoy_tochke_pyti_fin:
+                                for poisk_tp_v_pervoy_tochke_pyti_fin1 in poisk_tp_v_pervoy_tochke_pyti_fin:
+                                    sbor_deystviya(poisk_tp_v_pervoy_tochke_pyti_fin1[0], vozmozhnie_deystviya1)
+                                    found1 = True
+                                    break
             if found1:
                 break
         if not found1:
@@ -784,14 +837,19 @@ def sbor_deystviya(tp, t0=None):
         posledniy_t_0 = t0
     else:
         if poisk_svyazi_tp_s_t0 == ():
-            # создать t0 и к нему привязать tp
-            new_tochka_t0 = sozdat_new_tochky('time_0', 0, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, tp, " ")
-            # print(f'new_tochka_t0 такая: {new_tochka_t0}, а была posl_t0 = {posledniy_t_0}')
-            # sozdat_svyaz(new_tochka_t0, tp, 1)  # 3.2.2 - убрал обратную связь
-            sozdat_svyaz(posledniy_t_0, new_tochka_t0, 1)
-            sozdat_svyaz(new_tochka_t0, tp, 1)
-            posledniy_t_0 = new_tochka_t0
-            # print("Posl_to теперь 5 : ", posledniy_t_0)
+            # 25.09.23 - Добавление 'name2' к t0, для возможности отсеивания по этому параметру
+            name2 = cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (tp,))
+            for name2_1 in name2:
+                print(f'Найден name2: {name2_1} у точки: {tp}')
+                # создать t0 и к нему привязать tp
+                new_tochka_t0 = sozdat_new_tochky('time_0', 0, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, tp,
+                                                  name2_1[0])
+                print(f'создана new_tochka_t0 такая: {new_tochka_t0}, а была posl_t0 = {posledniy_t_0}')
+                # sozdat_svyaz(new_tochka_t0, tp, 1)  # 3.2.2 - убрал обратную связь
+                sozdat_svyaz(posledniy_t_0, new_tochka_t0, 1)
+                sozdat_svyaz(new_tochka_t0, tp, 1)
+                posledniy_t_0 = new_tochka_t0
+                # print("Posl_to теперь 5 : ", posledniy_t_0)
         else:
             for poisk_svyazi_tp_s_t01 in poisk_svyazi_tp_s_t0:
                 for poisk_svyazi_tp_s_t02 in poisk_svyazi_tp_s_t01:
@@ -1049,9 +1107,13 @@ if __name__ == '__main__':
                     for vvedeno_luboe2 in vvedeno_luboe1.split('.'):
                         poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe2)
                     # print(f'Обработка vvedeno_luboe1 ({vvedeno_luboe1})')
-                    new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
-                                                          posledniy_t, '')
-                    # print(f'Создана новая t0: {new_tochka_time_0}')
+                    # 25.09.23 - Добавление 'name2' к t0, для возможности отсеивания по этому параметру
+                    name2 = cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (posledniy_t,))
+                    for name2_1 in name2:
+                        print(f'Найден name2: {name2_1} у точки: {posledniy_t}')
+                        new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
+                                                          posledniy_t, name2_1[0])
+                    print(f'Создана новая t0: {new_tochka_time_0}')
                     sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
                     sozdat_svyaz(posledniy_t, new_tochka_time_0, 1)
                     sozdat_svyaz(new_tochka_time_0, posledniy_tp, 1)   # 21.06.23 была добавлена дублирующая связь с tp (есть ещё одна)
