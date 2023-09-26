@@ -702,20 +702,19 @@ def proshivka_po_derevy():
                 nayti_name2 = tuple(cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (tochka,)))
                 if nayti_name2:
                     for nayti_name2_1 in nayti_name2:
-                        print(f"Нашли следующий name2: {nayti_name2_1} у точки: {tochka}, длина name2={len(nayti_name2_1[0])}")
+                        print(f"Нашли следующий name2: {nayti_name2_1[0]} у точки: {tochka}, длина name2={len(nayti_name2_1[0])}")
                         # если длина name2 = 16 - то это хэш
                         if len(nayti_name2_1[0]) == 16:
                             # проверить горит ли такой же (in):
                             nayti_in = tuple(
-                                cursor.execute("SELECT ID FROM tochki WHERE name = ? AND work >= 1", nayti_name2[0]))
+                                cursor.execute("SELECT ID FROM tochki WHERE name = ? AND work >= 1", nayti_name2_1[0]))
                             print(f"Длина name2 = 16, найден соответствующий (in): {nayti_in}")
                             if not nayti_in:
                                 svyaz_s_img.append(tochka)
-                                print(f'Добавлена точка в svyaz_s_img, теперь список такой: {svyaz_s_img}')
-                                print("Этот (in) не горит - пропуск точки, переход к следующей")
-                                break
+                                # print(f'Добавлена точка в svyaz_s_img, теперь список такой: {svyaz_s_img}')
+                                # print("Этот (in) не горит - пропуск точки, переход к следующей")
                         else:
-                            print(f"Длина name2 у точки: {tochka} не равна 16 - цикл идёт по старому")
+                            # print(f"Длина name2 у точки: {tochka} не равна 16 - цикл идёт по старому")
                             # print(f'Рассматриваем точку: {tochka}')
                             proverka_nalichiya_svyazi_s_1 = tuple(cursor.execute(
                                 "SELECT id_start FROM svyazi WHERE id_finish = 1 AND id_start = ?", (tochka,)))
@@ -767,7 +766,7 @@ def proshivka_po_derevy():
                             break
             else:
                 # Добавить вторую точку в возможные действия, перед этим проверим имеется ли уже такая точка в этом листе
-                print(f'Проверка имеется ли точка {path[1]} в возможных действиях: {vozmozhnie_deystviya}')
+                # print(f'Проверка имеется ли точка {path[1]} в возможных действиях: {vozmozhnie_deystviya}')
                 if not path[1] in vozmozhnie_deystviya:
                     vozmozhnie_deystviya.append(path[1])
             if found:
@@ -787,13 +786,13 @@ def proshivka_po_derevy():
                 if not vozmozhnie_deystviya1 in svyaz_s_5:
                     if not vozmozhnie_deystviya1 in svyaz_s_img:
                         # 12.09.23 Добавил отсеивание по нейтральным действиям и отсеивание, если не горит (in img)
-                        print(f'Применить возможное действие: {vozmozhnie_deystviya1}')
+                        # print(f'Применить возможное действие: {vozmozhnie_deystviya1}')
                         poisk_tp_v_pervoy_tochke_pyti = tuple(cursor.execute("SELECT svyazi.id_finish "
                                                                              "FROM svyazi JOIN tochki "
                                                                              "ON svyazi.id_finish = tochki.id "
                                                                              "WHERE svyazi.id_start = ? AND tochki.name = 'time_p'",
                                                                              (vozmozhnie_deystviya1,)))
-                        # print(f'Применить действие, если t0 - start: {poisk_tp_v_pervoy_tochke_pyti}')
+                        print(f'Применить действие, если t0 - start: {poisk_tp_v_pervoy_tochke_pyti}')
                         if poisk_tp_v_pervoy_tochke_pyti:
                             for poisk_tp_v_pervoy_tochke_pyti1 in poisk_tp_v_pervoy_tochke_pyti:
                                 sbor_deystviya(poisk_tp_v_pervoy_tochke_pyti1[0], vozmozhnie_deystviya1)
@@ -807,7 +806,7 @@ def proshivka_po_derevy():
                                 "ON svyazi.id_start = tochki.id "
                                 "WHERE svyazi.id_finish = ? AND tochki.name = 'time_p'",
                                 (vozmozhnie_deystviya1,)))
-                            # print(f'Применить действие, если t0 - finish: {poisk_tp_v_pervoy_tochke_pyti_fin}')
+                            print(f'Применить действие, если t0 - finish: {poisk_tp_v_pervoy_tochke_pyti_fin}')
                             if poisk_tp_v_pervoy_tochke_pyti_fin:
                                 for poisk_tp_v_pervoy_tochke_pyti_fin1 in poisk_tp_v_pervoy_tochke_pyti_fin:
                                     sbor_deystviya(poisk_tp_v_pervoy_tochke_pyti_fin1[0], vozmozhnie_deystviya1)
@@ -816,12 +815,12 @@ def proshivka_po_derevy():
             if found1:
                 break
         if not found1:
-            # print(f'Запущена функция Концентратор действий, т.к. все возможные действия - отрицательные')
+            print(f'Запущена функция Концентратор действий, т.к. все возможные действия - отрицательные')
             concentrator_deystviy()
 
     else:
         # не было найдено продолжения - запустить поиск из горящих (tp)
-        # print(f'Запущена функция Концентратор действий')
+        print(f'Запущена функция Концентратор действий')
         concentrator_deystviy()
 
 
@@ -851,11 +850,11 @@ def sbor_deystviya(tp, t0=None):
             # 25.09.23 - Добавление 'name2' к t0, для возможности отсеивания по этому параметру
             name2 = cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (tp,))
             for name2_1 in name2:
-                print(f'Найден name2: {name2_1} у точки: {tp}')
+                # print(f'Найден name2: {name2_1} у точки: {tp}')
                 # создать t0 и к нему привязать tp
                 new_tochka_t0 = sozdat_new_tochky('time_0', 0, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, tp,
                                                   name2_1[0])
-                print(f'создана new_tochka_t0 такая: {new_tochka_t0}, а была posl_t0 = {posledniy_t_0}')
+                # print(f'создана new_tochka_t0 такая: {new_tochka_t0}, а была posl_t0 = {posledniy_t_0}')
                 # sozdat_svyaz(new_tochka_t0, tp, 1)  # 3.2.2 - убрал обратную связь
                 sozdat_svyaz(posledniy_t_0, new_tochka_t0, 1)
                 sozdat_svyaz(new_tochka_t0, tp, 1)
@@ -1112,7 +1111,7 @@ if __name__ == '__main__':
 
         elif vvedeno_luboe == ('1'):
             # нужно проверить имеется ли уже связь м/у t0 и tp
-            print("Состояние перед (+) реакцией было такое: ", posledniy_t_0, "    С ней и создаётся связь")
+            # print("Состояние перед (+) реакцией было такое: ", posledniy_t_0, "    С ней и создаётся связь")
             posledniy_t_0_kortez = (posledniy_t_0,)
             poisk_svyazi_t0_s_2 = tuple(cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 1",
                                                        posledniy_t_0_kortez))
@@ -1140,10 +1139,10 @@ if __name__ == '__main__':
                     # 25.09.23 - Добавление 'name2' к t0, для возможности отсеивания по этому параметру
                     name2 = cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (posledniy_t,))
                     for name2_1 in name2:
-                        print(f'Найден name2: {name2_1} у точки: {posledniy_t}')
+                        # print(f'Найден name2: {name2_1} у точки: {posledniy_t}')
                         new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
                                                           posledniy_t, name2_1[0])
-                    print(f'Создана новая t0: {new_tochka_time_0}')
+                    # print(f'Создана новая t0: {new_tochka_time_0}')
                     sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
                     sozdat_svyaz(posledniy_t, new_tochka_time_0, 1)
                     sozdat_svyaz(new_tochka_time_0, posledniy_tp, 1)   # 21.06.23 была добавлена дублирующая связь с tp (есть ещё одна)
@@ -1152,7 +1151,7 @@ if __name__ == '__main__':
                     posledniy_tp = 0
                     posledniy_t = 0
                 else:
-                    print('------------------ Буква ', vvedeno_luboe1)
+                    # print('------------------ Буква ', vvedeno_luboe1)
                     poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe1)
 
             vvedeno_luboe = ''
@@ -1173,7 +1172,7 @@ if __name__ == '__main__':
                 functions()
 
                 # 12.09.23 - Добавляю нейтральную реакцию на отсутствие какой-либо реакции при ответе.
-                print("Состояние перед нейтральной реакцией было такое: ", posledniy_t_0, "    С ней и создаётся связь")
+                # print("Состояние перед нейтральной реакцией было такое: ", posledniy_t_0, "    С ней и создаётся связь")
                 posledniy_t_0_kortez = (posledniy_t_0,)
                 poisk_svyazi_t0_s_2 = tuple(cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 5",
                                                            posledniy_t_0_kortez))

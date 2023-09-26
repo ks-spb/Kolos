@@ -23,8 +23,8 @@ name 'хоро'             - серый
 """
 
 # Включить/выключить отображение групп IN и OUT
-point_in = True
-point_out = True
+point_in = False
+point_out = False
 
 class Point:
     """ Точки """
