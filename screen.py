@@ -18,7 +18,7 @@ class Screen:
         self.screenshot = None  # Изображение экрана в формате NumPy
         self.screenshot_hash = None  # pHash изображения экрана
         self.hashes_elements = {}  # Словарь, где ключ pHash элемента экрана (кнопки, значка...),
-        # а значение - список [x, y, w, h]: x, y - координаты элемента на изображении,  w, h - ширина и высота элемента.
+        # а значение - список [x, y, w, h]: x, y - координаты верхнего левого угла изображения; w, h - правого нижнего.
 
     def get_screen(self):
         """Получает из очереди информацию о текущем экране (обновление данных)
@@ -50,6 +50,19 @@ class Screen:
         return element[0] if element else None
 
     def get_element(self, hash):
+        """Возвращает изображение в формате NumPy элемента по его хэшу.
+        Изображение берется из скриншота по координатам элемента или None, если хэш None"""
+        if hash is None:
+            return None
+
+        self.get_screen()
+
+        element = self.hashes_elements.get(hash)
+        if not element:
+            return None
+        return self.screenshot[element[1]:element[3], element[0]:element[2]]
+
+    def get_hash_element(self, hash):
         """Возвращает координаты центра элемента по его хэшу
         или None, если элемента нет """
         self.get_screen()

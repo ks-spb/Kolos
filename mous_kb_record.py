@@ -7,6 +7,7 @@ import pyautogui
 # from element_images import save_image, pattern_search
 from image_definition import encode_and_save_to_db_image
 from exceptions import *
+from report import ImageReport
 from screen import screen
 
 
@@ -42,6 +43,11 @@ class Recorder:
         """ Начать запись """
         self.record.clear()  # Удаление старой записи перед началом новой
         self.status = True
+
+        # ----------------------------------
+        # Создание отчета в виде изображений
+        self.report = ImageReport()
+        # ----------------------------------
 
     def stop(self):
         """ Остановить запись """
@@ -85,6 +91,12 @@ class Recorder:
             return  # Если кнопка отпущена, то ничего не записываем
 
         hash_element = screen.list_search(x, y)  # Поиск элемента на экране по координатам клика
+
+        # -------------------------------
+        # Сохранение изображений в отчете
+        self.report.save(screen.screenshot, screen.get_element(hash_element))  # Сохранение скриншота и элемента
+        # -------------------------------
+
         if not hash_element:
             # Если элемент не найден, то выходим
             return
@@ -151,7 +163,7 @@ class Play:
         if action['event'] == 'click':
             # Перемещение мыши к заданной позиции
             # Позиция определяется по центру элемента хэш которого указан в action['image']
-            res = screen.get_element(action['image'])
+            res = screen.get_hash_element(action['image'])
             if res:
                 pyautogui.moveTo(*res, 0.3)
                 pyautogui.click(*res, button='left')
