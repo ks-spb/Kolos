@@ -555,8 +555,8 @@ def concentrator_deystviy():
                                                     # только, если не будет других действий
                                                     list_neytral_reac += poisk_svyazi_s_reakciey1
                                                     list_isklucheniya_deystviy += poisk_tp
-                                                    print(f'Лист нейтральных реакций такой: {poisk_tp}')
-                                                    print('Найдена нейтральная реакция и приоритет понижен: ', poisk_tp)
+                                                    # print(f'Лист нейтральных реакций такой: {poisk_tp}')
+                                                    # print('Найдена нейтральная реакция и приоритет понижен: ', poisk_tp)
                                                 else:
                                                     # если нет связи с (реакциями), но имеется связь с posl_t0 - нужно
                                                     # добавить это действие в начало листа действий
@@ -601,7 +601,7 @@ def concentrator_deystviy():
         # него реакцию
     else:
         if list_neytral_reac != []:
-            # print(f'Лист нейтральных действий: {list_neytral_reac}')
+            print(f'Лист нейтральных действий: {list_neytral_reac}')
             vliyanie_na_deystvie = []
             for list_deystviy1 in list_neytral_reac:
                 # поиск связей с текущим ID (tp) и (t0)
@@ -688,15 +688,14 @@ def proshivka_po_derevy():
     # print("Количество возможных путей действий: ", len(all_paths(tree, posledniy_t_0)))
     # Проверка имеется ли связь с 1 или 2 у точек на пути
     found = False
+    svyaz_s_1 = []
+    svyaz_s_2 = []
+    svyaz_s_5 = []
+    svyaz_s_img = []
     for path in all_paths(tree, posledniy_t_0):
         if len(path) > 1:
             # print(f'Проверка пути: {path}, 2я точка такая: {path[1]}')
-            svyaz_s_1 = []
-            svyaz_s_2 = []
-            svyaz_s_5 = []
-            svyaz_s_img = []
-            for tochka in path:
-                # print(f"Длина name2 у точки: {tochka} не равна 16 - цикл идёт по старому")
+            for tochka in path:   # ??? Рассматриваются сразу все точки в дереве. Ограничить только вторым движением?
                 # print(f'Рассматриваем точку: {tochka}')
                 proverka_nalichiya_svyazi_s_1 = tuple(cursor.execute(
                     "SELECT id_start FROM svyazi WHERE id_finish = 1 AND id_start = ?", (tochka,)))
@@ -713,30 +712,33 @@ def proshivka_po_derevy():
                     # если была найдена отрицательная реакция и эта точка является второй в пути
                     if proverka_nalichiya_svyazi_s_2_1[0] == path[1]:
                         # print(f'Добавилось отрицательное действие- т.к. оно второе в пути: {proverka_nalichiya_svyazi_s_2_1}')
-                        otricatelnie_deystviya.append(proverka_nalichiya_svyazi_s_2_1[0])
+                        if proverka_nalichiya_svyazi_s_2_1[0] not in otricatelnie_deystviya:
+                            otricatelnie_deystviya.append(proverka_nalichiya_svyazi_s_2_1[0])
                 proverka_nalichiya_svyazi_s_5 = tuple(cursor.execute(
                     "SELECT id_start FROM svyazi WHERE id_finish = 5 AND id_start = ?", (tochka,)))
                 # print(f'Нашли следующие связи c 5: {proverka_nalichiya_svyazi_s_5}')
                 for proverka_nalichiya_svyazi_s_5_1 in proverka_nalichiya_svyazi_s_5:
                     # print(f'Присоединение к svyaz_s_1: {proverka_nalichiya_svyazi_s_1_1[0]}')
-                    svyaz_s_5.append(proverka_nalichiya_svyazi_s_5_1[0])
+                    if proverka_nalichiya_svyazi_s_5_1[0] not in svyaz_s_5:
+                        svyaz_s_5.append(proverka_nalichiya_svyazi_s_5_1[0])
                 # 22.09.23 - ограничение на зажигание (t) и (tp), если не горят соответствующие (in) объекты:
                 # поиск name2 - в нём хранится информация о хэше объекта
                 nayti_name2 = tuple(cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (tochka,)))
                 if nayti_name2:
                     for nayti_name2_1 in nayti_name2:
                         # print(
-                            # f"Нашли следующий name2: {nayti_name2_1[0]} у точки: {tochka}, длина name2={len(nayti_name2_1[0])}")
+                        #     f"Нашли следующий name2: {nayti_name2_1[0]} у точки: {tochka}, длина name2={len(nayti_name2_1[0])}")
                         # если длина name2 = 16 - то это хэш
                         if len(nayti_name2_1[0]) == 16:
                             # проверить горит ли такой же (in):
                             nayti_in = tuple(
                                 cursor.execute("SELECT ID FROM tochki WHERE name = ? AND work < 1", nayti_name2_1))
-                            # print(f"Длина name2 = 16, найден соответствующий (in): {nayti_in}")
+                            # print(f"Длина name2 = 16, найден соответствующий (in), который не горит: {nayti_in}")
                             if nayti_in:
-                            #     # print(f'Добавлена точка в svyaz_s_img, теперь список такой: {svyaz_s_img}')
-                            #     # print("Этот (in) не горит - пропуск точки, переход к следующей")
-                                svyaz_s_img.append(tochka)
+                                # print(f'Добавлена точка в svyaz_s_img, теперь список такой: {svyaz_s_img}')
+                                # print("Этот (in) не горит - пропуск точки, переход к следующей")
+                                if tochka not in svyaz_s_img:
+                                    svyaz_s_img.append(tochka)
             if svyaz_s_1 and not svyaz_s_2:
                 # Если имеется связь с (+) - то применить этот путь
                 poisk_tp_v_pervoy_tochke_pyti = tuple(cursor.execute("SELECT svyazi.id_finish "
@@ -779,8 +781,8 @@ def proshivka_po_derevy():
     if vozmozhnie_deystviya:
         for vozmozhnie_deystviya1 in vozmozhnie_deystviya:
             # Проверить является ли эта точка отрицательной.
-            # print(f'Проверка имеется ли возможное действие {vozmozhnie_deystviya1} в списках: '
-            #       f'{(otricatelnie_deystviya, svyaz_s_5, svyaz_s_img)}')
+            print(f'Проверка имеется ли возможное действие {vozmozhnie_deystviya1} в списках: отрицательные действия: '
+                  f'{otricatelnie_deystviya}, связь с 5: {svyaz_s_5}, связь с img: {svyaz_s_img}')
             if not vozmozhnie_deystviya1 in otricatelnie_deystviya:
                 # if not vozmozhnie_deystviya1 in svyaz_s_5:
                     if not vozmozhnie_deystviya1 in svyaz_s_img:
@@ -830,6 +832,9 @@ def sbor_deystviya(tp, t0=None):
     global posledniy_otvet
     B = True
     tp_kortez = (tp, )
+
+    vivod_work_tp = tuple(cursor.execute("SELECT work FROM tochki WHERE ID = ?", (tp,)))
+    print(f'Work у этой tp следующий: {vivod_work_tp[0]}')
 
     # 22.06.23 - гашение ответов, для блокировки повторов.
     cursor.execute("UPDATE tochki SET work = 0 AND signal = 0 WHERE ID = ?", (tp,))
@@ -997,12 +1002,15 @@ if __name__ == '__main__':
         # concentrator_deystviy()
         proshivka_po_derevy()
 
+        # 29.09.23 - Проверка какой был последний (in) и (posl_t0)
+        print(f'Последний in был posl_t: {posledniy_t}, posl_t0 был: {posledniy_t_0}')
+
         # 14.06.23 - возврат к необходимости нажимать enter на каждом цикле
         # vvedeno_luboe = input("Введите текст: ")
 
         # print("Сейчас ", source)
         if source == 'input':
-        # Ввод строки с клаиатуры, запись побуквенно
+        # Ввод строки с клавиатуры, запись побуквенно
             vvedeno_luboe = input("Введите текст: ")
 
         elif source == 'rec':
