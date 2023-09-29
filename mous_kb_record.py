@@ -4,6 +4,7 @@ from pynput.keyboard import Key, Controller as kb_Controller
 from pynput.mouse import Button, Controller
 import pyautogui
 
+import report
 # from element_images import save_image, pattern_search
 from image_definition import encode_and_save_to_db_image
 from exceptions import *
@@ -94,7 +95,8 @@ class Recorder:
 
         # -------------------------------
         # Сохранение изображений в отчете
-        self.report.save(screen.screenshot, screen.get_element(hash_element))  # Сохранение скриншота и элемента
+        scr = ImageReport.circle_an_object(screen.screenshot, screen.hashes_elements.values())  # Обводим элементы
+        self.report.save(scr, screen.get_element(hash_element))  # Сохранение скриншота и элемента
         # -------------------------------
 
         if not hash_element:
