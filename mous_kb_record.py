@@ -8,7 +8,7 @@ import report
 # from element_images import save_image, pattern_search
 from image_definition import encode_and_save_to_db_image
 from exceptions import *
-from report import ImageReport
+from report import report
 from screen import screen
 
 
@@ -47,7 +47,7 @@ class Recorder:
 
         # ----------------------------------
         # Создание отчета в виде изображений
-        self.report = ImageReport()
+        report.set_folder('record')  # Инициализация папки для сохранения изображений
         # ----------------------------------
 
     def stop(self):
@@ -95,8 +95,8 @@ class Recorder:
 
         # -------------------------------
         # Сохранение изображений в отчете
-        scr = ImageReport.circle_an_object(screen.screenshot, screen.hashes_elements.values())  # Обводим элементы
-        self.report.save(scr, screen.get_element(hash_element))  # Сохранение скриншота и элемента
+        scr = report.circle_an_object(screen.screenshot, screen.hashes_elements.values())  # Обводим элементы
+        report.save(scr, screen.get_element(hash_element))  # Сохранение скриншота и элемента
         # -------------------------------
 
         if not hash_element:
@@ -166,6 +166,13 @@ class Play:
             # Перемещение мыши к заданной позиции
             # Позиция определяется по центру элемента хэш которого указан в action['image']
             res = screen.get_hash_element(action['image'])
+
+            # -------------------------------
+            # Сохранение изображений в отчете
+            scr = report.circle_an_object(screen.screenshot, screen.hashes_elements.values())  # Обводим элементы
+            report.save(scr, screen.get_element(action['image']))  # Сохранение скриншота и элемента
+            # -------------------------------
+
             if res:
                 pyautogui.moveTo(*res, 0.3)
                 pyautogui.click(*res, button='left')

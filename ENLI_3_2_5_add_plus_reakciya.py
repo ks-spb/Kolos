@@ -6,6 +6,7 @@ from multiprocessing import Process, Queue, Manager
 from mous_kb_record import rec, play
 from screen_monitoring import process_changes
 from screen import screen
+from report import report
 
 
 def stiranie_pamyati():
@@ -377,6 +378,12 @@ def out_red(text):
 
         elif text[i] == 'click':
             event = {'type': 'mouse', 'event': 'click', 'image': text[i+1]}
+
+            # -------------------------------
+            # Сохранение изображений в отчете
+            report.set_folder('out_red')  # Инициализация папки для сохранения изображений
+            # -------------------------------
+
             i += 1
             try:
                 play.play_one(event)  # Воспроизводим событие
@@ -1075,6 +1082,12 @@ if __name__ == '__main__':
         if vvedeno_luboe == ('4'):
             # Показать запись
             sleep(1)
+
+            # -------------------------------
+            # Сохранение изображений в отчете
+            report.set_folder('play_3')  # Инициализация папки для сохранения изображений
+            # -------------------------------
+
             for i in rec.record:
                 print(i)
                 try:
