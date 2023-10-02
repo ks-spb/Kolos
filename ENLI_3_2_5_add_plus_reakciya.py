@@ -977,7 +977,7 @@ if __name__ == '__main__':
     source = None  # Получает значение источника ввода None - клавиатура, 'rec' -  запись клавиатуры и мыши
     last_update_screen = 0  # Время последнего обновления экрана
     schetchik = 0
-    time.sleep(1)
+    time.sleep(0.5)
     while A:
         if rec.status:
             # Блокируем основную программу, пока идет запись
@@ -987,22 +987,24 @@ if __name__ == '__main__':
         # -------------------------------------------------------
         # Активация и деактивация точек в соответствии с экраном
         # -------------------------------------------------------
-        if screen.last_update != last_update_screen:
-
+        # if screen.last_update != last_update_screen:
+        screen.get_screen()
+        scrsh = screen.screenshot
+        if scrsh is not None:
             # -------------------------------
             # Сохранение изображений в отчете
             report.set_folder('update_points')  # Инициализация папки для сохранения изображений
-            scr = report.circle_an_object(screen.screenshot, screen.hashes_elements.values())  # Обводим элементы
+            scr = report.circle_an_object(scrsh, screen.hashes_elements.values())  # Обводим элементы
             report.save(scr)  # Сохранение скриншота и элемента
             # -------------------------------
 
-            # Если экран обновился (определяется по времени), то обновляем точки
-            last_update_screen = screen.last_update
-            # Деактивация точек относящихся к элементам экрана
-            cursor.execute("UPDATE 'tochki' SET work = 0 WHERE type = 'mozg' AND length(name) = 16")
-            # Активация точек относящихся к элементам экрана, которые есть на текущем экране
-            for h in screen.get_all_hashes():
-                cursor.execute("UPDATE 'tochki' SET work = 1 WHERE type = 'mozg' AND name = ?", (h,))
+        # Если экран обновился (определяется по времени), то обновляем точки
+        # last_update_screen = screen.last_update
+        # Деактивация точек относящихся к элементам экрана
+        cursor.execute("UPDATE 'tochki' SET work = 0 WHERE type = 'mozg' AND length(name) = 16")
+        # Активация точек относящихся к элементам экрана, которые есть на текущем экране
+        for h in screen.get_all_hashes():
+            cursor.execute("UPDATE 'tochki' SET work = 1 WHERE type = 'mozg' AND name = ?", (h,))
 
         # -------------------------------------------------------
 
@@ -1028,7 +1030,7 @@ if __name__ == '__main__':
 
         # print("Сейчас ", source)
         if source == 'input':
-        # Ввод строки с клавиатуры, запись побуквенно
+            # Ввод строки с клавиатуры, запись побуквенно
             vvedeno_luboe = input("Введите текст: ")
 
         elif source == 'rec':
@@ -1172,7 +1174,7 @@ if __name__ == '__main__':
                     for name2_1 in name2:
                         # print(f'Найден name2: {name2_1} у точки: {posledniy_t}')
                         new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
-                                                          posledniy_t, name2_1[0])
+                                                              posledniy_t, name2_1[0])
                     # print(f'Создана новая t0: {new_tochka_time_0}')
                     sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
                     sozdat_svyaz(posledniy_t, new_tochka_time_0, 1)
