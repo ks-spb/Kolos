@@ -1,3 +1,5 @@
+import time
+
 from db import Database
 from time import sleep
 import random
@@ -975,7 +977,7 @@ if __name__ == '__main__':
     source = None  # Получает значение источника ввода None - клавиатура, 'rec' -  запись клавиатуры и мыши
     last_update_screen = 0  # Время последнего обновления экрана
     schetchik = 0
-
+    time.sleep(1)
     while A:
         if rec.status:
             # Блокируем основную программу, пока идет запись
@@ -986,6 +988,14 @@ if __name__ == '__main__':
         # Активация и деактивация точек в соответствии с экраном
         # -------------------------------------------------------
         if screen.last_update != last_update_screen:
+
+            # -------------------------------
+            # Сохранение изображений в отчете
+            report.set_folder('update_points')  # Инициализация папки для сохранения изображений
+            scr = report.circle_an_object(screen.screenshot, screen.hashes_elements.values())  # Обводим элементы
+            report.save(scr)  # Сохранение скриншота и элемента
+            # -------------------------------
+
             # Если экран обновился (определяется по времени), то обновляем точки
             last_update_screen = screen.last_update
             # Деактивация точек относящихся к элементам экрана
@@ -993,6 +1003,7 @@ if __name__ == '__main__':
             # Активация точек относящихся к элементам экрана, которые есть на текущем экране
             for h in screen.get_all_hashes():
                 cursor.execute("UPDATE 'tochki' SET work = 1 WHERE type = 'mozg' AND name = ?", (h,))
+
         # -------------------------------------------------------
 
         # Прочитать из БД и распечатать точки, которые могли быть изменены

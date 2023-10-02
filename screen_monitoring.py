@@ -15,6 +15,7 @@ import mss.tools
 import cv2
 from threading import Thread
 import time
+import datetime
 import numpy as np
 
 
@@ -55,7 +56,7 @@ def process_changes(queue_hashes, queue_img):
 
             # Получен новый скриншот, выберем из него элементы
             screenshot, screenshot_hash = queue_img.get()  # Получаем скриншот и его хэш из очереди
-            print('Экран изменился ---------------------------------- ')
+            # print(f'Экран изменился {datetime.datetime.now()} ----------------------- ')
             # Принимает изображение типа Image
             # возвращает итератор координат и размеров всех элементов на изображении
             # в виде: [[x, y, w, h], ...] (x, y - верхняя левая точка,  w, h - нижняя правая точка)
