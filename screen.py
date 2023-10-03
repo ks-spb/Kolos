@@ -77,7 +77,6 @@ class Screen:
         # Иначе возвращаем ближайший
         return candidate if candidate else element
 
-
     def get_element(self, hash):
         """Возвращает изображение в формате NumPy элемента по его хэшу.
         Изображение берется из скриншота по координатам элемента или None, если хэш None"""

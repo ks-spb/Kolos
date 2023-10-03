@@ -59,7 +59,8 @@ class ImageReport:
         img = image.copy()
         for element in elements:
             x, y, w, h = element
-            cv2.rectangle(img, (x, y), (w, h), (0, 0, 255), 2)
+            print(x, y, w, h)
+            cv2.rectangle(img, (x, y), (x+w, y+h), (0, 0, 255), 2)
         return img
 
 
