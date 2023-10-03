@@ -70,7 +70,6 @@ def process_changes(queue_hashes, queue_img):
             hashes_elements.clear()
             for cnt in contours:
 
-                print(cnt)
                 # Находим прямоугольник
                 # [x, y, w, h] (x, y - верхняя левая точка; w, h - ширина, высота)
 

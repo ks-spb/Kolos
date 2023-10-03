@@ -6,6 +6,7 @@
 """
 
 import time
+import numpy as np
 import cv2
 
 
@@ -39,7 +40,7 @@ class Screen:
         else:
             return False
 
-    def list_search(self, x, y):
+    def list_search(self, x_point, y_point):
         """Ищет в списке элемент по координатам.
          Принимает координаты, возвращает хэш или None, если элемента нет
          Координаты должны принадлежать прямоугольнику (ищем все выбираем минимальный)
@@ -54,11 +55,14 @@ class Screen:
         # Находим, какому элементу принадлежат координаты места клика
         candidate, square = None, None  # Кандидат на выдачу и его площадь (контур, которому принадлежит точка)
         element, distance = None, None  # Ближайший элемент и расстояние до него
-        for hash, contour in self.hashes_elements.items():
-            dist = cv2.pointPolygonTest(contour, (x, y), False)
+        for hash, (x, y, w, h) in self.hashes_elements.items():
+            rect = np.array([[x, y], [x+w, y], [x+w, y+h], [x, y+h]])   # создаем массив вершин
+            rect_contour = rect.reshape((-1,1,2))  # преобразуем в формат контура
+            dist = cv2.pointPolygonTest(rect_contour, (x_point, y_point), False)
+            print(dist)
             if dist >= 0:
                 # Точка внутри контура. Выбираем тот контур, у которого площадь меньше
-                this_square = contour[2] * contour[3]
+                this_square = w * h
                 if square is None or this_square < square:
                     square = this_square
                     candidate = hash
