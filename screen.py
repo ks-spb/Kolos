@@ -58,7 +58,7 @@ class Screen:
         for hash, (x, y, w, h) in self.hashes_elements.items():
             rect = np.array([[x, y], [x+w, y], [x+w, y+h], [x, y+h]])   # создаем массив вершин
             rect_contour = rect.reshape((-1,1,2))  # преобразуем в формат контура
-            dist = cv2.pointPolygonTest(rect_contour, (x_point, y_point), False)
+            dist = cv2.pointPolygonTest(rect_contour, (x_point, y_point), True)
             print(dist)
             if dist >= 0:
                 # Точка внутри контура. Выбираем тот контур, у которого площадь меньше
