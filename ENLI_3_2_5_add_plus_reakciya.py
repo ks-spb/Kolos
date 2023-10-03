@@ -810,6 +810,7 @@ def proshivka_po_derevy():
                                 break
                         else:
                             # Если нет связи, где t0 - старт, то возможно имеется связь, где эта t0- финиш
+
                             poisk_tp_v_pervoy_tochke_pyti_fin = tuple(cursor.execute(
                                 "SELECT svyazi.id_start "
                                 "FROM svyazi JOIN tochki "
@@ -977,6 +978,8 @@ if __name__ == '__main__':
     source = None  # Получает значение источника ввода None - клавиатура, 'rec' -  запись клавиатуры и мыши
     last_update_screen = 0  # Время последнего обновления экрана
     schetchik = 0
+    most = 0   # 03.10.23 - добавлена точка моста для повторения последнего (in) и связывания с (+) результатом
+    most_new = 0
     time.sleep(0.5)
     while A:
         if rec.status:
@@ -1022,11 +1025,10 @@ if __name__ == '__main__':
         # concentrator_deystviy()
         proshivka_po_derevy()
 
-        # 29.09.23 - Проверка какой был последний (in) и (posl_t0)
-        print(f'Последний in был posl_t: {posledniy_t}, posl_t0 был: {posledniy_t_0}')
-
-        # 14.06.23 - возврат к необходимости нажимать enter на каждом цикле
-        # vvedeno_luboe = input("Введите текст: ")
+        # 03.10.23 - зажигание моста
+        if most_new != 0:
+            cursor.execute("UPDATE 'tochki' SET work = 1 WHERE ID = ?", (most_new, ))
+            print(f'Снова зажёгся мост: {most_new}')
 
         # print("Сейчас ", source)
         if source == 'input':
@@ -1148,9 +1150,21 @@ if __name__ == '__main__':
             posledniy_t_0_kortez = (posledniy_t_0,)
             poisk_svyazi_t0_s_2 = tuple(cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 1",
                                                        posledniy_t_0_kortez))
-            if poisk_svyazi_t0_s_2 == ():
+            if not poisk_svyazi_t0_s_2:
                 sozdat_svyaz(posledniy_t_0, 1, 1)
-            # pogasit_vse_tochki()
+
+            # 03.10.23 - если произошла (+) реакция - то переименовать мост, чтобы больше не зажигался и соединить с posl_t_0
+            most_new_kortez = most_new
+            poisk_svyazi_s_most = tuple(cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = ?",
+                                                       (most_new, posledniy_t_0)))
+            print(f'Найдена связь с мостом: {most_new} и posl_t_0: {posledniy_t_0_kortez}')
+            if not poisk_svyazi_s_most:
+                sozdat_svyaz(most_new, posledniy_t_0, 1)
+                print(f'Создана связь между мостом: {most_new} и posl_t_0: {posledniy_t_0_kortez}')
+            cursor.execute("UPDATE 'tochki' SET name = '_most__' WHERE ID = ?", (most_new,))
+            most_new = 0
+
+
             # source = None
             vvedeno_luboe = ''
 
@@ -1158,6 +1172,9 @@ if __name__ == '__main__':
             posledniy_tp = 0
             posledniy_t = 0
             posledniy_t_0 = 3
+
+
+
         elif vvedeno_luboe == ('8'):
             # запуск автоматического срабатывания счётчика без нажатия enter
             source = None
@@ -1192,6 +1209,25 @@ if __name__ == '__main__':
             functions()
             # 3.2.1 - зафиксировать создание новой сущности, создав связь м/у posl_tp и (4)
             sozdat_svyaz_s_4()
+
+            # 03.10.23 - создание моста для повторного зажигания (in)
+            # проверка имеется ли уже мост для этого in
+            # нужно найти начало у связи, которое равно ID из таблицы точек, у которых name = _most__, а конец равен текущему posl_t
+            poisk_most = tuple(cursor.execute("SELECT svyazi.id_start FROM svyazi JOIN tochki "
+                "ON svyazi.id_start = tochki.id WHERE svyazi.id_finish = ? AND tochki.name = '_most__' "
+                                              "OR tochki.name = '_most_'", posledniy_t_0_kortez))
+            print(f'Найден мост: {poisk_most}, у которого имеется связь с posl_t: {posledniy_t}')
+            if not poisk_most:
+                most_new = sozdat_new_tochky('_most_', 1, 'most', 'zazech_sosedey', 1, 0,
+                                             10, posledniy_t, 0, posledniy_t)
+                sozdat_svyaz(most_new, posledniy_t, 1)
+                print(f'создан мост: {most_new}, для зажигания точки: {posledniy_t}')
+            else:
+                for poisk_most1 in poisk_most:
+                    most_new = poisk_most1[0]
+                    print(f'Имеющийся мост: {poisk_most1[0]} переименован и присвоено значение most_new')
+                    cursor.execute("UPDATE 'tochki' SET name = '_most_' WHERE ID = ?", (most_new,))
+
             posledniy_tp = 0
             posledniy_t = 0
             # print("Было введено vvedeno_luboe: ", vvedeno_luboe)
