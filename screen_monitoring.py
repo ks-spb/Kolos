@@ -8,7 +8,7 @@
 # screenshot - изображение экрана в формате NumPy
 # screenshot_hash - pHash изображения screenshot
 # hashes_elements - словарь, где ключ pHash элемента экрана (кнопки, значка...),
-# а значение - список [x, y, w, h]: x, y - верхняя левая точка,  w, h - нижняя правая точка.
+# а значение - список [x, y, w, h]: x, y - верхняя левая точка,  w, h - ширина, высота.
 
 import mss
 import mss.tools
@@ -72,12 +72,14 @@ def process_changes(queue_hashes, queue_img):
             contours, hierarchy = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
             hashes_elements.clear()
-
             for cnt in contours:
+
                 # Находим прямоугольник
+                # [x, y, w, h] (x, y - верхняя левая точка; w, h - ширина, высота)
+
                 x, y, w, h = cv2.boundingRect(cnt)
-                w, h = x + w, y + h
-                segment = screenshot[y:h, x:w]
+                w1, h1 = x + w, y + h
+                segment = screenshot[y:h1, x:w1]
 
                 hash = cv2.img_hash.pHash(segment)  # Получаем хэш сегмента
                 hash_string = np.array(hash).tobytes().hex()  # Преобразование хэша в шестнадцатеричную строку

@@ -6,6 +6,8 @@
 """
 
 import time
+import numpy as np
+import cv2
 
 
 class Screen:
@@ -18,7 +20,7 @@ class Screen:
         self.screenshot = None  # Изображение экрана в формате NumPy
         self.screenshot_hash = None  # pHash изображения экрана
         self.hashes_elements = {}  # Словарь, где ключ pHash элемента экрана (кнопки, значка...),
-        # а значение - список [x, y, w, h]: x, y - координаты верхнего левого угла изображения; w, h - правого нижнего.
+        # а значение - список [x, y, w, h]: x, y - верхний левый угол изображения; w, h - ширина, высота.
 
     def get_screen(self):
         """Получает из очереди информацию о текущем экране (обновление данных)
@@ -38,16 +40,43 @@ class Screen:
         else:
             return False
 
-    def list_search(self, x, y):
+    def list_search(self, x_point, y_point):
         """Ищет в списке элемент по координатам.
          Принимает координаты, возвращает хэш или None, если элемента нет
-         """
+         Координаты должны принадлежать прямоугольнику (ищем все выбираем минимальный)
+         Если такого нет, возвращаем ближайший элемент."""
 
         self.get_screen()
+        # element = [hash for hash, coord in self.hashes_elements.items()
+        #            if coord[0] < x < coord[2] and coord[1] < y < coord[3]]
+        if not self.hashes_elements:
+            return None  # Нет элементов
+
         # Находим, какому элементу принадлежат координаты места клика
-        element = [hash for hash, coord in self.hashes_elements.items()
-                   if coord[0] < x < coord[2] and coord[1] < y < coord[3]]
-        return element[0] if element else None
+        candidate, square = None, None  # Кандидат на выдачу и его площадь (контур, которому принадлежит точка)
+        element, distance = None, None  # Ближайший элемент и расстояние до него
+        for hash, (x, y, w, h) in self.hashes_elements.items():
+            rect = np.array([[x, y], [x+w, y], [x+w, y+h], [x, y+h]])   # создаем массив вершин
+            rect_contour = rect.reshape((-1,1,2))  # преобразуем в формат контура
+            dist = cv2.pointPolygonTest(rect_contour, (x_point, y_point), True)
+            print(dist)
+            if dist >= 0:
+                # Точка внутри контура. Выбираем тот контур, у которого площадь меньше
+                this_square = w * h
+                if square is None or this_square < square:
+                    square = this_square
+                    candidate = hash
+            else:
+                # Точка снаружи контура. Выбираем ближайший
+                dist = abs(dist)
+                if distance is None or dist < distance:
+                    distance = dist
+                    element = hash
+
+        # Если найден контур, которому принадлежит точка, возвращаем его
+        # Иначе возвращаем ближайший
+        return candidate if candidate else element
+
 
     def get_element(self, hash):
         """Возвращает изображение в формате NumPy элемента по его хэшу.
@@ -60,7 +89,7 @@ class Screen:
         element = self.hashes_elements.get(hash)
         if not element:
             return None
-        return self.screenshot[element[1]:element[3], element[0]:element[2]]
+        return self.screenshot[element[1]:element[1]+element[3], element[0]:element[0]+element[2]]  # y, w, x, h
 
     def get_hash_element(self, hash):
         """Возвращает координаты центра элемента по его хэшу
@@ -72,8 +101,8 @@ class Screen:
             print('Элемент не найден при воспроизведении')
             return None
 
-        x = (element[2] - element[0]) // 2
-        y = (element[3] - element[1]) // 2
+        x = (element[2]) // 2
+        y = (element[3]) // 2
         return element[0] + x, element[1] + y
 
     def get_all_hashes(self):
