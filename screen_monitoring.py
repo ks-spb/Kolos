@@ -18,6 +18,13 @@ import time
 import datetime
 import numpy as np
 import zlib
+import json
+
+
+from db import Database
+
+
+cursor = Database('Li_db_v1_4.db')
 
 
 def screen_monitor(queue_img):
@@ -147,7 +154,34 @@ def process_changes(queue_hashes, queue_img):
                         break  # Если за время обработки скриншота экран снова изменится, начинаем заново
 
                 else:
-                    print(hash_list)
+                    screens = cursor.execute("SELECT id, list FROM screen").fetchall()  # Читаем свойства экранов
+                    id_screen = None  # id текущего экрана в БД
+                    hashes_screen = None  # Список хэшей текущего экрана в БД
+                    max_count = 0  # Максимальное количество совпадений
+                    hash_set = set(hash_list)
+                    for id_scr, screen_json in screens:
+                        # В БД есть сохраненные экраны, проверим их на совпадение с имеющимся
+                        screen_hashes = set(json.load(screen_json))
+                        intersection = screen_hashes.intersection(hash_set)  # Найти пересечение set
+
+                        if len(intersection) > max_count:
+                            # Найден экран с максимальным количеством совпадений
+                            max_count = len(intersection)
+                            id_screen = id_scr
+                            hashes_screen = screen_hashes
+
+                    if max_count/(len(screen_hashes)/100) > COUNT_EL:
+                        # Экран с максимальным количеством совпадающих признаков проходит порог
+                        # Считаем, что этот экран уже есть и найден.
+                        # Дополняем набор его хэшей теми, которых у него не было и обновляем БД
+                        new_hashes = hash_set | hashes_screen
+                        cursor.execute("UPDATE screen SET list = ? WHERE id = ?",
+                                       (json.dumps(list(new_hashes)), id_screen))
+                    else:
+                        # Экран новый, добавляем его в БД и получаем id нового экрана
+                        cursor.execute("INSERT INTO screen (list) VALUES (?)", (json.dumps(hash_list),))
+    id_screen = cursor.lastrowid
+
                     # Если скриншот обработан, то передаем его, его хэш и список хэшей элементов в очередь
                     # Предварительно очистив ее
                     while not queue_hashes.empty():
