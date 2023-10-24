@@ -64,7 +64,8 @@ def process_changes(queue_hashes, queue_img):
 
             # Получен новый скриншот, выберем из него элементы
             screenshot, screenshot_hash = queue_img.get()  # Получаем скриншот и его хэш из очереди
-            print(f'Экран изменился {datetime.datetime.now()} ----------------------- ')
+            print('\n------------------------------------------------------------------------------')
+            print(f'Экран изменился {datetime.datetime.now()}')
             # Принимает изображение типа Image
             # возвращает итератор координат и размеров всех элементов на изображении
             # в виде: [[x, y, w, h], ...] (x, y - верхняя левая точка, w, h - нижняя правая точка)
@@ -170,7 +171,7 @@ def process_changes(queue_hashes, queue_img):
                             id_screen = id_scr
                             hashes_screen = screen_hashes
                     if hashes_screen:
-                        print("Совпало", max_count, "\nЭто", max_count/(len(hashes_screen)/100))
+                        print("Совпало", max_count, "это", int(max_count/(len(hashes_screen)/100)), "%")
 
                     if hashes_screen and max_count/(len(hashes_screen)/100) > COUNT_EL:
                         # Экран с максимальным количеством совпадающих признаков проходит порог
@@ -188,13 +189,13 @@ def process_changes(queue_hashes, queue_img):
                         cv2.imwrite(f'new_screens/scr_{id_screen}.png', screenshot)  # Сохраняем изображение в файл
                     cursor.commit()
 
-
                     # Если скриншот обработан, то передаем его, его хэш и список хэшей элементов в очередь
                     # Предварительно очистив ее
                     while not queue_hashes.empty():
                         queue_hashes.get()
-                    queue_hashes.put(((screenshot, screenshot_hash), hashes_elements))
-                    print(f'Количество элементов последнего экрана: {len(hashes_elements)}')
+                    queue_hashes.put(((screenshot, str(id_screen)), hashes_elements))
+                    # print(f'Количество элементов последнего экрана: {len(hashes_elements)}')
                     # Выводим время выполнения
                     print(f'Время выполнения: {time.time() - start_time + 0.05} сек.')
+                    print('------------------------------------------------------------------------------\n')
 

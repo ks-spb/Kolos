@@ -1019,7 +1019,8 @@ if __name__ == '__main__':
 
         schetchik += 1
         print('************************************************************************')
-        print("schetchik = ", schetchik)
+        print("schetchik = ", schetchik, "     Экран", screen.screenshot_hash)
+
         posledniy_t_0_kortez = (posledniy_t_0,)
         proverka_signal_porog()   # проверка и зажигание точек, если signal >= porog
         # concentrator_deystviy()
