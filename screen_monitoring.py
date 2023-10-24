@@ -24,7 +24,7 @@ import json
 from db import Database
 
 
-cursor = Database('Li_db_v1_4.db')
+cursor = Database('screen.db')
 
 
 def screen_monitor(queue_img):
@@ -161,7 +161,7 @@ def process_changes(queue_hashes, queue_img):
                     hash_set = set(hash_list)
                     for id_scr, screen_json in screens:
                         # В БД есть сохраненные экраны, проверим их на совпадение с имеющимся
-                        screen_hashes = set(json.load(screen_json))
+                        screen_hashes = set(json.loads(screen_json))
                         intersection = screen_hashes.intersection(hash_set)  # Найти пересечение set
 
                         if len(intersection) > max_count:
@@ -169,18 +169,25 @@ def process_changes(queue_hashes, queue_img):
                             max_count = len(intersection)
                             id_screen = id_scr
                             hashes_screen = screen_hashes
+                    if hashes_screen:
+                        print("Совпало", max_count, "\nЭто", max_count/(len(hashes_screen)/100))
 
-                    if max_count/(len(screen_hashes)/100) > COUNT_EL:
+                    if hashes_screen and max_count/(len(hashes_screen)/100) > COUNT_EL:
                         # Экран с максимальным количеством совпадающих признаков проходит порог
                         # Считаем, что этот экран уже есть и найден.
                         # Дополняем набор его хэшей теми, которых у него не было и обновляем БД
                         new_hashes = hash_set | hashes_screen
                         cursor.execute("UPDATE screen SET list = ? WHERE id = ?",
                                        (json.dumps(list(new_hashes)), id_screen))
+                        print('Обновляем запись об экране id', id_screen)
                     else:
                         # Экран новый, добавляем его в БД и получаем id нового экрана
                         cursor.execute("INSERT INTO screen (list) VALUES (?)", (json.dumps(hash_list),))
-    id_screen = cursor.lastrowid
+                        id_screen = cursor.get_last_id()
+                        print('Создаем новую запись об экране id', id_screen)
+                        cv2.imwrite(f'new_screens/scr_{id_screen}.png', screenshot)  # Сохраняем изображение в файл
+                    cursor.commit()
+
 
                     # Если скриншот обработан, то передаем его, его хэш и список хэшей элементов в очередь
                     # Предварительно очистив ее
