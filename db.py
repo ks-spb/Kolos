@@ -39,6 +39,10 @@ class Database:
             conn.commit()
             conn.close()
 
+    def get_last_id(self):
+        """ Получение последнего добавленного id """
+        return self.execute('SELECT last_insert_rowid()').fetchone()[0]
+
     def commit(self):
         """ Сохранение изменений в БД """
         conn = self.get_connection()
