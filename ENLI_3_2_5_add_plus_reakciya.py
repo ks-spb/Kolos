@@ -15,6 +15,7 @@ def stiranie_pamyati():
     global posledniy_t
     global posledniy_t_0
     global posledniy_tp
+    global old_ekran
     # Удаление лишних строчек в таблице точки, где ID>10 - это точка и реакция на 0, которая постоянно записывается.
     print("Запущено стирание памяти")
     cursor.execute("DELETE FROM tochki WHERE ID > 5")
@@ -23,6 +24,7 @@ def stiranie_pamyati():
     posledniy_t_0 = 3
     posledniy_t = 0
     posledniy_tp = 0
+    old_ekran = 0
 
 
 def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у буквы из списка введённых
@@ -954,6 +956,38 @@ def ymenshenie_signal():
     # print("Уменьшен сигнал у следующих точек: ", ymenshenie_signal_)
 
 
+
+def perenos_sostoyaniya():
+    # Функция определяет какой сейчас экран, отличается ли от старого. Если отличается - перенос posl_t0 в этот экран
+    global old_ekran
+    global posledniy_t_0
+    id_ekran = screen.screenshot_hash
+    new_name_id_ekran = "id_ekran_" + str(id_ekran)
+    print(f"Сейчас такой экран: {id_ekran}, имя ему присвоено: {new_name_id_ekran}, старый экран такой: {old_ekran}")
+    poisk_name_ekrana = tuple(
+        cursor.execute("SELECT ID FROM tochki WHERE name = ? AND type = 'ekran'", (new_name_id_ekran,)))
+    if not poisk_name_ekrana:
+        # Если такого экрана нет в БД - то сразу создаётся новая запись
+        id_new_ekran = sozdat_new_tochky(new_name_id_ekran, 1, "ekran", "zazech_sosedey", 1,
+                                         0, 0, 0, 0, 0)
+        sozdat_svyaz(posledniy_t_0, id_new_ekran, 1)
+        posledniy_t_0 = id_new_ekran
+        old_ekran = id_ekran
+        print(f'Создан новый экран: {id_new_ekran}')
+    else:
+        # Если такой экран найден в БД - то нужно сравнить отличается ли от старого - если нет - перенести в него состояние
+        for poisk_name_ekrana1 in poisk_name_ekrana:
+            print(f'Найден экран в БД: {poisk_name_ekrana1[0]}')
+            if poisk_name_ekrana1[0] != old_ekran:
+                print(f'Такой экран уже имеется в БД: {poisk_name_ekrana1[0]}. Он зажигается и присваивается posl_t0')
+                cursor.execute("UPDATE tochki SET work = 1 WHERE ID = ?", poisk_name_ekrana1)
+                old_ekran = poisk_name_ekrana1[0]
+                posledniy_t_0 = poisk_name_ekrana1[0]
+
+
+old_ekran = 0
+
+
 if __name__ == '__main__':
 
     # Запуск процесса наблюдения за экраном
@@ -1015,13 +1049,12 @@ if __name__ == '__main__':
         points = cursor.execute("SELECT * FROM tochki WHERE work = 1").fetchall()
         # print(points)
 
-
-
         schetchik += 1
         print('************************************************************************')
         print("schetchik = ", schetchik, "     Экран", screen.screenshot_hash)
 
         posledniy_t_0_kortez = (posledniy_t_0,)
+        perenos_sostoyaniya()
         proverka_signal_porog()   # проверка и зажигание точек, если signal >= porog
         # concentrator_deystviy()
         proshivka_po_derevy()
@@ -1033,7 +1066,7 @@ if __name__ == '__main__':
 
         # print("Сейчас ", source)
         if source == 'input':
-            # Ввод строки с клавиатуры, запись побуквенно
+            # Ввод строки с клавиатуры, запись по-буквенно
             vvedeno_luboe = input("Введите текст: ")
 
         elif source == 'rec':
@@ -1232,13 +1265,13 @@ if __name__ == '__main__':
             posledniy_tp = 0
             posledniy_t = 0
             # print("Было введено vvedeno_luboe: ", vvedeno_luboe)
-            # schetchik = 0
+            schetchik = 0   # 07.11.23 - добавлено обнуление, чтобы не перешло состояние к старому экрану
             # proshivka_po_derevy()
             # source = None
         else:
             if schetchik >= 10:
                 # 2.2.2: зажигается in0, которая горит, если нет вх. сигналов
-                cursor.execute("UPDATE tochki SET work = 0 WHERE ID = 3")
+                # cursor.execute("UPDATE tochki SET work = 0 WHERE ID = 3")
                 functions()
 
                 # 12.09.23 - Добавляю нейтральную реакцию на отсутствие какой-либо реакции при ответе.
@@ -1251,11 +1284,10 @@ if __name__ == '__main__':
                 # -------
 
                 schetchik = 0
-                posledniy_t_0 = 3
+                posledniy_t_0 = old_ekran
                 # print("Posl_to теперь 4 : ", posledniy_t_0)
-                print("-----------------------------------Переход в (3)-------------------------------------")
-            elif schetchik == 1:
-                posledniy_otvet = 0
+                posledniy_otvet = 0  # 07.11.23 - раньше последний ответ становился = 0, когда счётчик был = 1.
+                print(f"-----------------------------------Переход в {old_ekran}-------------------------------------")
             else:
                 functions()
         ymenshenie_signal()
