@@ -415,11 +415,11 @@ def sozdat_svyaz(id_start, id_finish, weight):
 
 
 
-def sozdat_new_tochky(name, work, type, func, porog, signal, puls, rod1, rod2, freq):
+def sozdat_new_tochky(name, work, type, func, porog, signal, puls, rod1, rod2, name2):
     max_ID = cursor.execute("SELECT MAX(ID) FROM tochki").fetchone()
     new_id = max_ID[0] + 1
     cursor.execute("INSERT INTO tochki VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", (
-        new_id, name, work, type, func, porog, signal, puls, rod1, rod2, freq))
+        new_id, name, work, type, func, porog, signal, puls, rod1, rod2, name2))
     return new_id
 
 
@@ -792,8 +792,8 @@ def proshivka_po_derevy():
     if vozmozhnie_deystviya:
         for vozmozhnie_deystviya1 in vozmozhnie_deystviya:
             # Проверить является ли эта точка отрицательной.
-            print(f'Проверка имеется ли возможное действие {vozmozhnie_deystviya1} в списках: отрицательные действия: '
-                  f'{otricatelnie_deystviya}, связь с 5: {svyaz_s_5}, связь с img: {svyaz_s_img}')
+            # print(f'Проверка имеется ли возможное действие {vozmozhnie_deystviya1} в списках: отрицательные действия: '
+            #       f'{otricatelnie_deystviya}, связь с 5: {svyaz_s_5}, связь с img: {svyaz_s_img}')
             if not vozmozhnie_deystviya1 in otricatelnie_deystviya:
                 # if not vozmozhnie_deystviya1 in svyaz_s_5:
                     if not vozmozhnie_deystviya1 in svyaz_s_img:
@@ -965,11 +965,11 @@ def perenos_sostoyaniya():
     new_name_id_ekran = "id_ekran_" + str(id_ekran)
     print(f"Сейчас такой экран: {id_ekran}, имя ему присвоено: {new_name_id_ekran}, старый экран такой: {old_ekran}")
     poisk_name_ekrana = tuple(
-        cursor.execute("SELECT ID FROM tochki WHERE name = ? AND type = 'ekran'", (new_name_id_ekran,)))
+        cursor.execute("SELECT ID FROM tochki WHERE name2 = ?", (new_name_id_ekran,)))
     if not poisk_name_ekrana:
         # Если такого экрана нет в БД - то сразу создаётся новая запись
-        id_new_ekran = sozdat_new_tochky(new_name_id_ekran, 1, "ekran", "zazech_sosedey", 1,
-                                         0, 0, 0, 0, 0)
+        id_new_ekran = sozdat_new_tochky("time_0", 1, "time", "zazech_sosedey", 1,
+                                         0, 0, 0, 0, new_name_id_ekran)
         sozdat_svyaz(posledniy_t_0, id_new_ekran, 1)
         posledniy_t_0 = id_new_ekran
         old_ekran = id_ekran
