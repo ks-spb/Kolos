@@ -31,7 +31,8 @@ def screen_monitor(queue_img):
     """ Запускает поток, который делает скриншоты с заданной периодичностью
     и сообщает если экран изменился. """
     sct = mss.mss()
-    monitor = {'top': 0, 'left': 0, 'width': sct.monitors[0]['width'], 'height': sct.monitors[0]['height']}
+    # monitor = {'top': 0, 'left': 0, 'width': sct.monitors[0]['width'], 'height': sct.monitors[0]['height']}
+    monitor = sct.monitors[2]
     hash_base_img = None  # Получаем хэш сегмента
 
     while True:
