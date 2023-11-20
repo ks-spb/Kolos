@@ -1,6 +1,6 @@
 from time import sleep
 from pynput import keyboard, mouse
-from pynput.keyboard import Key, Controller as kb_Controller
+from pynput.keyboard import Key, Controller as kb_Controller, Listener as KeyboardListener
 from pynput.mouse import Button, Controller
 import pyautogui
 
@@ -11,7 +11,7 @@ from exceptions import *
 from report import report
 from screen import screen
 
-
+listener_kb = KeyboardListener()  # Слушатель клавиатуры
 kb = kb_Controller()
 mo = Controller()
 
@@ -63,14 +63,24 @@ class Recorder:
             self.key_down = ''
             return
 
+        # try:
+        #     out = key.char
+        # except:
+        #     out = str(key)
+        #     if key == keyboard.Key.space:
+        #         # Обработка пробела отдельно
+        #         out = ' '
+
         try:
-            out = key.char
+            out = listener_kb.canonical(key).char
+            if not out:
+                raise
         except:
             out = str(key)
             if key == keyboard.Key.space:
                 # Обработка пробела отдельно
                 out = ' '
-
+        print(out)
         self.record.append({'type': 'kb', 'event': 'down', 'key': out})
 
     def on_release(self, key):
