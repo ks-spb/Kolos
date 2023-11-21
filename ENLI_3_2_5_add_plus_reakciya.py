@@ -949,27 +949,27 @@ def rasprostranenie_potenciala():
                                                                  "WHERE svyazi.id_finish = ? AND tochki.name = 'time_0'",
                                                                  (poisk_puls1[0],)))
             for poisk_obratnogo_soseda1 in poisk_obratnogo_soseda:
-                print(f"Нашли обратного соседа: {poisk_obratnogo_soseda1[0]}, у точки: {poisk_puls1} и распространился "
-                      f"потенциал")
+                # print(f"Нашли обратного соседа: {poisk_obratnogo_soseda1[0]}, у точки: {poisk_puls1} и распространился "
+                #       f"потенциал")
                 puls_etogo_ID = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_puls1))
                 for puls_etogo_ID1 in puls_etogo_ID:
-                    print(f"Пульс текущего ID равен: {puls_etogo_ID1[0]}")
-                new_puls = puls_etogo_ID1[0]-1
-                print(f"Обновляется puls у обратного соседа: {poisk_obratnogo_soseda1[0]}, new_puls = {new_puls}, "
-                      f"но новый должен быть больше старого")
+                    # print(f"Пульс текущего ID равен: {puls_etogo_ID1[0]}")
+                    new_puls = puls_etogo_ID1[0]-1
+                # print(f"Обновляется puls у обратного соседа: {poisk_obratnogo_soseda1[0]}, new_puls = {new_puls}, "
+                #       f"но новый должен быть больше старого")
                 # проверка старого пульса
-                puls_stariy = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_obratnogo_soseda1))
+                # puls_stariy = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_obratnogo_soseda1))
                 # обновление пульса
                 cursor.execute("UPDATE tochki SET puls = ? WHERE ID = ?", (new_puls,
                                                                            poisk_obratnogo_soseda1[0]))
                 # увеличение сигнала, чтобы была возможность найти точку в функции концентратор действий
-                print(f"poisk_obratnogo_soseda1[0]: {poisk_obratnogo_soseda1[0]}")
+                # print(f"poisk_obratnogo_soseda1[0]: {poisk_obratnogo_soseda1[0]}")
                 cursor.execute("UPDATE tochki SET signal = 0.1 WHERE ID = ? AND signal < 0.1",
                                    (poisk_obratnogo_soseda1[0], ))
                 # Проверка увеличение пульса
-                puls_proverka = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_obratnogo_soseda1))
-                for puls_proverka1 in puls_proverka:
-                    print(f"Старый пульс = {puls_stariy[0]}, передаваемый: {new_puls}, теперь он равен: {puls_proverka1}")
+                # puls_proverka = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_obratnogo_soseda1))
+                # for puls_proverka1 in puls_proverka:
+                    # print(f"Старый пульс = {puls_stariy[0]}, передаваемый: {new_puls}, теперь он равен: {puls_proverka1}")
             # обнуляется родительский puls
             cursor.execute("UPDATE tochki SET puls = 0 WHERE ID = ?", poisk_puls1)
 
@@ -1241,16 +1241,16 @@ if __name__ == '__main__':
             poisk_most = tuple(cursor.execute("SELECT svyazi.id_start FROM svyazi JOIN tochki "
                 "ON svyazi.id_start = tochki.id WHERE svyazi.id_finish = ? AND tochki.name = '_most__' "
                                               "OR tochki.name = '_most_'", posledniy_t_0_kortez))
-            print(f'Найден мост: {poisk_most}, у которого имеется связь с posl_t: {posledniy_t}')
+            # print(f'Найден мост: {poisk_most}, у которого имеется связь с posl_t: {posledniy_t}')
             if not poisk_most:
                 most_new = sozdat_new_tochky('_most_', 1, 'most', 'zazech_sosedey', 1, 0,
                                              10, posledniy_t, 0, posledniy_t)
                 sozdat_svyaz(most_new, posledniy_t, 1)
-                print(f'создан мост: {most_new}, для зажигания точки: {posledniy_t}')
+                # print(f'создан мост: {most_new}, для зажигания точки: {posledniy_t}')
             else:
                 for poisk_most1 in poisk_most:
                     most_new = poisk_most1[0]
-                    print(f'Имеющийся мост: {poisk_most1[0]} переименован и присвоено значение most_new')
+                    # print(f'Имеющийся мост: {poisk_most1[0]} переименован и присвоено значение most_new')
                     cursor.execute("UPDATE 'tochki' SET name = '_most_' WHERE ID = ?", (most_new,))
 
             posledniy_tp = 0
