@@ -473,7 +473,6 @@ def concentrator_deystviy():
     # 3.2.4 - соединение вместе и горящих и не горящих (tp) с последующим перебором вариантов
     list_tp = []
     list_signal_tp = []
-    # TO DO увеличить вместе с puls и signal точки, чтобы она была найдена в концентраторе
     poisk_drygih_tp = tuple(cursor.execute("SELECT ID FROM tochki WHERE signal > 0 AND name = 'time_p'"))
     # print("Нашли следующие возможные (tp), у которых signal > 0 AND name = 'time_p': ", poisk_drygih_tp)
     if poisk_drygih_tp != ():
@@ -572,7 +571,8 @@ def poisk_pol_i_otric_reakciy(ID):
         "WHERE svyazi.id_start = ? AND tochki.name = 'time_0'", (ID,)).fetchall()
     svyazi_s_1 = []
     svyazi_s_2 = []
-    potencial_puls = []
+    poisk_puls2 = 0
+    poloz_minus_otric = 0
     print(f'Для учёта влияния найдены следующие (to): {poisk_t0}, связанные с {ID}')
     for poisk_t01 in poisk_t0:
         # найти и просуммировать связи (t0) с (1)
@@ -589,10 +589,11 @@ def poisk_pol_i_otric_reakciy(ID):
         poisk_puls = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_t01))
         if poisk_puls:
             for poisk_puls1 in poisk_puls:
-                potencial_puls.append(poisk_puls1[0])
+                for poisk_puls2 in poisk_puls1:
+                    poloz_minus_otric = len(svyazi_s_1) - len(svyazi_s_2) + poisk_puls2
     print(f'Найдены положительные реакции: {svyazi_s_1}, найдены отрицательные реакции: {svyazi_s_2}, найден пульc: '
-          f'{potencial_puls}')
-    poloz_minus_otric = len(svyazi_s_1) - len(svyazi_s_2) + potencial_puls
+          f'{poisk_puls2}')
+
     print(f'Получилось влияние на ответ: {poloz_minus_otric}')
     if poloz_minus_otric == 0:
         vliyanie = 1
@@ -899,7 +900,7 @@ def sozdat_svyaz_s_4_ot_luboy_tochki(tochka):
 
 
 def ymenshenie_signal():
-    # функция находит все (.), где сигнал более 0 и уменьшает на 0,1
+    # функция находит все (.), где сигнал более 0 и уменьшает на 0,1 или на 0,01
     # ymenshenie_signal_ = tuple(cursor.execute("SELECT ID FROM tochki WHERE signal >= 0.1",))
     cursor.execute("UPDATE tochki SET signal = signal - 0.1 WHERE signal >= 0.1 AND signal < 1")
     cursor.execute("UPDATE tochki SET signal = signal - 0.01 WHERE signal >= 0 AND signal < 0.1")  #3.2.4 - added
@@ -936,6 +937,8 @@ def perenos_sostoyaniya():
 
 
 def rasprostranenie_potenciala():
+    """Функция, которая отмечает обратных соседей (расположенных на начале стрелки, а не на конце) у загоревшихся
+    точек. Чтобы оказать влияние на выбор следующего действия (зажигания точки действия)."""
     poisk_puls = tuple(cursor.execute("SELECT ID FROM tochki WHERE puls > 0"))
     if poisk_puls:
         for poisk_puls1 in poisk_puls:
@@ -957,8 +960,12 @@ def rasprostranenie_potenciala():
                 # проверка старого пульса
                 puls_stariy = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_obratnogo_soseda1))
                 # обновление пульса
-                cursor.execute("UPDATE tochki SET puls = ? WHERE ID = ?",
-                               (new_puls, poisk_obratnogo_soseda1[0]))
+                cursor.execute("UPDATE tochki SET puls = ? WHERE ID = ?", (new_puls,
+                                                                           poisk_obratnogo_soseda1[0]))
+                # увеличение сигнала, чтобы была возможность найти точку в функции концентратор действий
+                print(f"poisk_obratnogo_soseda1[0]: {poisk_obratnogo_soseda1[0]}")
+                cursor.execute("UPDATE tochki SET signal = 0.1 WHERE ID = ? AND signal < 0.1",
+                                   (poisk_obratnogo_soseda1[0], ))
                 # Проверка увеличение пульса
                 puls_proverka = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_obratnogo_soseda1))
                 for puls_proverka1 in puls_proverka:
