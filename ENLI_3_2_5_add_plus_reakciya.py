@@ -1,10 +1,10 @@
 import time
 
-from db import Database
 from time import sleep
 import random
 from multiprocessing import Process, Queue, Manager
 
+from db import Database
 from mous_kb_record import rec, play
 from screen_monitoring import process_changes
 from screen import screen

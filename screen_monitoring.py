@@ -19,12 +19,12 @@ import datetime
 import numpy as np
 import zlib
 import json
-
+import sqlite3
 
 from db import Database
 
 
-cursor = Database('screen.db')
+cursor = sqlite3.connect('screen.db')
 
 
 def screen_monitor(queue_img):
@@ -32,7 +32,7 @@ def screen_monitor(queue_img):
     и сообщает если экран изменился. """
     sct = mss.mss()
     # monitor = {'top': 0, 'left': 0, 'width': sct.monitors[0]['width'], 'height': sct.monitors[0]['height']}
-    monitor = sct.monitors[2]
+    monitor = sct.monitors[1]
     hash_base_img = None  # Получаем хэш сегмента
 
     while True:
@@ -185,7 +185,8 @@ def process_changes(queue_hashes, queue_img):
                     else:
                         # Экран новый, добавляем его в БД и получаем id нового экрана
                         cursor.execute("INSERT INTO screen (list) VALUES (?)", (json.dumps(hash_list),))
-                        id_screen = cursor.get_last_id()
+                        # id_screen = cursor.get_last_id()
+                        id_screen = cursor.execute('SELECT last_insert_rowid()').fetchone()[0]
                         print('Создаем новую запись об экране id', id_screen)
                         cv2.imwrite(f'new_screens/scr_{id_screen}.png', screenshot)  # Сохраняем изображение в файл
                     cursor.commit()

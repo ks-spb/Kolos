@@ -3,13 +3,14 @@ from pynput import keyboard, mouse
 from pynput.keyboard import Key, Controller as kb_Controller, Listener as KeyboardListener
 from pynput.mouse import Button, Controller
 import pyautogui
+import json
 
 import report
-# from element_images import save_image, pattern_search
-from image_definition import encode_and_save_to_db_image
 from exceptions import *
 from report import report
 from screen import screen
+from db import Database
+
 
 listener_kb = KeyboardListener()  # Слушатель клавиатуры
 kb = kb_Controller()
@@ -31,6 +32,95 @@ mo = Controller()
     Отпущена левая клавиша мыши: {'type': 'mouse', 'event': 'up', 'key': 'Button.left', 'x': 671, 'y': 591}
     Отпущена правая клавиша мыши: {'type': 'mouse', 'event': 'up', 'key': 'Button.right', 'x': 671, 'y': 591}
 """
+
+
+class Hotkey:
+    """ Замена горячих клавиш на id или заданное имя.
+
+    Список сочетаний и последовательностей клавиш хранится в таблице hotkey БД в поле list в формате JSON.
+    Он читается при инициализации программы и обновляется при изменениях.
+    Сочетания характеризуются тем, что вначале идет нажатие одной из модификационных клавиши: Ctrl, Alt, Cmd.
+    В нем записаны это и все последующие нажатия и отпускания клавиш до отпускания последней модификационной клавиши.
+    При этом нажатие любой клавиши записывается как просто ее название (например 'A')
+    а отпускание клавиши как 'A up'.
+    """
+
+    def __init__(self):
+        # TODO: Нет защиты от повторного нажатия модификационной клавиши Левой + Правой
+        # TODO: При длительном удержании записывается повтор
+        self.ctrl = False  # Помнит, нажата ли клавиша Ctrl
+        self.alt = False  # Помнит, нажата ли клавиша Alt
+        self.cmd = False  # Помнит, нажата ли клавиша Cmd
+        self.record_order = []  # Хранит сочетание текущей записи
+        self.cursor = Database('Li_db_v1_4.db')  # Подключение к БД
+
+        # Читаем из ДБ существующие последовательности, подставляя имена вместо id если они есть
+        orders = self.cursor.execute("SELECT * FROM hotkey").fetchall()
+        self.all_orders = {}  # Словарь списков сочетаний (ключ - номер или имя, если оно есть)
+        for event in orders:
+            name = event[0] if not event[2] else event[2]
+            self.all_orders[name] = json.loads(event[1])
+
+    def add_to_order(self):
+        """ Добавление сочетания в словарь сочетаний и в ДБ
+
+        Возвращает id или имя последовательности.
+        """
+        print(self.record_order)
+        print(self.all_orders)
+        for name, order in self.all_orders.items():
+            if self.record_order == order:
+                self.record_order.clear()
+                return name  # Если такая последовательность уже есть, вернем ее название
+
+        # Добавление новой последовательности
+        self.cursor.execute("INSERT INTO hotkey (list) VALUES (?)", (json.dumps(self.record_order),))
+        self.cursor.commit()
+        id = self.cursor.get_last_id()
+        self.all_orders[id] = self.record_order.copy()
+        self.record_order.clear()
+        return id
+
+    def add_event(self, event):
+        """ Добавление событие event в последовательность, если оно относится к сочетанию.
+
+         Проверяем, начато ли сочетание (нажаты Ctrl, Alt, Cmd). Если начато, то новое
+         нажатие или отпускание клавиши добавляем к сочетанию и закрываем его, если оно завершено.
+         Завершено - значит отпущена последняя модификационная клавиша.
+
+         При закрытии сочетание добавляется в список и возвращается его id или имя.
+         Если не закрыто - вернет None.
+         """
+        mod = False  # Модификационная клавиша не нажата и не отпущена
+        if 'ctrl' in event['key'] or 'alt' in event['key'] or 'cmd' in event['key']:
+            mod = True
+
+        if not self.ctrl | self.alt | self.cmd | mod:
+            # Выходим, если событие не связано с сочетанием
+            return event
+
+        key = event['key'] + ' up' if event['event'] == 'up' else event['key']  # Какая клавиша нажата или отпущена
+
+        # Меняем состояние модификационных клавиш
+        mod = False if event['event'] == 'up' else True  # Модификационная клавиша нажата или отпущена
+        if 'ctrl' in key:
+            self.ctrl = mod
+        elif 'alt' in key:
+            self.alt = mod
+        else:
+            self.cmd = mod
+
+        self.record_order.append(key)  # Добавляем событие в текущую последовательность
+
+        if not self.ctrl | self.alt | self.cmd:
+            # Если отпущена последняя модификационная клавиша, то закрываем последовательность
+            print(self.add_to_order())
+            return None
+
+        return None
+
+hotkey = Hotkey()
+
 
 class Recorder:
     """ Прослушивание мыши и клавиатуры и запись событий с них """
@@ -63,14 +153,6 @@ class Recorder:
             self.key_down = ''
             return
 
-        # try:
-        #     out = key.char
-        # except:
-        #     out = str(key)
-        #     if key == keyboard.Key.space:
-        #         # Обработка пробела отдельно
-        #         out = ' '
-
         try:
             out = listener_kb.canonical(key).char
             if not out:
@@ -80,20 +162,32 @@ class Recorder:
             if key == keyboard.Key.space:
                 # Обработка пробела отдельно
                 out = ' '
-        print(out)
-        self.record.append({'type': 'kb', 'event': 'down', 'key': out})
+
+        # Нажата клавиша, она должна быть добавлена в запись,
+        # но может быть она относится последовательности
+        event = hotkey.add_event({'type': 'kb', 'event': 'down', 'key': out})  # Какое событие нужно добавить
+        if event:
+            # Добавляем нажатие кнопки или выполнение последовательности
+            self.record.append(event)
 
     def on_release(self, key):
         """ Запись отпущенной клавиши """
         try:
-            out = key.char
+            out = listener_kb.canonical(key).char
+            if not out:
+                raise
         except:
             out = str(key)
             if key == keyboard.Key.space:
                 # Обработка пробела отдельно
                 out = ' '
 
-        self.record.append({'type': 'kb', 'event': 'up', 'key': out})
+        # Отпущена клавиша, она должна быть добавлена в запись,
+        # но может быть она относится последовательности
+        event = hotkey.add_event({'type': 'kb', 'event': 'up', 'key': out})  # Какое событие нужно добавить
+        if event:
+            # Добавляем отпускание кнопки или выполнение последовательности
+            self.record.append(event)
 
     def on_click(self, x, y, button, is_pressed):
         """ Запись нажатия и отпускания кнопки мыши происходит,
