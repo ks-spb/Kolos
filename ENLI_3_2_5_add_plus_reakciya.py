@@ -20,7 +20,7 @@ def stiranie_pamyati():
     print("Запущено стирание памяти")
     cursor.execute("DELETE FROM tochki WHERE ID > 5")
     cursor.execute("DELETE FROM svyazi WHERE ID > 3")
-    cursor.execute("UPDATE tochki SET puls = 0 AND freq = 10 AND signal = 0 AND work = 0")
+    cursor.execute("UPDATE tochki SET puls = 0 AND signal = 0 AND work = 0")
     posledniy_t_0 = 3
     posledniy_t = 0
     posledniy_tp = 0
@@ -217,6 +217,7 @@ def proverka_signal_porog():
                         # print("Этот (in) горит")
                         cursor.execute("UPDATE tochki SET work = 1 WHERE ID = (?)", nayti_tochki_signal_porog1)
                         cursor.execute("UPDATE tochki SET signal = 0.9 WHERE ID = (?)", nayti_tochki_signal_porog1)
+                        cursor.execute("UPDATE tochki SET puls = 10 WHERE ID = (?) AND name = 'time_0'", nayti_tochki_signal_porog1)
                     else:
                         # если (in) не горит - погасить сигнал у этой (t)
                         # print("Этот (in) не горит")
@@ -226,6 +227,7 @@ def proverka_signal_porog():
                     # print("Длина name2 не равна 16")
                     cursor.execute("UPDATE tochki SET work = 1 WHERE ID = (?)", nayti_tochki_signal_porog1)
                     cursor.execute("UPDATE tochki SET signal = 0.9 WHERE ID = (?)", nayti_tochki_signal_porog1)
+                    cursor.execute("UPDATE tochki SET puls = 10 WHERE ID = (?) AND name = 'time_0'", nayti_tochki_signal_porog1)
 
 
 
@@ -438,6 +440,7 @@ def functions():
     # print("Следующие точки горят с ф. зажечь соседей: ", goryashie_tochki_zazech_sosedey)
     for goryashie_tochki_zazech_sosedey1 in goryashie_tochki_zazech_sosedey:
         zazech_sosedey(goryashie_tochki_zazech_sosedey1)
+    rasprostranenie_potenciala()
 
 
 
@@ -799,6 +802,7 @@ def proshivka_po_derevy():
                     if not vozmozhnie_deystviya1 in svyaz_s_img:
                         # 12.09.23 Добавил отсеивание по нейтральным действиям и отсеивание, если не горит (in img)
                         # print(f'Применить возможное действие: {vozmozhnie_deystviya1}')
+                        # сложный поиск, где находится ID finish, если задан id_start и id_finish должен быть с name = time_p
                         poisk_tp_v_pervoy_tochke_pyti = tuple(cursor.execute("SELECT svyazi.id_finish "
                                                                              "FROM svyazi JOIN tochki "
                                                                              "ON svyazi.id_finish = tochki.id "
@@ -980,9 +984,42 @@ def perenos_sostoyaniya():
             print(f'Найден экран в БД: {poisk_name_ekrana1[0]}')
             if poisk_name_ekrana1[0] != old_ekran:
                 print(f'Такой экран уже имеется в БД: {poisk_name_ekrana1[0]}. Он зажигается и присваивается posl_t0')
-                cursor.execute("UPDATE tochki SET work = 1 WHERE ID = ?", poisk_name_ekrana1)
+                cursor.execute("UPDATE tochki SET work = 1 AND puls = 10 WHERE ID = ?", poisk_name_ekrana1)
                 old_ekran = poisk_name_ekrana1[0]
                 posledniy_t_0 = poisk_name_ekrana1[0]
+
+
+def rasprostranenie_potenciala():
+    poisk_puls = tuple(cursor.execute("SELECT ID FROM tochki WHERE puls > 0"))
+    if poisk_puls:
+        for poisk_puls1 in poisk_puls:
+            # сложный поиск, где находится ID start, если задан id_finish, при этом id_start должен быть с name = time_0
+            poisk_obratnogo_soseda = tuple(cursor.execute("SELECT svyazi.id_start "
+                                                                 "FROM svyazi JOIN tochki "
+                                                                 "ON svyazi.id_finish = tochki.id "
+                                                                 "WHERE svyazi.id_finish = ? AND tochki.name = 'time_0'",
+                                                                 (poisk_puls1[0],)))
+            for poisk_obratnogo_soseda1 in poisk_obratnogo_soseda:
+                print(f"Нашли обратного соседа: {poisk_obratnogo_soseda1[0]}, у точки: {poisk_puls1} и распространился "
+                      f"потенциал")
+                puls_etogo_ID = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_puls1))
+                for puls_etogo_ID1 in puls_etogo_ID:
+                    print(f"Пульс текущего ID равен: {puls_etogo_ID1[0]}")
+                new_puls = puls_etogo_ID1[0]-1
+                print(f"Обновляется puls у обратного соседа: {poisk_obratnogo_soseda1[0]}, new_puls = {new_puls}, "
+                      f"но новый должен быть больше старого")
+                # проверка старого пульса
+                puls_stariy = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_obratnogo_soseda1))
+                # обновление пульса
+                cursor.execute("UPDATE tochki SET puls = ? WHERE ID = ?",
+                               (new_puls, poisk_obratnogo_soseda1[0]))
+                # Проверка увеличение пульса
+                puls_proverka = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_obratnogo_soseda1))
+                for puls_proverka1 in puls_proverka:
+                    print(f"Старый пульс = {puls_stariy[0]}, передаваемый: {new_puls}, теперь он равен: {puls_proverka1}")
+            # обнуляется родительский puls
+            cursor.execute("UPDATE tochki SET puls = 0 WHERE ID = ?", poisk_puls1)
+
 
 
 old_ekran = 0
@@ -1062,6 +1099,7 @@ if __name__ == '__main__':
         # 03.10.23 - зажигание моста
         if most_new != 0:
             cursor.execute("UPDATE 'tochki' SET work = 1 WHERE ID = ?", (most_new, ))
+            cursor.execute("UPDATE 'tochki' SET puls = 10 WHERE ID = ? AND name = 'time_0'", (most_new,))
             print(f'Снова зажёгся мост: {most_new}')
 
         # print("Сейчас ", source)
@@ -1273,7 +1311,6 @@ if __name__ == '__main__':
                 # 2.2.2: зажигается in0, которая горит, если нет вх. сигналов
                 # cursor.execute("UPDATE tochki SET work = 0 WHERE ID = 3")
                 functions()
-
                 # 12.09.23 - Добавляю нейтральную реакцию на отсутствие какой-либо реакции при ответе.
                 # print("Состояние перед нейтральной реакцией было такое: ", posledniy_t_0, "    С ней и создаётся связь")
                 posledniy_t_0_kortez = (posledniy_t_0,)
