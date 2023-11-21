@@ -11,11 +11,9 @@ from report import report
 from screen import screen
 from db import Database
 
-
 listener_kb = KeyboardListener()  # Слушатель клавиатуры
 kb = kb_Controller()
 mo = Controller()
-
 
 """ Вид в котором информация о событиях хранится объекте:
     
@@ -60,8 +58,6 @@ class Hotkey:
         for event in orders:
             name = event[0] if not event[2] else event[2]
             self.all_orders[name] = json.loads(event[1])
-
-
 
     def add_to_order(self):
         """ Добавление сочетания в словарь сочетаний и в ДБ
@@ -121,6 +117,7 @@ class Hotkey:
 
         return None
 
+
 hotkey = Hotkey()
 
 
@@ -149,7 +146,6 @@ class Recorder:
     def on_press(self, key):
         """ Запись нажатой клавиши """
         if key == keyboard.Key.esc:
-
             # Остановка записи по клавише Esc
             self.stop()
             self.key_down = ''
@@ -213,6 +209,7 @@ class Recorder:
         out = {'type': 'mouse', 'event': 'click', 'image': hash_element}
         self.record.append(out)
 
+
 rec = Recorder()  # Создаем объект записи
 
 
@@ -242,17 +239,17 @@ def on_click(x, y, button, is_pressed):
         rec.on_click(x, y, button, is_pressed)
 
 
-keyboard_listener = keyboard.Listener(on_press=on_press, on_release=on_release)  # Инициализация прослушивания клавиатуры
+keyboard_listener = keyboard.Listener(on_press=on_press,
+                                      on_release=on_release)  # Инициализация прослушивания клавиатуры
 mouse_listener = mouse.Listener(on_click=on_click)  # Инициализация прослушивания мыши
 
 mouse_listener.start()  # Старт прослушивания мыши
 keyboard_listener.start()  # Старт прослушивания клавиатуры
 
+
 # rec.start()
 # while True:
 #     sleep(0.001)
-
-
 
 
 class Play:
