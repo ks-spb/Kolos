@@ -61,6 +61,8 @@ class Hotkey:
             name = event[0] if not event[2] else event[2]
             self.all_orders[name] = json.loads(event[1])
 
+
+
     def add_to_order(self):
         """ Добавление сочетания в словарь сочетаний и в ДБ
 
