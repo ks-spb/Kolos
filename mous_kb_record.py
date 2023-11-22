@@ -57,7 +57,7 @@ class Hotkey:
         orders = self.cursor.execute("SELECT * FROM hotkey").fetchall()
         self.all_orders = {}  # Словарь списков сочетаний (ключ - номер или имя, если оно есть)
         for event in orders:
-            name = event[0] if not event[2] else event[2]
+            name = str(event[0]) if not event[2] else event[2]
             self.all_orders[name] = json.loads(event[1])
 
     def add_to_order(self):
@@ -73,7 +73,7 @@ class Hotkey:
         # Добавление новой последовательности
         self.cursor.execute("INSERT INTO hotkey (list) VALUES (?)", (json.dumps(self.record_order),))
         self.cursor.commit()
-        id = self.cursor.get_last_id()
+        id = str(self.cursor.get_last_id())
         self.all_orders[id] = self.record_order.copy()
         self.record_order.clear()
         return id
@@ -111,13 +111,15 @@ class Hotkey:
 
         if not self.ctrl | self.alt | self.cmd:
             # Если отпущена последняя модификационная клавиша, то закрываем последовательность
-            print(self.add_to_order())
-            return None
+            # И возвращаем ее для записи
+            event['event'] = 'hotkey'  # Помечаем, что это сочетание клавиш
+            event['key'] = self.add_to_order()  # Добавляем сочетание в словарь и возвращаем его id или имя
+            return event
 
         return None
 
 
-hotkey = Hotkey()
+hotkey = Hotkey()  # Создание объекта обработки сочетаний клавиш
 
 
 class Recorder:
