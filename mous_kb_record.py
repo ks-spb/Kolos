@@ -53,6 +53,7 @@ class Hotkey:
         self.cursor = Database('Li_db_v1_4.db')  # Подключение к БД
 
         # Читаем из ДБ существующие последовательности, подставляя имена вместо id если они есть
+        # TODO: Допускаются одинаковые имена сочетаний, добавляемые позже будут заменять прежние
         orders = self.cursor.execute("SELECT * FROM hotkey").fetchall()
         self.all_orders = {}  # Словарь списков сочетаний (ключ - номер или имя, если оно есть)
         for event in orders:
@@ -64,8 +65,6 @@ class Hotkey:
 
         Возвращает id или имя последовательности.
         """
-        print(self.record_order)
-        print(self.all_orders)
         for name, order in self.all_orders.items():
             if self.record_order == order:
                 self.record_order.clear()
