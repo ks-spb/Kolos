@@ -455,18 +455,25 @@ def ymenshit_svyazi():
 
 
 def concentrator_deystviy():
+    """Если прошивка привела к тому, что возможного пути нет или все из возможных действий отрицательные - запускается
+    эта функция. Она ищет все возможные (tp), у которых signal > 0 (т.е. даже затухающие).
+    * Отсеиваются последние ответы, чтобы избежать зацикливания. Если это другой ответ - то записывается в лист.
+    * Находится сигнал у всех действий в листе. Действия сортируются, исходя из наибольшего сигнала.
+    * Перебираются действия и ищутся связи с (t0) или с (4), чтобы найти точку завершение сущности.
+    * Ищется связь с последним t0 (текущим) и найденным. Если связи нет - добавить эту точку в лист действий.
+    * Из листа действий удаляются дубли.
+    * Передача действия в функцию, где производится поиск положительных и отрицательных реакций для их последующего
+    влияния на выбор.
+    """
     B = True
     global posledniy_t_0
     global posledniy_otvet
     global schetchik
 
-    list_otric_reac = []
     list_deystviy = []
-    list_neytral_reac = []
     # 3.2.4 - соединение вместе и горящих и не горящих (tp) с последующим перебором вариантов
     list_tp = []
     list_signal_tp = []
-    list_isklucheniya_deystviy = []
     poisk_drygih_tp = tuple(cursor.execute("SELECT ID FROM tochki WHERE signal > 0 AND name = 'time_p'"))
     # print("Нашли следующие возможные (tp), у которых signal > 0 AND name = 'time_p': ", poisk_drygih_tp)
     if poisk_drygih_tp != ():
@@ -529,74 +536,13 @@ def concentrator_deystviy():
                                                (posledniy_t_0, list_t01)))
                             # print('poisk_svyazi_s_posl_t0 = ', poisk_svyazi_s_posl_t0)
                             # не ищется ID... разделяю на 2 фильтр
-                            if poisk_svyazi_s_posl_t0 != ():
-                                for poisk_svyazi_s_posl_t01 in poisk_svyazi_s_posl_t0:
-                                    for poisk_svyazi_s_posl_t02 in poisk_svyazi_s_posl_t01:
-                                        poisk_svyazi_s_posl_t03 = tuple(
-                                            cursor.execute("SELECT ID FROM svyazi WHERE id_finish = ? AND ID = ?",
-                                                           (list_t01, poisk_svyazi_s_posl_t02)))
-                                        # print('poisk_svyazi_s_posl_t03 = ', poisk_svyazi_s_posl_t03)
-                                        if poisk_svyazi_s_posl_t03 != ():
-                                            # 3.2.5 - если имеется у этой tp связь с posl_to - это нужно зафиксировать,
-                                            # чтобы другие связи не попали в лист действий
-                                            list_svyazi_s_posl_t0 += poisk_svyazi_s_posl_t03
-                                            # а если связь есть - то нужно проверить имеются ли реакции на данное действие (ответ)
-                                            poisk_svyazi_s_reakciey = tuple(
-                                                cursor.execute("SELECT id_finish FROM svyazi WHERE id_start = ?",
-                                                               list_t01_kortez))
-                                            # print('Поиск связи с реакцией: ', poisk_svyazi_s_reakciey)
-                                            for poisk_svyazi_s_reakciey1 in poisk_svyazi_s_reakciey:
-                                                # print('poisk_svyazi_s_reakciey1 = ', poisk_svyazi_s_reakciey1)
-                                                if poisk_svyazi_s_reakciey1 == (2,):
-                                                    # если найдена (-) реакция - то не нужно применять это действие.
-                                                    # запустить обратный сбор сущности tp и зажигание с первой (.)
-                                                    list_otric_reac += poisk_svyazi_s_reakciey1
-                                                    # print('Лист отрицательных связей такой: list_otric_reac', list_otric_reac)
-                                                    # print('Найдена отрицательная реакция и действие отменено: ', poisk_tp)
-                                                    list_isklucheniya_deystviy += poisk_tp
-                                                    # 3.2.1 - погасить отработанные (...)
-                                                    cursor.execute("UPDATE tochki SET work = 0 AND signal = 0 WHERE ID = ?",
-                                                                   poisk_tp)
-                                                elif poisk_svyazi_s_reakciey1 == (1, ):
-                                                    # если нашлась (+) реакция - то нужно применить именно это действие
-                                                    list_deystviy = []
-                                                    list_deystviy += poisk_tp
-                                                    print(f'Найдена положительная реакция и действие применено: '
-                                                          f'{poisk_tp}. Остальные точки погашены')
-                                                    pogasit_vse_tochki()
-                                                    B = False
-                                                elif poisk_svyazi_s_reakciey1 == (5, ):
-                                                    # если нашлась нейтральная реакция - то действие будет применено
-                                                    # только, если не будет других действий
-                                                    list_neytral_reac += poisk_svyazi_s_reakciey1
-                                                    list_isklucheniya_deystviy += poisk_tp
-                                                    # print(f'Лист нейтральных реакций такой: {poisk_tp}')
-                                                    # print('Найдена нейтральная реакция и приоритет понижен: ', poisk_tp)
-                                                else:
-                                                    # если нет связи с (реакциями), но имеется связь с posl_t0 - нужно
-                                                    # добавить это действие в начало листа действий
-                                                    list_deystviy.insert(0, poisk_tp[0])
-                            else:
+                            if poisk_svyazi_s_posl_t0 == ():
                                 list_deystviy += poisk_tp
                                 # print('List_deystviy 4 стал следующим: ', list_deystviy)
-                        # 3.2.5 - если tp не применялось и нет опыта - то добавить его в лист действий
-                        if list_otric_reac == []:
-                            list_deystviy += poisk_tp
-                            # print('List_deystviy 2 стал следующим: ', list_deystviy)
-                            # 3.2.5 - возможно проверки на отсутствие отрицательных реакций будет достаточно, чтобы не
-                            # дублировать действия
-                            # if list_svyazi_s_posl_t0 == []:
-                            #     list_deystviy += poisk_tp
-                            #     print('List_deystviy 5 стал следующим: ', list_deystviy)
                 else:
                     B = False
                 schetchik_B += 1
-    # print(f'list_isklucheniya_deystviy = {list_isklucheniya_deystviy}')
-    # удаление (-) и нейтральных действий из листа действий:
-    for value in list_isklucheniya_deystviy:
-        while value in list_deystviy:
-            list_deystviy.remove(value)
-    # Удаление дублей из листа действий
+    # Удаление дублей из листа действий:
     list_deystviy = list(set(list_deystviy))
     # print('Лист действий: ', list_deystviy)
     if list_deystviy != []:
@@ -614,23 +560,6 @@ def concentrator_deystviy():
         sbor_deystviya(choice)
         pogasit_vse_tochki()  # 13.09.23 - добавил гашение всех точек, чтобы совершить случайное действие и ждать на
         # него реакцию
-    else:
-        if list_neytral_reac != []:
-            print(f'Лист нейтральных действий: {list_neytral_reac}')
-            vliyanie_na_deystvie = []
-            for list_deystviy1 in list_neytral_reac:
-                # поиск связей с текущим ID (tp) и (t0)
-                # print("Лист действий, такой ID передаётся: ", list_deystviy1)
-                # поиск положительных и отрицательных реакций, их вычитание и запись в лист для дальнейшего выбора (tp)
-                vliyanie_na_deystvie.append(poisk_pol_i_otric_reakciy(list_deystviy1))
-                # print(f'Было добавлено к ID: {list_deystviy1}, следующее влияние: {poisk_pol_i_otric_reakciy(list_deystviy1)}')
-            # выбор действия, исходя из влияния
-            # print(f'Получилось следующее влияние на действия: {vliyanie_na_deystvie}')
-            choice = random.choices(list_neytral_reac, weights=vliyanie_na_deystvie, k=1)[0]
-            print(f'Случайный ответ следующий с нейтральной реакцией: {choice}')
-            sbor_deystviya(choice)
-            # pogasit_vse_tochki()   # 13.09.23 - добавил гашение всех точек, чтобы совершить случайное действие и ждать на
-                                   # него реакцию
 
 
 def poisk_pol_i_otric_reakciy(ID):
@@ -643,7 +572,9 @@ def poisk_pol_i_otric_reakciy(ID):
         "WHERE svyazi.id_start = ? AND tochki.name = 'time_0'", (ID,)).fetchall()
     svyazi_s_1 = []
     svyazi_s_2 = []
-    # print(f'Найдены следующие (to): {poisk_t0}, связанные с {ID}')
+    poisk_puls2 = 0
+    poloz_minus_otric = 0
+    print(f'Для учёта влияния найдены следующие (to): {poisk_t0}, связанные с {ID}')
     for poisk_t01 in poisk_t0:
         # найти и просуммировать связи (t0) с (1)
         poisk_svyazi_s_1 = tuple(cursor.execute(
@@ -656,9 +587,15 @@ def poisk_pol_i_otric_reakciy(ID):
         if poisk_svyazi_s_2:
             for poisk_svyazi_s_21 in poisk_svyazi_s_2:
                 svyazi_s_2.append(poisk_svyazi_s_21[0])
-    # print(f'Найдены положительные реакции: {svyazi_s_1}, найдены отрицательные реакции: {svyazi_s_2}')
-    poloz_minus_otric = len(svyazi_s_1) - len(svyazi_s_2)
-    # print(f'Получилось влияние на ответ: {poloz_minus_otric}')
+        poisk_puls = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_t01))
+        if poisk_puls:
+            for poisk_puls1 in poisk_puls:
+                for poisk_puls2 in poisk_puls1:
+                    poloz_minus_otric = len(svyazi_s_1) - len(svyazi_s_2) + poisk_puls2
+    print(f'Найдены положительные реакции: {svyazi_s_1}, найдены отрицательные реакции: {svyazi_s_2}, найден пульc: '
+          f'{poisk_puls2}')
+
+    print(f'Получилось влияние на ответ: {poloz_minus_otric}')
     if poloz_minus_otric == 0:
         vliyanie = 1
     return vliyanie
@@ -693,7 +630,17 @@ def all_paths(tree, node):
 
 
 def proshivka_po_derevy():
-    """ Проверка возможности применения действий по пути из дерева."""
+    """ Проверка возможности применения действий по пути из дерева.
+        * Дерево рисуется из текущей t0
+        * Находится связь с 1 (+), 2 (-), 5 (нейтрал)
+        * Ограничено зажигание действий, если нет этого объекта на экране
+        * Если имеется связь с 1 (+) - то применить этот путь. Все остальные пути попадают в возможные действия.
+        * Разбираются возможные действия. Если точка не в списке отрицательных и не в списке действий, объекты
+        которых отсутствуют на экране - то применить это действие.
+        * Если не было найдено продолжение в ветке или все возможные действия отрицательные - то запускается
+        функция концентратор действий.
+        * Возможно, в будущем придётся внести изменения в выбор, чтобы была возможность применить не известный путь,
+        а новый."""
     global posledniy_t_0
     tree = create_dict([posledniy_t_0])  # Получаем выборку связей в виде словаря (дерево)
     vozmozhnie_deystviya = []
@@ -954,7 +901,7 @@ def sozdat_svyaz_s_4_ot_luboy_tochki(tochka):
 
 
 def ymenshenie_signal():
-    # функция находит все (.), где сигнал более 0 и уменьшает на 0,1
+    # функция находит все (.), где сигнал более 0 и уменьшает на 0,1 или на 0,01
     # ymenshenie_signal_ = tuple(cursor.execute("SELECT ID FROM tochki WHERE signal >= 0.1",))
     cursor.execute("UPDATE tochki SET signal = signal - 0.1 WHERE signal >= 0.1 AND signal < 1")
     cursor.execute("UPDATE tochki SET signal = signal - 0.01 WHERE signal >= 0 AND signal < 0.1")  #3.2.4 - added
@@ -991,6 +938,8 @@ def perenos_sostoyaniya():
 
 
 def rasprostranenie_potenciala():
+    """Функция, которая отмечает обратных соседей (расположенных на начале стрелки, а не на конце) у загоревшихся
+    точек. Чтобы оказать влияние на выбор следующего действия (зажигания точки действия)."""
     poisk_puls = tuple(cursor.execute("SELECT ID FROM tochki WHERE puls > 0"))
     if poisk_puls:
         for poisk_puls1 in poisk_puls:
@@ -1001,23 +950,27 @@ def rasprostranenie_potenciala():
                                                                  "WHERE svyazi.id_finish = ? AND tochki.name = 'time_0'",
                                                                  (poisk_puls1[0],)))
             for poisk_obratnogo_soseda1 in poisk_obratnogo_soseda:
-                print(f"Нашли обратного соседа: {poisk_obratnogo_soseda1[0]}, у точки: {poisk_puls1} и распространился "
-                      f"потенциал")
+                # print(f"Нашли обратного соседа: {poisk_obratnogo_soseda1[0]}, у точки: {poisk_puls1} и распространился "
+                #       f"потенциал")
                 puls_etogo_ID = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_puls1))
                 for puls_etogo_ID1 in puls_etogo_ID:
-                    print(f"Пульс текущего ID равен: {puls_etogo_ID1[0]}")
-                new_puls = puls_etogo_ID1[0]-1
-                print(f"Обновляется puls у обратного соседа: {poisk_obratnogo_soseda1[0]}, new_puls = {new_puls}, "
-                      f"но новый должен быть больше старого")
+                    # print(f"Пульс текущего ID равен: {puls_etogo_ID1[0]}")
+                    new_puls = puls_etogo_ID1[0]-1
+                # print(f"Обновляется puls у обратного соседа: {poisk_obratnogo_soseda1[0]}, new_puls = {new_puls}, "
+                #       f"но новый должен быть больше старого")
                 # проверка старого пульса
-                puls_stariy = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_obratnogo_soseda1))
+                # puls_stariy = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_obratnogo_soseda1))
                 # обновление пульса
-                cursor.execute("UPDATE tochki SET puls = ? WHERE ID = ?",
-                               (new_puls, poisk_obratnogo_soseda1[0]))
+                cursor.execute("UPDATE tochki SET puls = ? WHERE ID = ?", (new_puls,
+                                                                           poisk_obratnogo_soseda1[0]))
+                # увеличение сигнала, чтобы была возможность найти точку в функции концентратор действий
+                # print(f"poisk_obratnogo_soseda1[0]: {poisk_obratnogo_soseda1[0]}")
+                cursor.execute("UPDATE tochki SET signal = 0.1 WHERE ID = ? AND signal < 0.1",
+                                   (poisk_obratnogo_soseda1[0], ))
                 # Проверка увеличение пульса
-                puls_proverka = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_obratnogo_soseda1))
-                for puls_proverka1 in puls_proverka:
-                    print(f"Старый пульс = {puls_stariy[0]}, передаваемый: {new_puls}, теперь он равен: {puls_proverka1}")
+                # puls_proverka = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_obratnogo_soseda1))
+                # for puls_proverka1 in puls_proverka:
+                    # print(f"Старый пульс = {puls_stariy[0]}, передаваемый: {new_puls}, теперь он равен: {puls_proverka1}")
             # обнуляется родительский puls
             cursor.execute("UPDATE tochki SET puls = 0 WHERE ID = ?", poisk_puls1)
 
@@ -1290,16 +1243,16 @@ if __name__ == '__main__':
             poisk_most = tuple(cursor.execute("SELECT svyazi.id_start FROM svyazi JOIN tochki "
                 "ON svyazi.id_start = tochki.id WHERE svyazi.id_finish = ? AND tochki.name = '_most__' "
                                               "OR tochki.name = '_most_'", posledniy_t_0_kortez))
-            print(f'Найден мост: {poisk_most}, у которого имеется связь с posl_t: {posledniy_t}')
+            # print(f'Найден мост: {poisk_most}, у которого имеется связь с posl_t: {posledniy_t}')
             if not poisk_most:
                 most_new = sozdat_new_tochky('_most_', 1, 'most', 'zazech_sosedey', 1, 0,
                                              10, posledniy_t, 0, posledniy_t)
                 sozdat_svyaz(most_new, posledniy_t, 1)
-                print(f'создан мост: {most_new}, для зажигания точки: {posledniy_t}')
+                # print(f'создан мост: {most_new}, для зажигания точки: {posledniy_t}')
             else:
                 for poisk_most1 in poisk_most:
                     most_new = poisk_most1[0]
-                    print(f'Имеющийся мост: {poisk_most1[0]} переименован и присвоено значение most_new')
+                    # print(f'Имеющийся мост: {poisk_most1[0]} переименован и присвоено значение most_new')
                     cursor.execute("UPDATE 'tochki' SET name = '_most_' WHERE ID = ?", (most_new,))
 
             posledniy_tp = 0
