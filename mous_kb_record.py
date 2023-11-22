@@ -85,7 +85,8 @@ class Hotkey:
          нажатие или отпускание клавиши добавляем к сочетанию и закрываем его, если оно завершено.
          Завершено - значит отпущена последняя модификационная клавиша.
 
-         При закрытии сочетание добавляется в список и возвращается его id или имя.
+         При закрытии сочетание добавляется в список и возвращается событие в виде:
+         {'type': 'kb', 'event': 'hotkey', 'key': 'id или имя сочетания'}
          Если не закрыто - вернет None.
          """
         mod = False  # Модификационная клавиша не нажата и не отпущена
@@ -117,6 +118,20 @@ class Hotkey:
             return event
 
         return None
+
+    def get_order(self, name):
+        """ Получение последовательности по имени
+
+        Принимает имя последовательности.
+        Возвращает последовательность событий готовых для воспроизведения."""
+        order = []
+        for event in self.all_orders[name]:
+            if 'up' in event:
+                order.append({'type': 'kb', 'event': 'up', 'key': event[:-3]})
+            else:
+                order.append({'type': 'kb', 'event': 'down', 'key': event})
+
+        return order
 
 
 hotkey = Hotkey()  # Создание объекта обработки сочетаний клавиш
@@ -266,6 +281,11 @@ class Play:
     def play_one(self, action):
         """ Воспроизведение одного действия """
 
+        if action['type'] == 'kb' and action['event'] == 'hotkey':
+            # Воспроизведение последовательности клавиш
+            self.play_list(hotkey.get_order(action['key']))
+            return
+
         if action['event'] == 'click':
             # Перемещение мыши к заданной позиции
             # Позиция определяется по центру элемента хэш которого указан в action['image']
@@ -346,6 +366,12 @@ class Play:
                 exec(f"mo.release({insert})")
 
                 sleep(self.gap)  # Пауза между нажатиями и/или кликами
+
+    def play_list(self, order):
+        """ Воспроизведение событий из списка """
+        print('Воспроизведение последовательности', order)
+        for event in order:
+            self.play_one(event)
 
 
 play = Play()  # Экземпляр проигрывателя
