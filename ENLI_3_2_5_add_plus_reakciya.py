@@ -475,7 +475,7 @@ def concentrator_deystviy():
     list_tp = []
     list_signal_tp = []
     poisk_drygih_tp = tuple(cursor.execute("SELECT ID FROM tochki WHERE signal > 0 AND name = 'time_p'"))
-    # print("Нашли следующие возможные (tp), у которых signal > 0 AND name = 'time_p': ", poisk_drygih_tp)
+    print("Запуск концентратора действий. Нашли следующие возможные (tp), у которых signal > 0 AND name = 'time_p': ", poisk_drygih_tp)
     if poisk_drygih_tp != ():
         for poisk_drygih_tp1 in poisk_drygih_tp:
             # 14.06.23 - добавление отсеивания совершённых ранее действий, чтобы не было зацикливания
@@ -498,7 +498,6 @@ def concentrator_deystviy():
             schetchik_B = 0
             while B:
                 list_t0 = []
-                list_svyazi_s_posl_t0 = []
                 # print('Длина списка new_list_tp = ', len(new_list_tp), ' а если уменьшить на 1 : ', len(new_list_tp)-1)
                 if len(new_list_tp)-1 >= schetchik_B:
                     # print("schetchik_B = ", schetchik_B)
@@ -544,38 +543,43 @@ def concentrator_deystviy():
                 schetchik_B += 1
     # Удаление дублей из листа действий:
     list_deystviy = list(set(list_deystviy))
-    # print('Лист действий: ', list_deystviy)
+    print('Лист действий в концентраторе после фильтрации: ', list_deystviy)
     if list_deystviy != []:
         vliyanie_na_deystvie = []
         for list_deystviy1 in list_deystviy:
             # поиск связей с текущим ID (tp) и (t0)
             # print("Лист действий, такой ID передаётся: ", list_deystviy1)
             # поиск положительных и отрицательных реакций, их вычитание и запись в лист для дальнейшего выбора (tp)
-            vliyanie_na_deystvie.append(poisk_pol_i_otric_reakciy(list_deystviy1))
+            vliyanie = (poisk_pol_i_otric_reakciy(list_deystviy1))
+            if vliyanie > 0:
+                vliyanie_na_deystvie.append(vliyanie)
+            else:
+                list_deystviy.remove(list_deystviy1)
             # print(f'Было добавлено к ID: {list_deystviy1}, следующее влияние: {poisk_pol_i_otric_reakciy(list_deystviy1)}')
         # выбор действия, исходя из влияния
-        # print(f'Получилось следующее влияние на действия: {vliyanie_na_deystvie}')
-        choice = random.choices(list_deystviy, weights=vliyanie_na_deystvie, k=1)[0]
-        print(f'Случайный ответ следующий: {choice}')
-        sbor_deystviya(choice)
-        pogasit_vse_tochki()  # 13.09.23 - добавил гашение всех точек, чтобы совершить случайное действие и ждать на
-        # него реакцию
+        print(f'Лист действий после поиска влияния: {list_deystviy}. Влияние равно: {vliyanie_na_deystvie}')
+        if vliyanie_na_deystvie:
+            choice = random.choices(list_deystviy, weights=vliyanie_na_deystvie, k=1)[0]
+            print(f'Случайный ответ следующий: {choice}')
+            sbor_deystviya(choice)
+            pogasit_vse_tochki()  # 13.09.23 - добавил гашение всех точек, чтобы совершить случайное действие и ждать на
+            # него реакцию
 
 
 def poisk_pol_i_otric_reakciy(ID):
     """Поиск связанных с текущим ID реакций и вычитание из положительных - отрицательных."""
     # выбрать id_finish, где id_start - это ID, а id_finish должен быть t0
-    poisk_t0 = cursor.execute(
-        "SELECT svyazi.id_finish "
-        "FROM svyazi JOIN tochki "
-        "ON svyazi.id_finish = tochki.id "
-        "WHERE svyazi.id_start = ? AND tochki.name = 'time_0'", (ID,)).fetchall()
+    poisk_t0_start = cursor.execute(
+        "SELECT svyazi.id_start FROM svyazi JOIN tochki ON svyazi.id_finish = tochki.id "
+        "WHERE svyazi.id_finish = ?", (ID,)).fetchall()
+    for poisk_t0_start1 in poisk_t0_start:
+        poisk_t0 = cursor.execute("SELECT ID FROM tochki WHERE ID = ? AND name = 'time_0'", poisk_t0_start1)
     svyazi_s_1 = []
     svyazi_s_2 = []
     poisk_puls2 = 0
     poloz_minus_otric = 0
-    print(f'Для учёта влияния найдены следующие (to): {poisk_t0}, связанные с {ID}')
     for poisk_t01 in poisk_t0:
+        print(f'Для учёта влияния найдены следующие (to): {poisk_t01}, связанные с {ID}')
         # найти и просуммировать связи (t0) с (1)
         poisk_svyazi_s_1 = tuple(cursor.execute(
                             "SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 1", poisk_t01))
@@ -598,6 +602,8 @@ def poisk_pol_i_otric_reakciy(ID):
     print(f'Получилось влияние на ответ: {poloz_minus_otric}')
     if poloz_minus_otric == 0:
         vliyanie = 1
+    else:
+        vliyanie = poloz_minus_otric
     return vliyanie
 
 
@@ -646,7 +652,7 @@ def proshivka_po_derevy():
     vozmozhnie_deystviya = []
     otricatelnie_deystviya = []
     # print(tree)
-    # print("Возможный путь действий: ", all_paths(tree, posledniy_t_0))
+    print(f"Текущий t0 = {posledniy_t_0}. Возможный путь действий: ", all_paths(tree, posledniy_t_0))
     # print("Количество возможных путей действий: ", len(all_paths(tree, posledniy_t_0)))
     # Проверка имеется ли связь с 1 или 2 у точек на пути
     found = False
@@ -944,33 +950,37 @@ def rasprostranenie_potenciala():
     if poisk_puls:
         for poisk_puls1 in poisk_puls:
             # сложный поиск, где находится ID start, если задан id_finish, при этом id_start должен быть с name = time_0
-            poisk_obratnogo_soseda = tuple(cursor.execute("SELECT svyazi.id_start "
+            poisk_obratnogo_soseda_id_start = tuple(cursor.execute("SELECT svyazi.id_start "
                                                                  "FROM svyazi JOIN tochki "
                                                                  "ON svyazi.id_finish = tochki.id "
-                                                                 "WHERE svyazi.id_finish = ? AND tochki.name = 'time_0'",
+                                                                 "WHERE svyazi.id_finish = ?",
                                                                  (poisk_puls1[0],)))
-            for poisk_obratnogo_soseda1 in poisk_obratnogo_soseda:
-                # print(f"Нашли обратного соседа: {poisk_obratnogo_soseda1[0]}, у точки: {poisk_puls1} и распространился "
-                #       f"потенциал")
-                puls_etogo_ID = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_puls1))
-                for puls_etogo_ID1 in puls_etogo_ID:
-                    # print(f"Пульс текущего ID равен: {puls_etogo_ID1[0]}")
-                    new_puls = puls_etogo_ID1[0]-1
-                # print(f"Обновляется puls у обратного соседа: {poisk_obratnogo_soseda1[0]}, new_puls = {new_puls}, "
-                #       f"но новый должен быть больше старого")
-                # проверка старого пульса
-                # puls_stariy = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_obratnogo_soseda1))
-                # обновление пульса
-                cursor.execute("UPDATE tochki SET puls = ? WHERE ID = ?", (new_puls,
-                                                                           poisk_obratnogo_soseda1[0]))
-                # увеличение сигнала, чтобы была возможность найти точку в функции концентратор действий
-                # print(f"poisk_obratnogo_soseda1[0]: {poisk_obratnogo_soseda1[0]}")
-                cursor.execute("UPDATE tochki SET signal = 0.1 WHERE ID = ? AND signal < 0.1",
-                                   (poisk_obratnogo_soseda1[0], ))
-                # Проверка увеличение пульса
-                # puls_proverka = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_obratnogo_soseda1))
-                # for puls_proverka1 in puls_proverka:
-                    # print(f"Старый пульс = {puls_stariy[0]}, передаваемый: {new_puls}, теперь он равен: {puls_proverka1}")
+            # отсеивание poisk_obratnogo_soseda_id_start должен быть с name = time_0
+            for poisk_obratnogo_soseda_id_start1 in poisk_obratnogo_soseda_id_start:
+                poisk_obratnogo_soseda = tuple(cursor.execute(
+                    "SELECT ID FROM tochki WHERE ID = ? AND name = 'time_0'", poisk_obratnogo_soseda_id_start1))
+                for poisk_obratnogo_soseda1 in poisk_obratnogo_soseda:
+                    # print(f"Нашли обратного соседа: {poisk_obratnogo_soseda1[0]}, у точки: {poisk_puls1} и распространился "
+                    #       f"потенциал")
+                    puls_etogo_ID = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_puls1))
+                    for puls_etogo_ID1 in puls_etogo_ID:
+                        # print(f"Пульс текущего ID равен: {puls_etogo_ID1[0]}")
+                        new_puls = puls_etogo_ID1[0]-1
+                    # print(f"Обновляется puls у обратного соседа: {poisk_obratnogo_soseda1[0]}, new_puls = {new_puls}, "
+                    #       f"но новый должен быть больше старого")
+                    # проверка старого пульса
+                    # puls_stariy = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_obratnogo_soseda1))
+                    # обновление пульса
+                    cursor.execute("UPDATE tochki SET puls = ? WHERE ID = ?", (new_puls,
+                                                                               poisk_obratnogo_soseda1[0]))
+                    # увеличение сигнала, чтобы была возможность найти точку в функции концентратор действий
+                    # print(f"poisk_obratnogo_soseda1[0]: {poisk_obratnogo_soseda1[0]}")
+                    cursor.execute("UPDATE tochki SET signal = 0.1 WHERE ID = ? AND signal < 0.1",
+                                       (poisk_obratnogo_soseda1[0], ))
+                    # Проверка увеличение пульса
+                    # puls_proverka = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_obratnogo_soseda1))
+                    # for puls_proverka1 in puls_proverka:
+                        # print(f"Старый пульс = {puls_stariy[0]}, передаваемый: {new_puls}, теперь он равен: {puls_proverka1}")
             # обнуляется родительский puls
             cursor.execute("UPDATE tochki SET puls = 0 WHERE ID = ?", poisk_puls1)
 
@@ -1169,7 +1179,7 @@ if __name__ == '__main__':
             schetchik = 0  # 12.09.23 Добавил переход к началу цикла, если была применена реакция
             posledniy_tp = 0
             posledniy_t = 0
-            posledniy_t_0 = 3
+            posledniy_t_0 = old_ekran
 
         elif vvedeno_luboe == ('1'):
             # нужно проверить имеется ли уже связь м/у t0 и tp
@@ -1198,7 +1208,7 @@ if __name__ == '__main__':
             schetchik = 0  # 12.09.23 Добавил переход к началу цикла, если была применена реакция
             posledniy_tp = 0
             posledniy_t = 0
-            posledniy_t_0 = 3
+            posledniy_t_0 = old_ekran
 
 
 
@@ -1210,23 +1220,26 @@ if __name__ == '__main__':
             for vvedeno_luboe1 in vvedeno_luboe:
                 # 16.06.23 - связываем сущность одной команды с t0, обнуляем tp и t
                 if '.' in vvedeno_luboe1:
-                    for vvedeno_luboe2 in vvedeno_luboe1.split('.'):
-                        poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe2)
-                    # print(f'Обработка vvedeno_luboe1 ({vvedeno_luboe1})')
-                    # 25.09.23 - Добавление 'name2' к t0, для возможности отсеивания по этому параметру
-                    name2 = cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (posledniy_t,))
-                    for name2_1 in name2:
-                        # print(f'Найден name2: {name2_1} у точки: {posledniy_t}')
-                        new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
-                                                              posledniy_t, name2_1[0])
-                    # print(f'Создана новая t0: {new_tochka_time_0}')
-                    sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
-                    sozdat_svyaz(posledniy_t, new_tochka_time_0, 1)
-                    sozdat_svyaz(new_tochka_time_0, posledniy_tp, 1)   # 21.06.23 была добавлена дублирующая связь с tp (есть ещё одна)
-                    posledniy_t_0 = new_tochka_time_0
-                    sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
-                    posledniy_tp = 0
-                    posledniy_t = 0
+                    if 'click' in vvedeno_luboe1:
+                        for vvedeno_luboe2 in vvedeno_luboe1.split('.'):
+                            poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe2)
+                        # print(f'Обработка vvedeno_luboe1 ({vvedeno_luboe1})')
+                        # 25.09.23 - Добавление 'name2' к t0, для возможности отсеивания по этому параметру
+                        name2 = cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (posledniy_t,))
+                        for name2_1 in name2:
+                            # print(f'Найден name2: {name2_1} у точки: {posledniy_t}')
+                            new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
+                                                                  posledniy_t, name2_1[0])
+                        # print(f'Создана новая t0: {new_tochka_time_0}')
+                        sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
+                        sozdat_svyaz(posledniy_t, new_tochka_time_0, 1)
+                        sozdat_svyaz(new_tochka_time_0, posledniy_tp, 1)   # 21.06.23 была добавлена дублирующая связь с tp (есть ещё одна)
+                        posledniy_t_0 = new_tochka_time_0
+                        sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
+                        posledniy_tp = 0
+                        posledniy_t = 0
+                    else:
+                        poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe1)
                 else:
                     # print('------------------ Буква ', vvedeno_luboe1)
                     poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe1)
@@ -1260,7 +1273,7 @@ if __name__ == '__main__':
             # print("Было введено vvedeno_luboe: ", vvedeno_luboe)
             schetchik = 0   # 07.11.23 - добавлено обнуление, чтобы не перешло состояние к старому экрану
             # proshivka_po_derevy()
-            # source = None
+            source = None
         else:
             if schetchik >= 10:
                 # 2.2.2: зажигается in0, которая горит, если нет вх. сигналов
@@ -1285,5 +1298,3 @@ if __name__ == '__main__':
         ymenshenie_signal()
 
     p1.terminate()
-
-# не сливается с основной веткой
