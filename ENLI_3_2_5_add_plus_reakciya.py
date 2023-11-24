@@ -1298,5 +1298,3 @@ if __name__ == '__main__':
         ymenshenie_signal()
 
     p1.terminate()
-
-# не сливается с основной веткой
