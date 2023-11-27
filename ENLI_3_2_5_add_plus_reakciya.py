@@ -548,14 +548,14 @@ def concentrator_deystviy():
         vliyanie_na_deystvie = []
         for list_deystviy1 in list_deystviy:
             # поиск связей с текущим ID (tp) и (t0)
-            # print("Лист действий, такой ID передаётся: ", list_deystviy1)
+            print("Лист действий, такой ID передаётся для поиска влияния: ", list_deystviy1)
             # поиск положительных и отрицательных реакций, их вычитание и запись в лист для дальнейшего выбора (tp)
             vliyanie = (poisk_pol_i_otric_reakciy(list_deystviy1))
             if vliyanie > 0:
                 vliyanie_na_deystvie.append(vliyanie)
             else:
                 list_deystviy.remove(list_deystviy1)
-            # print(f'Было добавлено к ID: {list_deystviy1}, следующее влияние: {poisk_pol_i_otric_reakciy(list_deystviy1)}')
+                # print(f'Было добавлено к ID: {list_deystviy1}, следующее влияние: {poisk_pol_i_otric_reakciy(list_deystviy1)}')
         # выбор действия, исходя из влияния
         print(f'Лист действий после поиска влияния: {list_deystviy}. Влияние равно: {vliyanie_na_deystvie}')
         if vliyanie_na_deystvie:
@@ -569,9 +569,9 @@ def concentrator_deystviy():
 def poisk_pol_i_otric_reakciy(ID):
     """Поиск связанных с текущим ID реакций и вычитание из положительных - отрицательных."""
     # выбрать id_finish, где id_start - это ID, а id_finish должен быть t0
+    print(f"Разбирается следующий ID: {ID} для поиска влияния")
     poisk_t0_start = cursor.execute(
-        "SELECT svyazi.id_start FROM svyazi JOIN tochki ON svyazi.id_finish = tochki.id "
-        "WHERE svyazi.id_finish = ?", (ID,)).fetchall()
+        "SELECT svyazi.id_start FROM svyazi WHERE svyazi.id_finish = ?", (ID,)).fetchall()
     for poisk_t0_start1 in poisk_t0_start:
         poisk_t0 = cursor.execute("SELECT ID FROM tochki WHERE ID = ? AND name = 'time_0'", poisk_t0_start1)
     svyazi_s_1 = []
@@ -1219,29 +1219,28 @@ if __name__ == '__main__':
             print(vvedeno_luboe, '=========================')
             for vvedeno_luboe1 in vvedeno_luboe:
                 # 16.06.23 - связываем сущность одной команды с t0, обнуляем tp и t
-                if '.' in vvedeno_luboe1:
-                    if 'click' in vvedeno_luboe1:
-                        for vvedeno_luboe2 in vvedeno_luboe1.split('.'):
-                            poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe2)
-                        # print(f'Обработка vvedeno_luboe1 ({vvedeno_luboe1})')
-                        # 25.09.23 - Добавление 'name2' к t0, для возможности отсеивания по этому параметру
-                        name2 = cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (posledniy_t,))
-                        for name2_1 in name2:
-                            # print(f'Найден name2: {name2_1} у точки: {posledniy_t}')
-                            new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
-                                                                  posledniy_t, name2_1[0])
-                        # print(f'Создана новая t0: {new_tochka_time_0}')
-                        sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
-                        sozdat_svyaz(posledniy_t, new_tochka_time_0, 1)
-                        sozdat_svyaz(new_tochka_time_0, posledniy_tp, 1)   # 21.06.23 была добавлена дублирующая связь с tp (есть ещё одна)
-                        posledniy_t_0 = new_tochka_time_0
-                        sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
-                        posledniy_tp = 0
-                        posledniy_t = 0
-                    else:
-                        poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe1)
+                print(f"Рассматривается следующее введённое сообщение: {vvedeno_luboe1}")
+                if '.' and 'click' in vvedeno_luboe1:
+                    print(f"Сообщение содержит и точку и click: {vvedeno_luboe1}")
+                    for vvedeno_luboe2 in vvedeno_luboe1.split('.'):
+                        poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe2)
+                    # print(f'Обработка vvedeno_luboe1 ({vvedeno_luboe1})')
+                    # 25.09.23 - Добавление 'name2' к t0, для возможности отсеивания по этому параметру
+                    name2 = cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (posledniy_t,))
+                    for name2_1 in name2:
+                        # print(f'Найден name2: {name2_1} у точки: {posledniy_t}')
+                        new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
+                                                              posledniy_t, name2_1[0])
+                    # print(f'Создана новая t0: {new_tochka_time_0}')
+                    sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
+                    sozdat_svyaz(posledniy_t, new_tochka_time_0, 1)
+                    sozdat_svyaz(new_tochka_time_0, posledniy_tp, 1)   # 21.06.23 была добавлена дублирующая связь с tp (есть ещё одна)
+                    posledniy_t_0 = new_tochka_time_0
+                    sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
+                    posledniy_tp = 0
+                    posledniy_t = 0
                 else:
-                    # print('------------------ Буква ', vvedeno_luboe1)
+                    print(f'Сообщение не содержит точку или click: {vvedeno_luboe1}')
                     poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe1)
 
             vvedeno_luboe = ''
