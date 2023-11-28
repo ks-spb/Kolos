@@ -438,7 +438,7 @@ def functions():
     # c помощью этой функции найдём функцию точки и применим её
     goryashie_tochki_zazech_sosedey = tuple(cursor.execute(
         "SELECT ID FROM tochki WHERE func='zazech_sosedey' AND work >= 1"))
-    # print("Следующие точки горят с ф. зажечь соседей: ", goryashie_tochki_zazech_sosedey)
+    print("Следующие точки горят с ф. зажечь соседей: ", goryashie_tochki_zazech_sosedey)
     for goryashie_tochki_zazech_sosedey1 in goryashie_tochki_zazech_sosedey:
         zazech_sosedey(goryashie_tochki_zazech_sosedey1)
     rasprostranenie_potenciala()
@@ -528,7 +528,7 @@ def concentrator_deystviy():
                     else:
                         # Проверка - имеется ли связь с posl_t0 и найденным t0
                         for list_t01 in list_t0:
-                            list_t01_kortez = (list_t01, )
+
                             # print('Поиск связи между posledniy_t_0 = ', posledniy_t_0, 'и list_t01 = ', list_t01)
                             poisk_svyazi_s_posl_t0 = tuple(
                                 cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = ?",
@@ -546,16 +546,22 @@ def concentrator_deystviy():
     print('Лист действий в концентраторе после фильтрации: ', list_deystviy)
     if list_deystviy != []:
         vliyanie_na_deystvie = []
+        id_dlya_ydaleniya = []
         for list_deystviy1 in list_deystviy:
             # поиск связей с текущим ID (tp) и (t0)
-            print("Лист действий, такой ID передаётся для поиска влияния: ", list_deystviy1)
+            # print("Лист действий, такой ID передаётся для поиска влияния: ", list_deystviy1)
             # поиск положительных и отрицательных реакций, их вычитание и запись в лист для дальнейшего выбора (tp)
             vliyanie = (poisk_pol_i_otric_reakciy(list_deystviy1))
             if vliyanie > 0:
                 vliyanie_na_deystvie.append(vliyanie)
             else:
-                list_deystviy.remove(list_deystviy1)
+                id_dlya_ydaleniya.append(list_deystviy1)
                 # print(f'Было добавлено к ID: {list_deystviy1}, следующее влияние: {poisk_pol_i_otric_reakciy(list_deystviy1)}')
+
+        print(f"Удаляются следующие действия: {id_dlya_ydaleniya}")
+        for index in id_dlya_ydaleniya:
+            list_deystviy.remove(index)
+            print(f'Удалено действие: {index}')
         # выбор действия, исходя из влияния
         print(f'Лист действий после поиска влияния: {list_deystviy}. Влияние равно: {vliyanie_na_deystvie}')
         if vliyanie_na_deystvie:
@@ -579,7 +585,7 @@ def poisk_pol_i_otric_reakciy(ID):
     poisk_puls2 = 0
     poloz_minus_otric = 0
     for poisk_t01 in poisk_t0:
-        print(f'Для учёта влияния найдены следующие (to): {poisk_t01}, связанные с {ID}')
+        # print(f'Для учёта влияния найдены следующие (to): {poisk_t01}, связанные с {ID}')
         # найти и просуммировать связи (t0) с (1)
         poisk_svyazi_s_1 = tuple(cursor.execute(
                             "SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 1", poisk_t01))
@@ -595,13 +601,14 @@ def poisk_pol_i_otric_reakciy(ID):
         if poisk_puls:
             for poisk_puls1 in poisk_puls:
                 for poisk_puls2 in poisk_puls1:
-                    poloz_minus_otric = len(svyazi_s_1) - len(svyazi_s_2) + poisk_puls2
+                    poloz_minus_otric = len(svyazi_s_1) - len(svyazi_s_2)/100 + poisk_puls2   # Влияние отрицательных связей уменьшено в 100 раз
     print(f'Найдены положительные реакции: {svyazi_s_1}, найдены отрицательные реакции: {svyazi_s_2}, найден пульc: '
           f'{poisk_puls2}')
-
     print(f'Получилось влияние на ответ: {poloz_minus_otric}')
     if poloz_minus_otric == 0:
         vliyanie = 1
+    elif poloz_minus_otric >= -0.05:
+        vliyanie = 0.05
     else:
         vliyanie = poloz_minus_otric
     return vliyanie
@@ -648,6 +655,7 @@ def proshivka_po_derevy():
         * Возможно, в будущем придётся внести изменения в выбор, чтобы была возможность применить не известный путь,
         а новый."""
     global posledniy_t_0
+    tree = ()
     tree = create_dict([posledniy_t_0])  # Получаем выборку связей в виде словаря (дерево)
     vozmozhnie_deystviya = []
     otricatelnie_deystviya = []
@@ -677,6 +685,19 @@ def proshivka_po_derevy():
                 for proverka_nalichiya_svyazi_s_2_1 in proverka_nalichiya_svyazi_s_2:
                     # print(f'Присоединение к svyaz_s_2: {proverka_nalichiya_svyazi_s_2_1[0]}')
                     svyaz_s_2.append(proverka_nalichiya_svyazi_s_2_1[0])
+                    # Погасить эту точку, чтобы не появилась в функции концентратор действий
+                    poisk_tp = cursor.execute("SELECT svyazi.id_finish "
+                                                     "FROM svyazi JOIN tochki "
+                                                     "ON svyazi.id_finish = tochki.id "
+                                                     "WHERE svyazi.id_start = ? AND tochki.name = 'time_p'",
+                                              (tochka,)).fetchall()
+                    print(f"Найдены tp: {poisk_tp}, связанные с t0, которая связана с (-). Дальше эта tp гасится")
+                    for poisk_tp1 in poisk_tp:
+                        cursor.execute("UPDATE tochki SET work = 0 WHERE ID = ?", poisk_tp1)
+                        cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = ?", poisk_tp1)
+                        # print(f'Погашена точка: {poisk_tp1}')
+                        # points1 = cursor.execute("SELECT * FROM tochki WHERE ID = ?", poisk_tp1).fetchall()
+                        # print(f"Проверка гашения точки: {points1}")
                     # если была найдена отрицательная реакция и эта точка является второй в пути
                     if proverka_nalichiya_svyazi_s_2_1[0] == path[1]:
                         # print(f'Добавилось отрицательное действие- т.к. оно второе в пути: {proverka_nalichiya_svyazi_s_2_1}')
@@ -1045,10 +1066,10 @@ if __name__ == '__main__':
             cursor.execute("UPDATE 'tochki' SET work = 1 WHERE type = 'mozg' AND name = ?", (h,))
 
         # -------------------------------------------------------
-
+        # print(f'Горят следующие объекты на экране: {screen.get_all_hashes()}')
         # Прочитать из БД и распечатать точки, которые могли быть изменены
-        points = cursor.execute("SELECT * FROM tochki WHERE work = 1").fetchall()
-        # print(points)
+        points = cursor.execute("SELECT ID FROM tochki WHERE work = 1").fetchall()
+        print(f"Горят следующие точки: {points}")
 
         schetchik += 1
         print('************************************************************************')
@@ -1057,7 +1078,7 @@ if __name__ == '__main__':
         posledniy_t_0_kortez = (posledniy_t_0,)
         perenos_sostoyaniya()
         proverka_signal_porog()   # проверка и зажигание точек, если signal >= porog
-        # concentrator_deystviy()
+
         proshivka_po_derevy()
 
         # 03.10.23 - зажигание моста
@@ -1222,6 +1243,24 @@ if __name__ == '__main__':
                 print(f"Рассматривается следующее введённое сообщение: {vvedeno_luboe1}")
                 if '.' and 'click' in vvedeno_luboe1:
                     print(f"Сообщение содержит и точку и click: {vvedeno_luboe1}")
+                    # для разрыва сущности, если происходит нажатие кнопок, а затем клик мышкой
+                    # Если клик не находится в начале списка - нужно принудительно отделить его от предыдущих сущностей
+                    if vvedeno_luboe1 != vvedeno_luboe[0]:
+                        # Добавление 'name2' к t0, для возможности отсеивания по этому параметру
+                        name2 = cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (posledniy_t,))
+                        for name2_1 in name2:
+                            # print(f'Найден name2: {name2_1} у точки: {posledniy_t}')
+                            new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0,
+                                                                  posledniy_t_0,
+                                                                  posledniy_t, name2_1[0])
+                        sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
+                        sozdat_svyaz(posledniy_t, new_tochka_time_0, 1)
+                        sozdat_svyaz(new_tochka_time_0, posledniy_tp,
+                                     1)  # 21.06.23 была добавлена дублирующая связь с tp (есть ещё одна)
+                        posledniy_t_0 = new_tochka_time_0
+                        sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
+                        posledniy_tp = 0
+                        posledniy_t = 0
                     for vvedeno_luboe2 in vvedeno_luboe1.split('.'):
                         poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe2)
                     # print(f'Обработка vvedeno_luboe1 ({vvedeno_luboe1})')
@@ -1270,7 +1309,7 @@ if __name__ == '__main__':
             posledniy_tp = 0
             posledniy_t = 0
             # print("Было введено vvedeno_luboe: ", vvedeno_luboe)
-            schetchik = 0   # 07.11.23 - добавлено обнуление, чтобы не перешло состояние к старому экрану
+            # schetchik = 0   # 07.11.23 - добавлено обнуление, чтобы не перешло состояние к старому экрану
             # proshivka_po_derevy()
             source = None
         else:
