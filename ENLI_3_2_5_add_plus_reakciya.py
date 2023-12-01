@@ -219,7 +219,7 @@ def proverka_signal_porog():
                         cursor.execute("UPDATE tochki SET puls = 10 WHERE ID = (?) AND name = 'time_0'", nayti_tochki_signal_porog1)
                     else:
                         # если (in) не горит - погасить сигнал у этой (t)
-                        # print("Этот (in) не горит")
+                        print(f"Этот (in): {nayti_tochki_signal_porog1} не горит. Обнуление сигнала")
                         cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = (?)", nayti_tochki_signal_porog1)
                 else:
                     # если длина name2 не 16 - действуем по старому
@@ -233,10 +233,10 @@ def proverka_signal_porog():
 def pogasit_vse_tochki():
     # погасить все точки в конце главного цикла
     nayti_ID_s_work = tuple(cursor.execute("SELECT ID FROM tochki WHERE signal > 0"))    #!!! ранее был "AND work= 1"
-    # print("погашены все точки: ", nayti_ID_s_work)
+    print("погашены все точки: ", nayti_ID_s_work)
     for nayti_ID_s_work_1 in nayti_ID_s_work:
         cursor.execute("UPDATE tochki SET work = 0 WHERE ID = (?)", nayti_ID_s_work_1)
-        cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = (?)", nayti_ID_s_work_1)
+        # cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = (?)", nayti_ID_s_work_1)   # 1.12.23 - убрал обнуление
     nayti_ID_s_work_1 = tuple(cursor.execute("SELECT ID FROM tochki WHERE work > 0"))
     # print("погашены все точки 2: ", nayti_ID_s_work_1)
     for nayti_ID_s_work2 in nayti_ID_s_work_1:
@@ -287,12 +287,15 @@ def zazech_sosedey(ID):
                         for id_tochki_soseda3 in id_tochki_soseda1:
                             if id_tochki_soseda3 == 2:
                                 # если 2 - это (-) реакция - отнимем -1 от сигнала (т), чтобы в след. раз не загорелась
-                                cursor.execute("UPDATE tochki SET signal = signal - 1 WHERE ID = ? AND work >= 1", ID)
+
+                                # 01.12.23 - убрал вычитание сигнала
+                                # cursor.execute("UPDATE tochki SET signal = signal - 1 WHERE ID = ? AND work >= 1", ID)
+
                                 cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = 2")
                                 cursor.execute("UPDATE tochki SET work = 0 WHERE ID = 2")
     # гашение точки, которая отработала
     cursor.execute("UPDATE tochki SET work = 0 WHERE ID = ?", ID)
-    cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = ?", ID)
+    # cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = ?", ID)   # убрал гашение сигнала
     # print("Зажечь соседей. Погашена отработанная точка: ", ID)
     proverka_signal_porog()
 
@@ -525,6 +528,7 @@ def concentrator_deystviy():
                         else:
                             # 3.2.5 - добавлено гашение сигнала, чтобы убрать "лишние" (tp)
                             # print('Погашена лишняя tp: ', poisk_tp)
+                            # т.е. погашена tp, которая входит внутрь сущности
                             cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = ?", poisk_tp)
                     else:
                         # Проверка - имеется ли связь с posl_t0 и найденным t0
@@ -695,7 +699,7 @@ def proshivka_po_derevy():
                     # print(f"Найдены tp: {poisk_tp}, связанные с t0, которая связана с (-). Дальше эта tp гасится")
                     for poisk_tp1 in poisk_tp:
                         cursor.execute("UPDATE tochki SET work = 0 WHERE ID = ?", poisk_tp1)
-                        cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = ?", poisk_tp1)
+                        # cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = ?", poisk_tp1)   # 01.12.23 - пробую убрать
                         # print(f'Погашена точка: {poisk_tp1}')
                         # points1 = cursor.execute("SELECT * FROM tochki WHERE ID = ?", poisk_tp1).fetchall()
                         # print(f"Проверка гашения точки: {points1}")
