@@ -21,7 +21,6 @@ def stiranie_pamyati():
     cursor.execute("DELETE FROM tochki WHERE ID > 5")
     cursor.execute("DELETE FROM svyazi WHERE ID > 3")
     cursor.execute("UPDATE tochki SET puls = 0 AND signal = 0 AND work = 0")
-    posledniy_t_0 = 3
     posledniy_t = 0
     posledniy_tp = 0
     old_ekran = 0
@@ -168,7 +167,7 @@ def proverka_nalichiya_svyazey_t_t_o():
                         # print('list_poiska_t0 = ', list_poiska_t0)
                         for poisk_svyazi_t_s_t05 in poisk_svyazi_t_s_t04:
                             posledniy_t_0 = poisk_svyazi_t_s_t05
-                            # print("Posl_to теперь 3 : ", posledniy_t_0)
+                            print("Posl_to теперь 3 : ", posledniy_t_0)
                             # 3.2.5 - зажигание posl_t0
                             # for posledniy_t_01 in posledniy_t_0:
                             # cursor.execute("UPDATE tochki SET work = 1 WHERE ID = ?", (posledniy_t_0,))
@@ -181,13 +180,13 @@ def proverka_nalichiya_svyazey_t_t_o():
                 # print(f'Найден name2: {name2_1} у точки: {posledniy_t}')
                 new_t0 = sozdat_new_tochky('time_0', 0, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, posledniy_t,
                                            name2_1[0])
-                # print("Создана новая (t0): ", new_t0, " где rod1 = ", posledniy_t_0, " и rod2 = ", posledniy_t)
+                print("Создана новая (t0): ", new_t0, " где rod1 = ", posledniy_t_0, " и rod2 = ", posledniy_t)
                 sozdat_svyaz(posledniy_t_0, new_t0, 1)  # weight was 0.1
                 sozdat_svyaz(posledniy_t, new_t0, 1)  # weight was 0.1
                 sozdat_svyaz(new_t0, posledniy_tp, 1)  # 21.06.23 - Добавил дублирующую связь от t0 к tp
                 # v3.0.0 - posledniy_t становится новая связующая (.) м/у внешней горящей и старым posledniy_t
                 posledniy_t_0 = new_t0
-                # print("Posl_to теперь 2 : ", posledniy_t_0)
+                print("Posl_to теперь 2 : ", posledniy_t_0)
         posledniy_t = 0
         # posledniy_tp = 0   # 06.03.23 - добавлено
 
@@ -406,15 +405,17 @@ def sozdat_svyaz(id_start, id_finish, weight):
     # проверим, есть ли уже такая связь
     proverka_svyazi = tuple(cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = ?",
                                            (id_start, id_finish)))
-    if proverka_svyazi == ():
-        max_ID_svyazi = tuple(cursor.execute("SELECT MAX(ID) FROM svyazi"))
-        for max_ID_svyazi1 in max_ID_svyazi:
-            old_id_svyazi = max_ID_svyazi1[0]
-            new_id_svyazi = old_id_svyazi + 1
-        cursor.execute("INSERT INTO svyazi VALUES (?, ?, ?, ?)", (new_id_svyazi, id_start, id_finish, weight))
-    else:
-        for proverka_svyazi1 in proverka_svyazi:
-            cursor.execute("UPDATE svyazi SET weight = weight + 0.1 WHERE ID = ?", proverka_svyazi1)
+    if id_start != id_finish:   # добавление проверки, чтоб не создалась закольцованная связь
+        if proverka_svyazi == ():
+            max_ID_svyazi = tuple(cursor.execute("SELECT MAX(ID) FROM svyazi"))
+            for max_ID_svyazi1 in max_ID_svyazi:
+                old_id_svyazi = max_ID_svyazi1[0]
+                new_id_svyazi = old_id_svyazi + 1
+            cursor.execute("INSERT INTO svyazi VALUES (?, ?, ?, ?)", (new_id_svyazi, id_start, id_finish, weight))
+            # print(f'Создана связь м/у id_start = {id_start} и id_finish {id_finish}')
+        else:
+            for proverka_svyazi1 in proverka_svyazi:
+                cursor.execute("UPDATE svyazi SET weight = weight + 0.1 WHERE ID = ?", proverka_svyazi1)
 
 
 
@@ -438,7 +439,7 @@ def functions():
     # c помощью этой функции найдём функцию точки и применим её
     goryashie_tochki_zazech_sosedey = tuple(cursor.execute(
         "SELECT ID FROM tochki WHERE func='zazech_sosedey' AND work >= 1"))
-    print("Следующие точки горят с ф. зажечь соседей: ", goryashie_tochki_zazech_sosedey)
+    # print("Следующие точки горят с ф. зажечь соседей: ", goryashie_tochki_zazech_sosedey)
     for goryashie_tochki_zazech_sosedey1 in goryashie_tochki_zazech_sosedey:
         zazech_sosedey(goryashie_tochki_zazech_sosedey1)
     rasprostranenie_potenciala()
@@ -691,7 +692,7 @@ def proshivka_po_derevy():
                                                      "ON svyazi.id_finish = tochki.id "
                                                      "WHERE svyazi.id_start = ? AND tochki.name = 'time_p'",
                                               (tochka,)).fetchall()
-                    print(f"Найдены tp: {poisk_tp}, связанные с t0, которая связана с (-). Дальше эта tp гасится")
+                    # print(f"Найдены tp: {poisk_tp}, связанные с t0, которая связана с (-). Дальше эта tp гасится")
                     for poisk_tp1 in poisk_tp:
                         cursor.execute("UPDATE tochki SET work = 0 WHERE ID = ?", poisk_tp1)
                         cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = ?", poisk_tp1)
@@ -840,6 +841,7 @@ def sbor_deystviya(tp, t0=None):
     # 22.06.23 - если передаётся t0 - то он и становится posl_t0
     if t0:
         posledniy_t_0 = t0
+        print(f'Posl_t0 в сборе действий стал = {posledniy_t_0}')
     else:
         if poisk_svyazi_tp_s_t0 == ():
             # 25.09.23 - Добавление 'name2' к t0, для возможности отсеивания по этому параметру
@@ -849,17 +851,17 @@ def sbor_deystviya(tp, t0=None):
                 # создать t0 и к нему привязать tp
                 new_tochka_t0 = sozdat_new_tochky('time_0', 0, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, tp,
                                                   name2_1[0])
-                # print(f'создана new_tochka_t0 такая: {new_tochka_t0}, а была posl_t0 = {posledniy_t_0}')
+                print(f'создана new_tochka_t0 такая: {new_tochka_t0}, а была posl_t0 = {posledniy_t_0}')
                 # sozdat_svyaz(new_tochka_t0, tp, 1)  # 3.2.2 - убрал обратную связь
                 sozdat_svyaz(posledniy_t_0, new_tochka_t0, 1)
                 sozdat_svyaz(new_tochka_t0, tp, 1)
                 posledniy_t_0 = new_tochka_t0
-                # print("Posl_to теперь 5 : ", posledniy_t_0)
+                print("Posl_to (5) из-за сбора действий и создания новой t0 = ", posledniy_t_0)
         else:
             for poisk_svyazi_tp_s_t01 in poisk_svyazi_tp_s_t0:
                 for poisk_svyazi_tp_s_t02 in poisk_svyazi_tp_s_t01:
                     posledniy_t_0 = poisk_svyazi_tp_s_t02
-                    # print("Posl_to теперь 6 : ", posledniy_t_0)
+                    print("Posl_to теперь в сборе действий, когда нашлось нужное t0 стал = ", posledniy_t_0)
                     # cursor.execute("UPDATE tochki SET work = 1 WHERE ID = ?", (posledniy_t_0,))
     list_deystviy = []
     list_deystviy += tp_kortez
@@ -947,12 +949,12 @@ def perenos_sostoyaniya():
         cursor.execute("SELECT ID FROM tochki WHERE name2 = ?", (new_name_id_ekran,)))
     if not poisk_name_ekrana:
         # Если такого экрана нет в БД - то сразу создаётся новая запись
-        id_new_ekran = sozdat_new_tochky("time_0", 1, "time", "zazech_sosedey", 1,
+        id_new_ekran = sozdat_new_tochky('time_0', 1, "time", "zazech_sosedey", 1,
                                          0, 0, 0, 0, new_name_id_ekran)
         sozdat_svyaz(posledniy_t_0, id_new_ekran, 1)
         posledniy_t_0 = id_new_ekran
         old_ekran = id_ekran
-        print(f'Создан новый экран: {id_new_ekran}')
+        print(f'!!!Создан новый экран!!!!: {id_new_ekran}, posl_t0 стал = {posledniy_t_0}')
     else:
         # Если такой экран найден в БД - то нужно сравнить отличается ли от старого - если нет - перенести в него состояние
         for poisk_name_ekrana1 in poisk_name_ekrana:
@@ -1007,11 +1009,11 @@ def rasprostranenie_potenciala():
 
 
 
-old_ekran = 0
 
 
 if __name__ == '__main__':
 
+    old_ekran = 0
     # Запуск процесса наблюдения за экраном
     print('Запуск процесса наблюдения за экраном')
     manager = Manager()  # Управление доступом к общим объектам
@@ -1027,16 +1029,20 @@ if __name__ == '__main__':
 
     A = True
     posledniy_t = 0
-    posledniy_t_0 = 3  # переменная содержит ID последней временной точки t0
+    posledniy_t_0 = 3
     posledniy_tp = 0
     posledniy_otvet = 0
+    t0_10 = 0   # для проверки на изменение to за 10 циклов
 
     source = None  # Получает значение источника ввода None - клавиатура, 'rec' -  запись клавиатуры и мыши
     last_update_screen = 0  # Время последнего обновления экрана
     schetchik = 0
     most = 0   # 03.10.23 - добавлена точка моста для повторения последнего (in) и связывания с (+) результатом
     most_new = 0
-    time.sleep(0.5)
+    time.sleep(0.1)
+
+    perenos_sostoyaniya()   # 30.11.23 - убрал posledniy_t_0=3 и поставил сразу перенос состояния в экран
+
     while A:
         if rec.status:
             # Блокируем основную программу, пока идет запись
@@ -1076,10 +1082,9 @@ if __name__ == '__main__':
         print("schetchik = ", schetchik, "     Экран", screen.screenshot_hash)
 
         posledniy_t_0_kortez = (posledniy_t_0,)
-        perenos_sostoyaniya()
         proverka_signal_porog()   # проверка и зажигание точек, если signal >= porog
 
-        proshivka_po_derevy()
+        # proshivka_po_derevy()   # 28.11.23 - Поставил прошивку только при счётчике
 
         # 03.10.23 - зажигание моста
         if most_new != 0:
@@ -1136,7 +1141,7 @@ if __name__ == '__main__':
                 source = 'input'
                 vvedeno_luboe = ''
             rec.key_down = ''
-            sleep(1)
+            sleep(0.5)
         print("")
 
         # print('ввели: ', vvedeno_luboe)
@@ -1147,14 +1152,14 @@ if __name__ == '__main__':
         if vvedeno_luboe == ('3'):
             # Включение записи
             cursor.commit()  # Сохраняем изменения в БД
-            sleep(1)
+            sleep(0.5)
             rec.start()
             # source = None  # Запись сохранится в месте ввода
             continue
 
         if vvedeno_luboe == ('4'):
             # Показать запись
-            sleep(1)
+            sleep(0.5)
 
             # -------------------------------
             # Сохранение изображений в отчете
@@ -1187,41 +1192,29 @@ if __name__ == '__main__':
         elif vvedeno_luboe == ('2'):
             # нужно проверить имеется ли уже связь м/у t0 и tp
             print("Состояние перед (-) реакцией было такое: ", posledniy_t_0, posledniy_t_0_kortez, ". С ней и создаётся связь")
-            posledniy_t_0_kortez = (posledniy_t_0,)
-            # print("posledniy_t_0_kortez: ", posledniy_t_0_kortez)
-            poisk_svyazi_t0_s_2 = tuple(cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 2",
-                                                       posledniy_t_0_kortez))
-            if poisk_svyazi_t0_s_2 == ():
-                sozdat_svyaz(posledniy_t_0, 2, 1)
+            sozdat_svyaz(posledniy_t_0, 2, 1)
             pogasit_vse_tochki()
-            # source = None
+            source = None
             vvedeno_luboe = ''
 
             schetchik = 0  # 12.09.23 Добавил переход к началу цикла, если была применена реакция
             posledniy_tp = 0
             posledniy_t = 0
             posledniy_t_0 = old_ekran
+            print(f'Posl_t0 из-за (-) стал = {posledniy_t_0}')
 
         elif vvedeno_luboe == ('1'):
             # нужно проверить имеется ли уже связь м/у t0 и tp
             # print("Состояние перед (+) реакцией было такое: ", posledniy_t_0, "    С ней и создаётся связь")
             posledniy_t_0_kortez = (posledniy_t_0,)
-            poisk_svyazi_t0_s_2 = tuple(cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 1",
-                                                       posledniy_t_0_kortez))
-            if not poisk_svyazi_t0_s_2:
-                sozdat_svyaz(posledniy_t_0, 1, 1)
+            sozdat_svyaz(posledniy_t_0, 1, 1)
 
             # 03.10.23 - если произошла (+) реакция - то переименовать мост, чтобы больше не зажигался и соединить с posl_t_0
-            most_new_kortez = most_new
-            poisk_svyazi_s_most = tuple(cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = ?",
-                                                       (most_new, posledniy_t_0)))
             print(f'Найдена связь с мостом: {most_new} и posl_t_0: {posledniy_t_0_kortez}')
-            if not poisk_svyazi_s_most:
-                sozdat_svyaz(most_new, posledniy_t_0, 1)
-                print(f'Создана связь между мостом: {most_new} и posl_t_0: {posledniy_t_0_kortez}')
+            sozdat_svyaz(most_new, posledniy_t_0, 1)
+
             cursor.execute("UPDATE 'tochki' SET name = '_most__' WHERE ID = ?", (most_new,))
             most_new = 0
-
 
             # source = None
             vvedeno_luboe = ''
@@ -1230,6 +1223,7 @@ if __name__ == '__main__':
             posledniy_tp = 0
             posledniy_t = 0
             posledniy_t_0 = old_ekran
+            print(f'Posl_t0 из-за (+) стал = {posledniy_t_0}')
 
 
 
@@ -1240,9 +1234,9 @@ if __name__ == '__main__':
             print(vvedeno_luboe, '=========================')
             for vvedeno_luboe1 in vvedeno_luboe:
                 # 16.06.23 - связываем сущность одной команды с t0, обнуляем tp и t
-                print(f"Рассматривается следующее введённое сообщение: {vvedeno_luboe1}")
+                # print(f"Рассматривается следующее введённое сообщение: {vvedeno_luboe1}")
                 if '.' and 'click' in vvedeno_luboe1:
-                    print(f"Сообщение содержит и точку и click: {vvedeno_luboe1}")
+                    # print(f"Сообщение содержит и точку и click: {vvedeno_luboe1}")
                     # для разрыва сущности, если происходит нажатие кнопок, а затем клик мышкой
                     # Если клик не находится в начале списка - нужно принудительно отделить его от предыдущих сущностей
                     if vvedeno_luboe1 != vvedeno_luboe[0]:
@@ -1253,11 +1247,13 @@ if __name__ == '__main__':
                             new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0,
                                                                   posledniy_t_0,
                                                                   posledniy_t, name2_1[0])
+                            print(f'Создана новая точка t0 {new_tochka_time_0} до этого был posl_to = {posledniy_t_0}')
                         sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
                         sozdat_svyaz(posledniy_t, new_tochka_time_0, 1)
                         sozdat_svyaz(new_tochka_time_0, posledniy_tp,
                                      1)  # 21.06.23 была добавлена дублирующая связь с tp (есть ещё одна)
                         posledniy_t_0 = new_tochka_time_0
+                        print(f'Posl_t0 из-за ввода изображения стал = {posledniy_t_0}')
                         sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
                         posledniy_tp = 0
                         posledniy_t = 0
@@ -1270,11 +1266,12 @@ if __name__ == '__main__':
                         # print(f'Найден name2: {name2_1} у точки: {posledniy_t}')
                         new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
                                                               posledniy_t, name2_1[0])
-                    # print(f'Создана новая t0: {new_tochka_time_0}')
+                        print(f'Создана новая t0: {new_tochka_time_0}')
                     sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
                     sozdat_svyaz(posledniy_t, new_tochka_time_0, 1)
                     sozdat_svyaz(new_tochka_time_0, posledniy_tp, 1)   # 21.06.23 была добавлена дублирующая связь с tp (есть ещё одна)
                     posledniy_t_0 = new_tochka_time_0
+                    print(f'Posl_t0 из-за ввода изображения (в конце обработки) стал = {posledniy_t_0}')
                     sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
                     posledniy_tp = 0
                     posledniy_t = 0
@@ -1292,7 +1289,7 @@ if __name__ == '__main__':
             # проверка имеется ли уже мост для этого in
             # нужно найти начало у связи, которое равно ID из таблицы точек, у которых name = _most__, а конец равен текущему posl_t
             poisk_most = tuple(cursor.execute("SELECT svyazi.id_start FROM svyazi JOIN tochki "
-                "ON svyazi.id_start = tochki.id WHERE svyazi.id_finish = ? AND tochki.name = '_most__' "
+                                              "ON svyazi.id_start = tochki.id WHERE svyazi.id_finish = ? AND tochki.name = '_most__' "
                                               "OR tochki.name = '_most_'", posledniy_t_0_kortez))
             # print(f'Найден мост: {poisk_most}, у которого имеется связь с posl_t: {posledniy_t}')
             if not poisk_most:
@@ -1310,27 +1307,46 @@ if __name__ == '__main__':
             posledniy_t = 0
             # print("Было введено vvedeno_luboe: ", vvedeno_luboe)
             # schetchik = 0   # 07.11.23 - добавлено обнуление, чтобы не перешло состояние к старому экрану
-            # proshivka_po_derevy()
             source = None
         else:
-            if schetchik >= 10:
-                # 2.2.2: зажигается in0, которая горит, если нет вх. сигналов
-                # cursor.execute("UPDATE tochki SET work = 0 WHERE ID = 3")
+            if schetchik == 1:
+                proshivka_po_derevy()   # 28.11.23 - Ограничил ответ только счётчиком = 1, чтобы успеть дать реакцию.
+            elif schetchik >= 10:
                 functions()
+
+                # TODO нейтральная реакция под вопросом в связи с тем, что 10й счётчик используется для других функций
                 # 12.09.23 - Добавляю нейтральную реакцию на отсутствие какой-либо реакции при ответе.
                 # print("Состояние перед нейтральной реакцией было такое: ", posledniy_t_0, "    С ней и создаётся связь")
-                posledniy_t_0_kortez = (posledniy_t_0,)
-                poisk_svyazi_t0_s_2 = tuple(cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 5",
-                                                           posledniy_t_0_kortez))
-                if poisk_svyazi_t0_s_2 == ():
-                    sozdat_svyaz(posledniy_t_0, 5, 1)
-                # -------
+                # posledniy_t_0_kortez = (posledniy_t_0,)
+                # sozdat_svyaz(posledniy_t_0, 5, 1)
 
                 schetchik = 0
-                posledniy_t_0 = old_ekran
-                # print("Posl_to теперь 4 : ", posledniy_t_0)
-                posledniy_otvet = 0  # 07.11.23 - раньше последний ответ становился = 0, когда счётчик был = 1.
-                print(f"-----------------------------------Переход в {old_ekran}-------------------------------------")
+
+                perenos_sostoyaniya()   # 30.11.23 - убрано из срабатывания в каждый счётчик
+
+                # 28.11.23 - Если за 10 счётчиков не произошло никаких реакций, действий - то posl_t0 становится
+                # old_ekran, а если произошло - продолжаются действия и posl_t0 не изменяется
+                t0_10_proverka = posledniy_t_0
+                print(f"Изменился ли t0? Текущий posl_t0 = {posledniy_t_0}, t0_proverka = posl_t0 = {t0_10_proverka}, "
+                      f"старый t0 (в предыдущем 10м цикле) был = {t0_10}")
+                if t0_10_proverka == t0_10:
+                    posledniy_t_0 = old_ekran
+                    posledniy_otvet = 0  # 07.11.23 - раньше последний ответ становился = 0, когда счётчик был = 1.
+                    print("")
+                    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+                    print("")
+                    print(f">>>>>>>>>>>>>>>>>>>>  Переход в posl_t0 = {old_ekran}  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+                    print("")
+                    print(f">>>>>>>>>>>>>>>>>>>  Закончилась цепочка действий, началась новая  <<<<<<<<<<<<<<<<<<<<<<<")
+                    print('')
+                    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+                    print("")
+                else:
+                    t0_10 = t0_10_proverka
+                    print("")
+                    print("-------------------Состояние posl_to не поменялось-------------------------------")
+                    print("-------------------Цепочка действий продолжается---------------------------------")
+                    print("")
             else:
                 functions()
         ymenshenie_signal()
