@@ -21,10 +21,12 @@ name 'пло'              - красный (оттенок)
 name 'хоро'             - серый
 
 """
+# Включить/выключить отображение t
 
-# Включить/выключить отображение групп IN и OUT
+# Включить/выключить отображение групп IN, OUT, t
 point_in = False
 point_out = False
+point_t = False
 
 class Point:
     """ Точки """
@@ -46,6 +48,9 @@ class Point:
 
         elif name == 'time_0' or name == 't0':
             # Временные точки
+            if not point_t:
+                self.delete_nodes.append(id)
+                raise
             name = name.replace('time', 't')
             self.group = 't0'
             color = 'limegreen'
@@ -88,7 +93,7 @@ class Point:
             color = 'cadetblue'
 
         with Cluster(self.group):
-            self.node = Node(f'{id} {name} {name_2}', style='filled', fillcolor=color, fontsize='20pt')
+            self.node = Node(label=f'{id}\n{name}\n{name_2}', style='filled', fillcolor=color, fontsize='20pt')
 
 
 # Подключение к БД

@@ -32,7 +32,7 @@ def screen_monitor(queue_img):
     и сообщает если экран изменился. """
     sct = mss.mss()
     # monitor = {'top': 0, 'left': 0, 'width': sct.monitors[0]['width'], 'height': sct.monitors[0]['height']}
-    monitor = sct.monitors[2]
+    monitor = sct.monitors[1]
     hash_base_img = None  # Получаем хэш сегмента
 
     while True:
