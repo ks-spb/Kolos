@@ -48,9 +48,6 @@ class Point:
 
         elif name == 'time_0' or name == 't0':
             # Временные точки
-            if not point_t:
-                self.delete_nodes.append(id)
-                raise
             name = name.replace('time', 't')
             self.group = 't0'
             color = 'limegreen'
@@ -92,8 +89,13 @@ class Point:
             self.group = 'in'
             color = 'cadetblue'
 
-        with Cluster(self.group):
-            self.node = Node(label=f'{id}\n{name}\n{name_2}', style='filled', fillcolor=color, fontsize='20pt')
+        if not point_t and self.group == 't':
+            #  Фильтр точки time
+            pass
+        else:
+            with Cluster(self.group):
+                self.node = Node(label=f'{id}\n{name}\n{name_2}', style='filled', fillcolor=color, fontsize='20pt')
+
 
 
 # Подключение к БД
