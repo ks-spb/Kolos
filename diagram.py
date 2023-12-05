@@ -21,11 +21,11 @@ name 'пло'              - красный (оттенок)
 name 'хоро'             - серый
 
 """
-# Включить/выключить отображение t
 
 # Включить/выключить отображение групп IN, OUT, t
 point_in = False
 point_out = False
+# Включить/выключить отображение t
 point_t = False
 
 class Point:
@@ -91,7 +91,7 @@ class Point:
 
         if not point_t and self.group == 't':
             #  Фильтр точки time
-            pass
+            self.delete_nodes.append(id)
         else:
             with Cluster(self.group):
                 self.node = Node(label=f'{id}\n{name}\n{name_2}', style='filled', fillcolor=color, fontsize='20pt')
@@ -132,6 +132,8 @@ with contextlib.closing(sqlite3.connect('Li_db_v1_4.db')) as conn:
                 pass
 
         for one, two in connections.fetchall():
+            if (not one or not two) and not point_t:
+                continue
             if one in Point.delete_nodes or two in Point.delete_nodes:
                 continue
             points[one].node >> points[two].node
