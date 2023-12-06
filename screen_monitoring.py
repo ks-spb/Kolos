@@ -112,92 +112,109 @@ def process_changes(queue_hashes, queue_img):
                 # Поиск отличительных особенностей экрана и сохранение их в БД
                 # ------------------------------------------------------------
 
-                """Функция замена хэша экрана.
-                Сохраняет в БД отличительные особенности экранов, распознает их по ним.
-                Принимает изображение экрана в формате NumPy,
-                возвращает его номер.
+                """Тут код функции поиска отличительных признаков экрана, 
+                пока поменял их на хэши найденных элементов
+                Возможно, это позволит лучше подбирать экраны с нужными элементами. 
+                Но этот подход не учитывает положение элементов на экране, только их наличие."""
+                # """Функция замена хэша экрана.
+                # Сохраняет в БД отличительные особенности экранов, распознает их по ним.
+                # Принимает изображение экрана в формате NumPy,
+                # возвращает его номер.
+                #
+                # В своей работе использует поиск контуров на изображении. Находит расположение
+                # основных элементов составляет список их координат в виде хэшей.
+                # Для каждого экрана хранит и пополняет список его хэшей.
+                # Находит список хэшей полученного экрана, сравнивает его со списками имеющихся экранов.
+                # Для экрана, получившего большее количество совпадения хэшей проверяет их количество.
+                # Если оно больше определенного порога, экран признается найденным, список его хэшей
+                # пополняется теми из нового экрана, которых в нем не было.
+                # Если количество совпадений меньше порога, то экран считается новым, ему присваивается
+                # новый номер (следующий за имеющимися) и создается новая запись в БД."""
+                #
+                # # Допустимое отклонение в координатах и размерах прямоугольников
+                # # Чем больше это значение, тем более похожими будут хэши
+                # # и более похожими будут различные экраны
+                # ACCEPT = 2
+                #
+                # # Процент элементов на экране, которые должны совпадать, чтобы считать экран одинаковым
+                # # Чем меньше число, тем более похожими будут считаться различные экраны
+                # COUNT_EL = 20
+                #
+                #
+                # # Применяем морфологическую операцию закрытия
+                # kernel = np.ones((15, 15), np.uint8)
+                # closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
+                #
+                # # Ищем контуры и проходим по ним
+                # contours, hierarchy = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+                #
+                # hash_list = []
+                #
+                # for cnt in contours:
+                #     # Находим прямоугольник
+                #     x, y, *_ = cv2.boundingRect(cnt)
+                #
+                #     # Округляем координаты и размеры прямоугольника для получения допустимых отличий
+                #     x_scaled = round(x / ACCEPT) * ACCEPT
+                #     y_scaled = round(y / ACCEPT) * ACCEPT
+                #
+                #     rect_str = str(x_scaled) + str(y_scaled)
+                #
+                #     hash_bytes = zlib.crc32(rect_str.encode())
+                #     hash_list.append(f"{hash_bytes:08x}")  # Добавляем хэш в список
+                #
+                #     if not queue_img.empty():
+                #         break  # Если за время обработки скриншота экран снова изменится, начинаем заново
+                #
+                # else:
+                    # Если вернуть функцию, нужно нижний код сдвинуть вправо и удалить константу
+                # Процент элементов на экране, которые должны совпадать, чтобы считать экран одинаковым
+                # Чем меньше число, тем более похожими будут считаться различные экраны
+                COUNT_EL = 20
 
-                В своей работе использует поиск контуров на изображении. Находит расположение
-                основных элементов составляет список их координат в виде хэшей.
-                Для каждого экрана хранит и пополняет список его хэшей.
-                Находит список хэшей полученного экрана, сравнивает его со списками имеющихся экранов.
-                Для экрана, получившего большее количество совпадения хэшей проверяет их количество.
-                Если оно больше определенного порога, экран признается найденным, список его хэшей
-                пополняется теми из нового экрана, которых в нем не было.
-                Если количество совпадений меньше порога, то экран считается новым, ему присваивается
-                новый номер (следующий за имеющимися) и создается новая запись в БД."""
+                screens = cursor.execute("SELECT id, list FROM screen").fetchall()  # Читаем свойства экранов
+                id_screen = None  # id текущего экрана в БД
+                hashes_screen = None  # Список хэшей текущего экрана в БД
+                max_count = 0  # Максимальное количество совпадений
+                hash_list = set(hashes_elements.keys())  # В качестве отличительных особенностей хэши элементов
+                hash_set = set(hash_list)
+                for id_scr, screen_json in screens:
+                    # В БД есть сохраненные экраны, проверим их на совпадение с имеющимся
+                    screen_hashes = set(json.loads(screen_json))
+                    intersection = screen_hashes.intersection(hash_set)  # Найти пересечение set
 
-                ACCEPT = 2  # Допустимое отклонение в координатах и размерах прямоугольников
-                COUNT_EL = 20  # Процент элементов на экране, которые должны совпадать, чтобы считать экран одинаковым
+                    if len(intersection) > max_count:
+                        # Найден экран с максимальным количеством совпадений
+                        max_count = len(intersection)
+                        id_screen = id_scr
+                        hashes_screen = screen_hashes
+                if hashes_screen:
+                    print("Совпало", max_count, "это", int(max_count/(len(hashes_screen)/100)), "%")
 
-                # Применяем морфологическую операцию закрытия
-                kernel = np.ones((15, 15), np.uint8)
-                closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
-
-                # Ищем контуры и проходим по ним
-                contours, hierarchy = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-                hash_list = []
-
-                for cnt in contours:
-                    # Находим прямоугольник
-                    x, y, *_ = cv2.boundingRect(cnt)
-
-                    # Округляем координаты и размеры прямоугольника для получения допустимых отличий
-                    x_scaled = round(x / ACCEPT) * ACCEPT
-                    y_scaled = round(y / ACCEPT) * ACCEPT
-
-                    rect_str = str(x_scaled) + str(y_scaled)
-
-                    hash_bytes = zlib.crc32(rect_str.encode())
-                    hash_list.append(f"{hash_bytes:08x}")  # Добавляем хэш в список
-
-                    if not queue_img.empty():
-                        break  # Если за время обработки скриншота экран снова изменится, начинаем заново
-
+                if hashes_screen and max_count/(len(hashes_screen)/100) > COUNT_EL:
+                    # Экран с максимальным количеством совпадающих признаков проходит порог
+                    # Считаем, что этот экран уже есть и найден.
+                    # Дополняем набор его хэшей теми, которых у него не было и обновляем БД
+                    new_hashes = hash_set | hashes_screen
+                    cursor.execute("UPDATE screen SET list = ? WHERE id = ?",
+                                   (json.dumps(list(new_hashes)), id_screen))
+                    print('Обновляем запись об экране id', id_screen)
                 else:
-                    screens = cursor.execute("SELECT id, list FROM screen").fetchall()  # Читаем свойства экранов
-                    id_screen = None  # id текущего экрана в БД
-                    hashes_screen = None  # Список хэшей текущего экрана в БД
-                    max_count = 0  # Максимальное количество совпадений
-                    hash_set = set(hash_list)
-                    for id_scr, screen_json in screens:
-                        # В БД есть сохраненные экраны, проверим их на совпадение с имеющимся
-                        screen_hashes = set(json.loads(screen_json))
-                        intersection = screen_hashes.intersection(hash_set)  # Найти пересечение set
+                    # Экран новый, добавляем его в БД и получаем id нового экрана
+                    cursor.execute("INSERT INTO screen (list) VALUES (?)", (json.dumps(hash_list),))
+                    # id_screen = cursor.get_last_id()
+                    id_screen = cursor.execute('SELECT last_insert_rowid()').fetchone()[0]
+                    print('Создаем новую запись об экране id', id_screen)
+                    cv2.imwrite(f'new_screens/scr_{id_screen}.png', screenshot)  # Сохраняем изображение в файл
+                cursor.commit()
 
-                        if len(intersection) > max_count:
-                            # Найден экран с максимальным количеством совпадений
-                            max_count = len(intersection)
-                            id_screen = id_scr
-                            hashes_screen = screen_hashes
-                    if hashes_screen:
-                        print("Совпало", max_count, "это", int(max_count/(len(hashes_screen)/100)), "%")
-
-                    if hashes_screen and max_count/(len(hashes_screen)/100) > COUNT_EL:
-                        # Экран с максимальным количеством совпадающих признаков проходит порог
-                        # Считаем, что этот экран уже есть и найден.
-                        # Дополняем набор его хэшей теми, которых у него не было и обновляем БД
-                        new_hashes = hash_set | hashes_screen
-                        cursor.execute("UPDATE screen SET list = ? WHERE id = ?",
-                                       (json.dumps(list(new_hashes)), id_screen))
-                        print('Обновляем запись об экране id', id_screen)
-                    else:
-                        # Экран новый, добавляем его в БД и получаем id нового экрана
-                        cursor.execute("INSERT INTO screen (list) VALUES (?)", (json.dumps(hash_list),))
-                        # id_screen = cursor.get_last_id()
-                        id_screen = cursor.execute('SELECT last_insert_rowid()').fetchone()[0]
-                        print('Создаем новую запись об экране id', id_screen)
-                        cv2.imwrite(f'new_screens/scr_{id_screen}.png', screenshot)  # Сохраняем изображение в файл
-                    cursor.commit()
-
-                    # Если скриншот обработан, то передаем его, его хэш и список хэшей элементов в очередь
-                    # Предварительно очистив ее
-                    while not queue_hashes.empty():
-                        queue_hashes.get()
-                    queue_hashes.put(((screenshot, str(id_screen)), hashes_elements))
-                    # print(f'Количество элементов последнего экрана: {len(hashes_elements)}')
-                    # Выводим время выполнения
-                    print(f'Время выполнения: {time.time() - start_time + 0.05} сек.')
-                    print('------------------------------------------------------------------------------\n')
+                # Если скриншот обработан, то передаем его, его хэш и список хэшей элементов в очередь
+                # Предварительно очистив ее
+                while not queue_hashes.empty():
+                    queue_hashes.get()
+                queue_hashes.put(((screenshot, str(id_screen)), hashes_elements))
+                # print(f'Количество элементов последнего экрана: {len(hashes_elements)}')
+                # Выводим время выполнения
+                print(f'Время выполнения: {time.time() - start_time + 0.05} сек.')
+                print('------------------------------------------------------------------------------\n')
 
