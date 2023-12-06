@@ -168,7 +168,7 @@ def proverka_nalichiya_svyazey_t_t_o():
                         # print('list_poiska_t0 = ', list_poiska_t0)
                         for poisk_svyazi_t_s_t05 in poisk_svyazi_t_s_t04:
                             posledniy_t_0 = poisk_svyazi_t_s_t05
-                            print("Posl_to теперь 3 : ", posledniy_t_0)
+                            # print("Posl_to теперь 3 : ", posledniy_t_0)
                             # 3.2.5 - зажигание posl_t0
                             # for posledniy_t_01 in posledniy_t_0:
                             # cursor.execute("UPDATE tochki SET work = 1 WHERE ID = ?", (posledniy_t_0,))
@@ -180,14 +180,14 @@ def proverka_nalichiya_svyazey_t_t_o():
             for name2_1 in name2:
                 # print(f'Найден name2: {name2_1} у точки: {posledniy_t}')
                 new_t0 = sozdat_new_tochky('time_0', 0, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, posledniy_t,
-                                           name2_1[0])
-                print("Создана новая (t0): ", new_t0, " где rod1 = ", posledniy_t_0, " и rod2 = ", posledniy_t)
+                                           name2_1[0]+'/t')
+                # print("Создана новая (t0): ", new_t0, " где rod1 = ", posledniy_t_0, " и rod2 = ", posledniy_t)
                 sozdat_svyaz(posledniy_t_0, new_t0, 1)  # weight was 0.1
                 sozdat_svyaz(posledniy_t, new_t0, 1)  # weight was 0.1
                 sozdat_svyaz(new_t0, posledniy_tp, 1)  # 21.06.23 - Добавил дублирующую связь от t0 к tp
                 # v3.0.0 - posledniy_t становится новая связующая (.) м/у внешней горящей и старым posledniy_t
                 posledniy_t_0 = new_t0
-                print("Posl_to теперь 2 : ", posledniy_t_0)
+                # print("Posl_to теперь 2 : ", posledniy_t_0)
         posledniy_t = 0
         # posledniy_tp = 0   # 06.03.23 - добавлено
 
@@ -220,7 +220,7 @@ def proverka_signal_porog():
                         cursor.execute("UPDATE tochki SET puls = 10 WHERE ID = (?) AND name = 'time_0'", nayti_tochki_signal_porog1)
                     else:
                         # если (in) не горит - погасить сигнал у этой (t)
-                        print(f"Этот (in): {nayti_tochki_signal_porog1} не горит. Обнуление сигнала")
+                        # print(f"Этот (in): {nayti_tochki_signal_porog1} не горит. Обнуление сигнала")
                         cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = (?)", nayti_tochki_signal_porog1)
                 else:
                     # если длина name2 не 16 - действуем по старому
@@ -234,7 +234,7 @@ def proverka_signal_porog():
 def pogasit_vse_tochki():
     # погасить все точки в конце главного цикла
     nayti_ID_s_work = tuple(cursor.execute("SELECT ID FROM tochki WHERE signal > 0"))    #!!! ранее был "AND work= 1"
-    print("погашены все точки: ", nayti_ID_s_work)
+    # print("погашены все точки: ", nayti_ID_s_work)
     for nayti_ID_s_work_1 in nayti_ID_s_work:
         cursor.execute("UPDATE tochki SET work = 0 WHERE ID = (?)", nayti_ID_s_work_1)
         # cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = (?)", nayti_ID_s_work_1)   # 1.12.23 - убрал обнуление
@@ -486,6 +486,7 @@ def concentrator_deystviy():
     global posledniy_t_0
     global posledniy_otvet
     global schetchik
+    global most
 
     list_deystviy = []
     # 3.2.4 - соединение вместе и горящих и не горящих (tp) с последующим перебором вариантов
@@ -562,6 +563,7 @@ def concentrator_deystviy():
     # Удаление дублей из листа действий:
     list_deystviy = list(set(list_deystviy))
     print('Лист действий в концентраторе после фильтрации: ', list_deystviy)
+    print(f'most_new = {most_new}')
     if list_deystviy != []:
         vliyanie_na_deystvie = []
         id_dlya_ydaleniya = []
@@ -576,18 +578,26 @@ def concentrator_deystviy():
                 id_dlya_ydaleniya.append(list_deystviy1)
                 # print(f'Было добавлено к ID: {list_deystviy1}, следующее влияние: {poisk_pol_i_otric_reakciy(list_deystviy1)}')
 
-        print(f"Удаляются следующие действия: {id_dlya_ydaleniya}")
+        # print(f"Удаляются следующие действия: {id_dlya_ydaleniya}")
         for index in id_dlya_ydaleniya:
             list_deystviy.remove(index)
             print(f'Удалено действие: {index}')
         # выбор действия, исходя из влияния
-        print(f'Лист действий после поиска влияния: {list_deystviy}. Влияние равно: {vliyanie_na_deystvie}')
+        # print(f'Лист действий после поиска влияния: {list_deystviy}. Влияние равно: {vliyanie_na_deystvie}')
         if vliyanie_na_deystvie:
             choice = random.choices(list_deystviy, weights=vliyanie_na_deystvie, k=1)[0]
             print(f'Случайный ответ следующий: {choice}')
             sbor_deystviya(choice)
             pogasit_vse_tochki()  # 13.09.23 - добавил гашение всех точек, чтобы совершить случайное действие и ждать на
             # него реакцию
+    else:
+        if most_new != 0:
+            print("\033[31m {}".format(' '))
+            print("\033[31m {}".format('Не понятно, что дальше делать. Возможно отсутствуют известные объекты. '
+                                       'Необходима помощь или повторная отправка команды'), '------------------')
+            print("\033[0m {}".format("**********************************"))
+            rec.key_down = 'Key.space'
+
 
 
 def poisk_pol_i_otric_reakciy(ID):
@@ -620,9 +630,9 @@ def poisk_pol_i_otric_reakciy(ID):
             for poisk_puls1 in poisk_puls:
                 for poisk_puls2 in poisk_puls1:
                     poloz_minus_otric = len(svyazi_s_1) - len(svyazi_s_2)/100 + poisk_puls2   # Влияние отрицательных связей уменьшено в 100 раз
-    print(f'Найдены положительные реакции: {svyazi_s_1}, найдены отрицательные реакции: {svyazi_s_2}, найден пульc: '
-          f'{poisk_puls2}')
-    print(f'Получилось влияние на ответ: {poloz_minus_otric}')
+    # print(f'Найдены положительные реакции: {svyazi_s_1}, найдены отрицательные реакции: {svyazi_s_2}, найден пульc: '
+    #       f'{poisk_puls2}')
+    # print(f'Получилось влияние на ответ: {poloz_minus_otric}')
     if poloz_minus_otric == 0:
         vliyanie = 1
     elif poloz_minus_otric >= -0.05:
@@ -708,11 +718,11 @@ def proshivka_po_derevy():
                                                      "ON svyazi.id_finish = tochki.id "
                                                      "WHERE svyazi.id_start = ? AND tochki.name = 'time_p'",
                                               (tochka,)).fetchall()
-                    print(f"Найдены tp: {poisk_tp}, связанные с t0 = {tochka}, которая связана с (-). Дальше эта tp гасится")
+                    # print(f"Найдены tp: {poisk_tp}, связанные с t0 = {tochka}, которая связана с (-). Дальше эта tp гасится")
                     for poisk_tp1 in poisk_tp:
                         cursor.execute("UPDATE tochki SET work = 0 WHERE ID = ?", poisk_tp1)
                         cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = ?", poisk_tp1)
-                        print(f'Погашена точка: {poisk_tp1}')
+                        # print(f'Погашена точка: {poisk_tp1}')
                         # points1 = cursor.execute("SELECT * FROM tochki WHERE ID = ?", poisk_tp1).fetchall()
                         # print(f"Проверка гашения точки: {points1}")
                     # если была найдена отрицательная реакция и эта точка является второй в пути
@@ -835,14 +845,14 @@ def proshivka_po_derevy():
 
 def sbor_deystviya(tp, t0=None):
     # собирает в обратном порядке сущность от последнего tp и приводит в действие ответ
-    print("Разбирается следующий tp для ответа: ", tp)
+    # print("Разбирается следующий tp для ответа: ", tp)
     global posledniy_t_0
     global posledniy_otvet
     B = True
     tp_kortez = (tp, )
 
     vivod_work_tp = tuple(cursor.execute("SELECT work FROM tochki WHERE ID = ?", (tp,)))
-    print(f'Work у этой tp следующий: {vivod_work_tp[0]}')
+    # print(f'Work у этой tp следующий: {vivod_work_tp[0]}')
 
     # 22.06.23 - гашение ответов, для блокировки повторов.
     cursor.execute("UPDATE tochki SET work = 0 AND signal = 0 WHERE ID = ?", (tp,))
@@ -866,13 +876,13 @@ def sbor_deystviya(tp, t0=None):
                 # print(f'Найден name2: {name2_1} у точки: {tp}')
                 # создать t0 и к нему привязать tp
                 new_tochka_t0 = sozdat_new_tochky('time_0', 0, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, tp,
-                                                  name2_1[0])
-                print(f'создана new_tochka_t0 такая: {new_tochka_t0}, а была posl_t0 = {posledniy_t_0}')
+                                                  name2_1[0]+'/tp')
+                # print(f'создана new_tochka_t0 такая: {new_tochka_t0}, а была posl_t0 = {posledniy_t_0}')
                 # sozdat_svyaz(new_tochka_t0, tp, 1)  # 3.2.2 - убрал обратную связь
                 sozdat_svyaz(posledniy_t_0, new_tochka_t0, 1)
                 sozdat_svyaz(new_tochka_t0, tp, 1)
                 posledniy_t_0 = new_tochka_t0
-                print("Posl_to (5) из-за сбора действий и создания новой t0 = ", posledniy_t_0)
+                # print("Posl_to (5) из-за сбора действий и создания новой t0 = ", posledniy_t_0)
         else:
             for poisk_svyazi_tp_s_t01 in poisk_svyazi_tp_s_t0:
                 for poisk_svyazi_tp_s_t02 in poisk_svyazi_tp_s_t01:
@@ -1170,60 +1180,6 @@ if __name__ == '__main__':
             A = False
             continue
 
-        if vvedeno_luboe == ('3'):
-            # Включение записи
-            cursor.commit()  # Сохраняем изменения в БД
-            sleep(0.5)
-            rec.start()
-            # source = None  # Запись сохранится в месте ввода
-            continue
-
-        if vvedeno_luboe == ('4'):
-            # Показать запись
-            sleep(0.5)
-
-            # -------------------------------
-            # Сохранение изображений в отчете
-            report.set_folder('play_4')  # Инициализация папки для сохранения изображений
-            # -------------------------------
-
-            for i in rec.record:
-                print(i)
-                try:
-                    play.play_one(i)
-                except:
-                    print('Выполнение скрипта остановлено')
-                    break
-            source = None
-            vvedeno_luboe = ''
-            continue
-
-        if vvedeno_luboe == ('5'):
-            # Сохранение записи
-            source = 'rec'  # Запись сохранится в месте ввода
-            vvedeno_luboe = ''
-            # continue
-
-        elif vvedeno_luboe == ('9'):
-            stiranie_pamyati()
-            # source = None
-            vvedeno_luboe = ''
-            schetchik = 0
-
-        elif vvedeno_luboe == ('2'):
-            # нужно проверить имеется ли уже связь м/у t0 и tp
-            print("Состояние перед (-) реакцией было такое: ", posledniy_t_0, posledniy_t_0_kortez, ". С ней и создаётся связь")
-            sozdat_svyaz(posledniy_t_0, 2, 1)
-            pogasit_vse_tochki()
-            source = None
-            vvedeno_luboe = ''
-
-            schetchik = 0  # 12.09.23 Добавил переход к началу цикла, если была применена реакция
-            posledniy_tp = 0
-            posledniy_t = 0
-            posledniy_t_0 = old_ekran
-            print(f'Posl_t0 из-за (-) стал = {posledniy_t_0}')
-
         elif vvedeno_luboe == ('1'):
             # нужно проверить имеется ли уже связь м/у t0 и tp
             # print("Состояние перед (+) реакцией было такое: ", posledniy_t_0, "    С ней и создаётся связь")
@@ -1246,11 +1202,75 @@ if __name__ == '__main__':
             posledniy_t_0 = old_ekran
             print(f'Posl_t0 из-за (+) стал = {posledniy_t_0}')
 
+        elif vvedeno_luboe == ('2'):
+            # нужно проверить имеется ли уже связь м/у t0 и tp
+            print("Состояние перед (-) реакцией было такое: ", posledniy_t_0, posledniy_t_0_kortez,
+                  ". С ней и создаётся связь")
+            sozdat_svyaz(posledniy_t_0, 2, 1)
+            pogasit_vse_tochki()
+            source = None
+            vvedeno_luboe = ''
 
+            schetchik = 0  # 12.09.23 Добавил переход к началу цикла, если была применена реакция
+            posledniy_tp = 0
+            posledniy_t = 0
+            posledniy_t_0 = old_ekran
+            print(f'Posl_t0 из-за (-) стал = {posledniy_t_0}')
+
+        elif vvedeno_luboe == ('3'):
+            # Включение записи
+            cursor.commit()  # Сохраняем изменения в БД
+            sleep(0.5)
+            rec.start()
+            # source = None  # Запись сохранится в месте ввода
+            continue
+
+        elif vvedeno_luboe == ('4'):
+            # Показать запись
+            sleep(0.5)
+
+            # -------------------------------
+            # Сохранение изображений в отчете
+            report.set_folder('play_4')  # Инициализация папки для сохранения изображений
+            # -------------------------------
+
+            for i in rec.record:
+                print(i)
+                try:
+                    play.play_one(i)
+                except:
+                    print('Выполнение скрипта остановлено')
+                    break
+            source = None
+            vvedeno_luboe = ''
+            continue
+
+        elif vvedeno_luboe == ('5'):
+            # Сохранение записи
+            source = 'rec'  # Запись сохранится в месте ввода
+            vvedeno_luboe = ''
+            # continue
+
+        elif vvedeno_luboe == ('6'):
+            # Сброс состояния
+            print("Сброс состояния до текущего экрана")
+            perenos_sostoyaniya()
+
+        elif vvedeno_luboe == ('7'):
+            # обнуление, стирание моста.
+            print("Обнуление, стирание моста")
+            most_new = 0
 
         elif vvedeno_luboe == ('8'):
             # запуск автоматического срабатывания счётчика без нажатия enter
             source = None
+
+        elif vvedeno_luboe == ('9'):
+            stiranie_pamyati()
+            # source = None
+            vvedeno_luboe = ''
+            schetchik = 0
+
         elif vvedeno_luboe != "":
             print(vvedeno_luboe, '=========================')
             for vvedeno_luboe1 in vvedeno_luboe:
@@ -1267,7 +1287,7 @@ if __name__ == '__main__':
                             # print(f'Найден name2: {name2_1} у точки: {posledniy_t}')
                             new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0,
                                                                   posledniy_t_0,
-                                                                  posledniy_t, name2_1[0])
+                                                                  posledniy_t, name2_1[0]+'/t')
                             print(f'Создана новая точка t0 {new_tochka_time_0} до этого был posl_to = {posledniy_t_0}')
                         sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
                         sozdat_svyaz(posledniy_t, new_tochka_time_0, 1)
@@ -1286,7 +1306,7 @@ if __name__ == '__main__':
                     for name2_1 in name2:
                         # print(f'Найден name2: {name2_1} у точки: {posledniy_t}')
                         new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
-                                                              posledniy_t, name2_1[0])
+                                                              posledniy_t, name2_1[0]+'/t')
                         print(f'Создана новая t0: {new_tochka_time_0}')
                     sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
                     sozdat_svyaz(posledniy_t, new_tochka_time_0, 1)
@@ -1329,13 +1349,14 @@ if __name__ == '__main__':
             # print("Было введено vvedeno_luboe: ", vvedeno_luboe)
             # schetchik = 0   # 07.11.23 - добавлено обнуление, чтобы не перешло состояние к старому экрану
             source = None
+
         else:
             if schetchik == 1:
-                proshivka_po_derevy()   # 28.11.23 - Ограничил ответ только счётчиком = 1, чтобы успеть дать реакцию.
+                if most_new != 0:   # 06.12.23 - добавлено ограничение на ответ. Если нет моста (входящего задания)
+                    proshivka_po_derevy()   # 28.11.23 - Ограничил ответ только счётчиком = 1, чтобы успеть дать реакцию.
             elif schetchik >= 10:
                 functions()
 
-                # TODO нейтральная реакция под вопросом в связи с тем, что 10й счётчик используется для других функций
                 # 12.09.23 - Добавляю нейтральную реакцию на отсутствие какой-либо реакции при ответе.
                 # print("Состояние перед нейтральной реакцией было такое: ", posledniy_t_0, "    С ней и создаётся связь")
                 # posledniy_t_0_kortez = (posledniy_t_0,)
@@ -1370,6 +1391,7 @@ if __name__ == '__main__':
                     print("")
             else:
                 functions()
+
         ymenshenie_signal()
 
     p1.terminate()
