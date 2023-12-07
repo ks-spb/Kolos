@@ -176,7 +176,7 @@ def process_changes(queue_hashes, queue_img):
                 id_screen = None  # id текущего экрана в БД
                 hashes_screen = None  # Список хэшей текущего экрана в БД
                 max_count = 0  # Максимальное количество совпадений
-                hash_list = set(hashes_elements.keys())  # В качестве отличительных особенностей хэши элементов
+                hash_list = list(hashes_elements.keys())  # В качестве отличительных особенностей хэши элементов
                 hash_set = set(hash_list)
                 for id_scr, screen_json in screens:
                     # В БД есть сохраненные экраны, проверим их на совпадение с имеющимся
