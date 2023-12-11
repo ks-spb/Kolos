@@ -217,9 +217,9 @@ def pogasit_vse_tochki():
     nayti_ID_s_work = tuple(cursor.execute("SELECT ID FROM tochki WHERE signal > 0"))    #!!! ранее был "AND work= 1"
     # print("погашены все точки: ", nayti_ID_s_work)
     for nayti_ID_s_work_1 in nayti_ID_s_work:
-        cursor.execute("UPDATE tochki SET work = 0 WHERE ID = (?) AND type != 'most'", nayti_ID_s_work_1)   #06.12.23 добавлено "AND type != 'most'"
+        cursor.execute("UPDATE tochki SET work = 0 WHERE ID = (?) AND type != 'most'", nayti_ID_s_work_1)   # 06.12.23 добавлено "AND type != 'most'"
         # cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = (?)", nayti_ID_s_work_1)   # 1.12.23 - убрал обнуление
-    nayti_ID_s_work_1 = tuple(cursor.execute("SELECT ID FROM tochki WHERE work > 0 AND type != 'most'"))   #06.12.23 Добавлено "AND type != 'most'"
+    nayti_ID_s_work_1 = tuple(cursor.execute("SELECT ID FROM tochki WHERE work > 0 AND type != 'most'"))    # 06.12.23 Добавлено "AND type != 'most'"
     # print("погашены все точки 2: ", nayti_ID_s_work_1)
     for nayti_ID_s_work2 in nayti_ID_s_work_1:
         cursor.execute("UPDATE tochki SET work = 0 WHERE ID = (?)", nayti_ID_s_work2)
@@ -670,7 +670,6 @@ def proshivka_po_derevy():
     found = False
     svyaz_s_1 = []
     svyaz_s_2 = []
-    # svyaz_s_5 = []
     svyaz_s_img = []
     for path in all_paths(tree, posledniy_t_0):
         if len(path) > 1:
@@ -1030,6 +1029,9 @@ def pereimenovat_name2_y_to(ID, rod2):
                     print(f'Должно обновиться name2 у точки: {ID}')
 
 
+
+
+
 if __name__ == '__main__':
 
     old_ekran = 0
@@ -1094,10 +1096,10 @@ if __name__ == '__main__':
                                           "AND name = ?", (h,)).fetchall()
             if goryashie_in:
                 list_goryashih_in.append(goryashie_in)
-        print(f'Имеются следующие объекты на экране: {list_goryashih_in}')
+        print(f'Имеются следующие объекты на экране записанные в БД: {list_goryashih_in}')
 
         # -------------------------------------------------------
-        # print(f'Найдены следующие объекты на экране: {screen.get_all_hashes()}')
+        # print(f'Найдены элементы на экране (все возможные): {screen.get_all_hashes()}')
         # Прочитать из БД и распечатать точки, которые могли быть изменены
         # points = cursor.execute("SELECT ID FROM tochki WHERE work = 1").fetchall()
         # print(f"Горят следующие точки: {points}")
@@ -1112,7 +1114,7 @@ if __name__ == '__main__':
         # 03.10.23 - зажигание моста
         if most_new != 0:
             cursor.execute("UPDATE 'tochki' SET work = 1 WHERE ID = ?", (most_new, ))
-            cursor.execute("UPDATE 'tochki' SET puls = 10 WHERE ID = ? AND name = 'time_0'", (most_new,))
+            cursor.execute("UPDATE 'tochki' SET puls = 10 WHERE ID = ?", (most_new,))
             print(f'Снова зажёгся мост: {most_new}')
 
         # print("Сейчас ", source)
@@ -1204,13 +1206,28 @@ if __name__ == '__main__':
             schetchik = 0  # 12.09.23 Добавил переход к началу цикла, если была применена реакция
             posledniy_tp = 0
             posledniy_t = 0
-
             if most_new !=0:
-                # Поиск t0 с которой связан мост. Эта связь внесена в rod2
-                poisk_t0_start_mosta = cursor.execute("SELECT rod2 FROM tochki WHERE ID = ?", (most_new, )).fetchall()
-                for poisk_t0_start_mosta1 in poisk_t0_start_mosta:
-                    posledniy_t_0 = poisk_t0_start_mosta1[0]
-                    print(f'Posl_t0 из-за (-) стал = {posledniy_t_0} с учётом влияния моста')
+                # После отрицательной реакции - состояние переносится к предыдущей t0, которая не является кликом
+                # (т.е. name2 менее 16 знаков)
+                poisk_t0_dlya_otkata = True
+                posl_t0_dlya_cicla = posledniy_t_0
+                while poisk_t0_dlya_otkata:
+                    # предыдущий t0 прописан в rod1 - найти эту точку
+                    poisk_predidushego_t0 = cursor.execute("SELECT rod1 FROM tochki WHERE ID = ?",
+                                                           (posl_t0_dlya_cicla, )).fetchall()
+                    # проверить какой длины name2 - если 16 знаков - то это клик и искать следующую t0
+                    for poisk_predidushego_t01 in poisk_predidushego_t0:
+                        proverka_name2 = cursor.execute("SELECT name2 FROM tochki WHERE ID = ? "
+                                                        "AND LENGTH(name2) < 16", poisk_predidushego_t01).fetchall()
+                        # Если такая точка найдена - то это искомый t0 к нему и переходим
+                        if proverka_name2:
+                            posledniy_t_0 = poisk_predidushego_t01[0]
+                            poisk_t0_dlya_otkata = False
+                            print(f'Состояние после получения (-) реакции было перенесено в t0: {posledniy_t_0}. '
+                                  f'До этого был posl_t0: {posl_t0_dlya_cicla}')
+                        else:
+                            # Если name2 у этой t0 = 16 - то это клик - значит ищем следующую
+                            posl_t0_dlya_cicla = poisk_predidushego_t01[0]
             else:
                 pogasit_vse_tochki()
                 posledniy_t_0 = old_ekran
@@ -1336,16 +1353,12 @@ if __name__ == '__main__':
             # 03.10.23 - создание моста для повторного зажигания (in)
             # проверка имеется ли уже мост для этого in
             # нужно найти начало у связи, которое равно ID из таблицы точек, у которых name = _most__, а конец равен текущему posl_t
+            # TODO внедрить кратковременную память
+            # TODO что делать с цепочками действий на которых нет реакции? Игнорировать? Стирать из памяти?
             if not bil_klick:
                 poisk_most = tuple(cursor.execute("SELECT svyazi.id_start FROM svyazi JOIN tochki "
                                                   "ON svyazi.id_start = tochki.id WHERE svyazi.id_finish = ? "
                                                   "AND tochki.name = '_most_' ", (posledniy_t, )))   #07.12.23 - убрал в конце OR tochki.name = '_most' - скорее всего из-за этой приписки не верно работает
-                # ещё один вариант, который подсказал ChatGPT. Этот запрос найдет значение ID,
-                # записанное в таблице “tochki”, у которой значение столбца "name" равно "most", при этом в таблице “svyzi”
-                # значение столбца "idstart" равно ?, а значение столбца "idfinish" равно найденному ID.
-                # poisk_most = tuple(cursor.execute("SELECT tochki.ID FROM tochki JOIN svyazi "
-                #                                   "ON tochki.ID = svyazi.id_start WHERE svyazi.id_finish = ? "
-                #                                   "AND tochki.name = '_most__' ", (posledniy_t,)))
                 print(f'Найден мост: {poisk_most}, у которого имеется связь с posl_t: {posledniy_t}')
                 if not poisk_most:
                     most_new = sozdat_new_tochky('_most_', 1, 'most', 'zazech_sosedey', 1, 0,
@@ -1363,12 +1376,13 @@ if __name__ == '__main__':
                                                           "ON svyazi.id_start = tochki.id WHERE svyazi.id_start = ? "
                                                           "AND tochki.name = 'time_0' ", (most_new,)))
                         print(f'Найдена старая t0: {poisk_svyaz_s_t0}, связанная с текущим мостом: {most_new}')
+                        # TODO удалять или нет старую связь. Если не удалять - изменить процесс перехода при (-) реакции - нужно оставить 1 связь с t0, которая ведёт к (+), если появится новый (+) - переписать
                         # Найти и удалить эту старую связь и создать новую
-                        if poisk_svyaz_s_t0:
-                            for poisk_svyaz_s_t01 in poisk_svyaz_s_t0:
-                                cursor.execute("DELETE FROM 'svyazi' WHERE id_start = ? AND id_finish = ?",
-                                               (most_new, poisk_svyaz_s_t01[0]))
-                                sozdat_svyaz(most_new, posledniy_t_0)
+                        # if poisk_svyaz_s_t0:
+                        #     for poisk_svyaz_s_t01 in poisk_svyaz_s_t0:
+                        #         cursor.execute("DELETE FROM 'svyazi' WHERE id_start = ? AND id_finish = ?",
+                        #                        (most_new, poisk_svyaz_s_t01[0]))
+                        #         sozdat_svyaz(most_new, posledniy_t_0)
             posledniy_tp = 0
             posledniy_t = 0
             # print("Было введено vvedeno_luboe: ", vvedeno_luboe)
