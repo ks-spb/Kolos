@@ -218,9 +218,9 @@ def pogasit_vse_tochki():
     nayti_ID_s_work = tuple(cursor.execute("SELECT ID FROM tochki WHERE signal > 0"))    #!!! ранее был "AND work= 1"
     # print("погашены все точки: ", nayti_ID_s_work)
     for nayti_ID_s_work_1 in nayti_ID_s_work:
-        cursor.execute("UPDATE tochki SET work = 0 WHERE ID = (?) AND type != 'most'", nayti_ID_s_work_1)   # 06.12.23 добавлено "AND type != 'most'"
+        cursor.execute("UPDATE tochki SET work = 0 WHERE ID = (?) AND name != '_most_'", nayti_ID_s_work_1)   # 19.12.23 добавлено "AND name != '_most_'"
         # cursor.execute("UPDATE tochki SET signal = 0 WHERE ID = (?)", nayti_ID_s_work_1)   # 1.12.23 - убрал обнуление
-    nayti_ID_s_work_1 = tuple(cursor.execute("SELECT ID FROM tochki WHERE work > 0 AND type != 'most'"))    # 06.12.23 Добавлено "AND type != 'most'"
+    nayti_ID_s_work_1 = tuple(cursor.execute("SELECT ID FROM tochki WHERE work > 0 AND name != '_most_'"))    # 19.12.23 добавлено "AND name != '_most_'"
     # print("погашены все точки 2: ", nayti_ID_s_work_1)
     for nayti_ID_s_work2 in nayti_ID_s_work_1:
         cursor.execute("UPDATE tochki SET work = 0 WHERE ID = (?)", nayti_ID_s_work2)
@@ -659,6 +659,7 @@ def proshivka_po_derevy():
         функция концентратор действий.
         * Возможно, в будущем придётся внести изменения в выбор, чтобы была возможность применить не известный путь,
         а новый."""
+    global most_new
     global posledniy_t_0
     print(f'Создаётся дерево, где posl_t0: {posledniy_t_0}')
     tree = create_dict([posledniy_t_0])  # Получаем выборку связей в виде словаря (дерево)
@@ -768,9 +769,11 @@ def proshivka_po_derevy():
         if found:
             break  # выход из внешнего цикла
 
+
+
     # print(f"found = {found}")
     if not found:
-        # Если алгоритм дошёл до сюда - значит не был найден удовлетворительный путь - применить первое действие из возможных
+        # Если нет возможных действий - то применить первое действие из возможных
         found1 = False
         print(f'Возможные действия: {vozmozhnie_deystviya}')
         # print(f'Количество возможных действий: {len(vozmozhnie_deystviya)}')
@@ -1186,15 +1189,26 @@ if __name__ == '__main__':
         elif vvedeno_luboe == ('1'):
             # нужно проверить имеется ли уже связь м/у t0 и tp
             # print("Состояние перед (+) реакцией было такое: ", posledniy_t_0, "    С ней и создаётся связь")
-            posledniy_t_0_kortez = (posledniy_t_0,)
             sozdat_svyaz(posledniy_t_0, 1, 1)
 
+            # TODO добавить создание точки, гасящей мост для последующей остановки действий.
+
             # 03.10.23 - если произошла (+) реакция - то переименовать мост, чтобы больше не зажигался и соединить с posl_t_0
-            sozdat_svyaz(most_new, posledniy_t_0, 1)
+            # sozdat_svyaz(most_new, posledniy_t_0, 1)   # 18.12.23 - закомментировал, пока не требуется. Иначе при прошивке будет рисоваться не верный путь.
             # print(f'Создана связь между мостом: {most_new} и posl_t_0: {posledniy_t_0_kortez}')
             # 14.12.23 - добавлено редактирование rod2 у моста для упрощения поиска t0 с (+) реакцией
             cursor.execute("UPDATE 'tochki' SET name = '_most_' WHERE ID = ?", (most_new, ))
             cursor.execute("UPDATE 'tochki' SET rod2 = ? WHERE ID = ?", (posledniy_t_0, most_new))
+            # 19.12.23 - найти и поменять местами направление связи от posl_to к мосту
+            poisk_t0_dlya_razvorota_svyazi = cursor.execute("SELECT svyazi.id_start FROM svyazi JOIN tochki ON "
+                                                            "svyazi.id_start = tochki.ID WHERE svyazi.id_finish = ? "
+                                                            "AND tochki.name = 'time_o'", (most_new, ))
+
+            for poisk_t0_dlya_razvorota_svyazi1 in poisk_t0_dlya_razvorota_svyazi:
+                print(
+                    f'Найдена to: {poisk_t0_dlya_razvorota_svyazi1}, которая является id_start с мостом: {most_new} - эта связь разворачивается')
+                ydalit_svyaz(poisk_t0_dlya_razvorota_svyazi1[0], most_new)
+                sozdat_svyaz(most_new, poisk_t0_dlya_razvorota_svyazi1[0])
             most_new = 0
 
             # source = None
@@ -1318,15 +1332,14 @@ if __name__ == '__main__':
                         name2 = cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (posledniy_t,))
                         for name2_1 in name2:
                             # print(f'Найден name2: {name2_1} у точки: {posledniy_t}')
-                            new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0,
-                                                                  posledniy_t_0,
-                                                                  posledniy_t, name2_1[0]+'/t')
+                            new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time',
+                                                                  "zazech_sosedey", 1, 0, 0,
+                                                                  posledniy_t_0, posledniy_t, name2_1[0]+'/t')
                             pereimenovat_name2_y_to(new_tochka_time_0, posledniy_t)
                             print(f'Создана новая точка t0 {new_tochka_time_0} до этого был posl_to = {posledniy_t_0}')
                         sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
                         sozdat_svyaz(posledniy_t, new_tochka_time_0, 1)
-                        sozdat_svyaz(new_tochka_time_0, posledniy_tp,
-                                     1)  # 21.06.23 была добавлена дублирующая связь с tp (есть ещё одна)
+                        sozdat_svyaz(new_tochka_time_0, posledniy_tp, 1)  # 21.06.23 была добавлена дублирующая связь с tp (есть ещё одна)
                         posledniy_t_0 = new_tochka_time_0
                         print(f'Posl_t0 из-за ввода изображения стал = {posledniy_t_0}')
                         sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
@@ -1370,10 +1383,9 @@ if __name__ == '__main__':
                 poisk_most = tuple(cursor.execute("SELECT svyazi.id_start FROM svyazi JOIN tochki "
                                                   "ON svyazi.id_start = tochki.id WHERE svyazi.id_finish = ? "
                                                   "AND tochki.name = '_most_' ", (posledniy_t, )))   #07.12.23 - убрал в конце OR tochki.name = '_most' - скорее всего из-за этой приписки не верно работает
-                # TODO изменить поиск имени моста?
                 print(f'Найден мост: {poisk_most}, у которого имеется связь с posl_t: {posledniy_t}')
                 if not poisk_most:
-                    most_new = sozdat_new_tochky('_most_', 1, 'most', 'zazech_sosedey', 1, 0,
+                    most_new = sozdat_new_tochky('_most_', 1, 'time_0', 'zazech_sosedey', 1, 0,
                                                  10, posledniy_t, posledniy_t_0, posledniy_t)
                     sozdat_svyaz(most_new, posledniy_t, 1)
                     sozdat_svyaz(most_new, posledniy_t_0, 1)
@@ -1383,34 +1395,35 @@ if __name__ == '__main__':
                         most_new = poisk_most1[0]
                         # print(f'Имеющийся мост: {poisk_most1[0]} переименован и присвоено значение most_new')
                         cursor.execute("UPDATE 'tochki' SET name = '_most_' WHERE ID = ?", (most_new,))
+
+                        # 19.12.23 - добавлено создание связи от posl_t0 к мосту
+                        sozdat_svyaz(posledniy_t_0, most_new, 1)
+                        # TODO сделать так, чтобы менялось местами эта созданная связь
+                        # TODO при обнулении моста проверить, чтобы связь удалилась от posl_t0 к мосту
                         #07.12.23 - добавлено удаление имеющихся связей с to и создание новой связи с posl_t0.
-                        poisk_svyaz_s_t0 = cursor.execute("SELECT svyazi.id_finish FROM svyazi JOIN tochki "
-                                                          "ON svyazi.id_finish = tochki.id WHERE svyazi.id_start = ? "
-                                                          "AND tochki.name = 'time_0' ", (most_new,)).fetchall()
-                        print(f'Найдена старая t0: {poisk_svyaz_s_t0}, связанная с текущим мостом: {most_new}')
+                        # poisk_svyaz_s_t0 = cursor.execute("SELECT svyazi.id_finish FROM svyazi JOIN tochki "
+                        #                                   "ON svyazi.id_finish = tochki.id WHERE svyazi.id_start = ? "
+                        #                                   "AND tochki.name = 'time_0' ", (most_new,)).fetchall()
+                        # print(f'Найдена старая t0: {poisk_svyaz_s_t0}, связанная с текущим мостом: {most_new}')
                         # 14.12.23 - при поступлении первого (in) нужно сохранить найденную t0 и соединить её только при
                         # счётчике = 1, а если это вторая (in) - то продолжить цепочку мостов.
-                        for poisk_svyaz_s_t01 in poisk_svyaz_s_t0:
-                            # Если цепочка мостов начинается с начала - то соединить с posl_t0, иначе - с t0 от моста, который имеет связь с (+)
-                            if posledniy_t_0_dly_prognoza == 0:
-                                print(f'Cтарая t0: {poisk_svyaz_s_t01[0]} теперь dlya_sozdaniya_novoy_svyazi - т.к. первая')
-                                dlya_sozdaniya_novoy_svyazi = poisk_svyaz_s_t01[0]
-                            else:
-                                print(
-                                    f'Создана связь от posledniy_t_0_dly_prognoza: {posledniy_t_0_dly_prognoza}'
-                                    f'к найденной "старой" t0: {poisk_svyaz_s_t01[0]} - т.к. строится цепочка действий')
-                                sozdat_svyaz(posledniy_t_0_dly_prognoza, poisk_svyaz_s_t01[0], 1)
+
+                        # 19.12.23 - убрал создание связи для построения цепочки действий - т.к. происходит зацикливание
+                        # for poisk_svyaz_s_t01 in poisk_svyaz_s_t0:
+                        #     # Если цепочка мостов начинается с начала - то соединить с posl_t0, иначе - с t0 от моста, который имеет связь с (+)
+                        #     if posledniy_t_0_dly_prognoza == 0:
+                        #         print(f'Cтарая t0: {poisk_svyaz_s_t01[0]} теперь dlya_sozdaniya_novoy_svyazi - т.к. первая')
+                        #         dlya_sozdaniya_novoy_svyazi = poisk_svyaz_s_t01[0]
+                        #     else:
+                        #         print(
+                        #             f'Создана связь от posledniy_t_0_dly_prognoza: {posledniy_t_0_dly_prognoza}'
+                        #             f'к найденной "старой" t0: {poisk_svyaz_s_t01[0]} - т.к. строится цепочка действий')
+                        #         sozdat_svyaz(posledniy_t_0_dly_prognoza, poisk_svyaz_s_t01[0], 1)
                         # 14.12.23 - добавлен поиск t0, которая имеет связь с (+) и запоминание её для последующего сбора действий
-                        poisk_rod2_y_mosta =  cursor.execute("SELECT rod2 FROM tochki WHERE ID = ?", (most_new,))
-                        for poisk_rod2_y_mosta1 in poisk_rod2_y_mosta:
-                            posledniy_t_0_dly_prognoza = poisk_rod2_y_mosta1[0]
-                        # TODO удалять или нет старую связь. Если не удалять - изменить процесс перехода при (-) реакции - нужно оставить 1 связь с t0, которая ведёт к (+), если появится новый (+) - переписать
-                        # Найти и удалить эту старую связь и создать новую
-                        # if poisk_svyaz_s_t0:
-                        #     for poisk_svyaz_s_t01 in poisk_svyaz_s_t0:
-                        #         cursor.execute("DELETE FROM 'svyazi' WHERE id_start = ? AND id_finish = ?",
-                        #                        (most_new, poisk_svyaz_s_t01[0]))
-                        #         sozdat_svyaz(most_new, posledniy_t_0)
+                        # poisk_rod2_y_mosta =  cursor.execute("SELECT rod2 FROM tochki WHERE ID = ?", (most_new,))
+                        # for poisk_rod2_y_mosta1 in poisk_rod2_y_mosta:
+                        #     posledniy_t_0_dly_prognoza = poisk_rod2_y_mosta1[0]
+
             posledniy_tp = 0
             posledniy_t = 0
             # print("Было введено vvedeno_luboe: ", vvedeno_luboe)
@@ -1419,11 +1432,11 @@ if __name__ == '__main__':
 
         else:
             if schetchik == 1:
-                posledniy_t_0_dly_prognoza = 0   # обнуление последнего t0 от моста, связанного с (+)
+                # posledniy_t_0_dly_prognoza = 0   # обнуление последнего t0 от моста, связанного с (+)
                 if most_new != 0:   # 06.12.23 - добавлено ограничение на ответ. Если нет моста (входящего задания)
-                    # 14.12.23 Создаётся связь с posl_t0 и первой t0 моста
-                    print(f'Создаётся связь от posledniy_t_0: {posledniy_t_0} к dlya_sozdaniya_novoy_svyazi: {dlya_sozdaniya_novoy_svyazi}')
-                    sozdat_svyaz(posledniy_t_0, dlya_sozdaniya_novoy_svyazi, 1)
+                    # 14.12.23 Создаётся связь с posl_t0 и первой t0 моста - 19.12.23
+                    # print(f'Создаётся связь от posledniy_t_0: {posledniy_t_0} к dlya_sozdaniya_novoy_svyazi: {dlya_sozdaniya_novoy_svyazi}')
+                    # sozdat_svyaz(posledniy_t_0, dlya_sozdaniya_novoy_svyazi, 1)
                     proshivka_po_derevy()   # 28.11.23 - Ограничил ответ только счётчиком = 1, чтобы успеть дать реакцию.
 
             elif schetchik >= 10:
