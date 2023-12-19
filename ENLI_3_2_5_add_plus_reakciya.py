@@ -1227,7 +1227,7 @@ if __name__ == '__main__':
             sozdat_svyaz(posledniy_t_0, 2, 1)
             source = None
             vvedeno_luboe = ''
-            schetchik = 0  # 12.09.23 Добавил переход к началу цикла, если была применена реакция
+            # schetchik = 0  # 12.09.23 Добавил переход к началу цикла, если была применена реакция
             posledniy_tp = 0
             posledniy_t = 0
             if most_new !=0:
