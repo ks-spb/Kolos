@@ -32,7 +32,7 @@ def screen_monitor(queue_img):
     и сообщает если экран изменился. """
     sct = mss.mss()
     # monitor = {'top': 0, 'left': 0, 'width': sct.monitors[0]['width'], 'height': sct.monitors[0]['height']}
-    monitor = sct.monitors[1]
+    monitor = sct.monitors[2]
     hash_base_img = None  # Получаем хэш сегмента
 
     while True:
@@ -170,7 +170,7 @@ def process_changes(queue_hashes, queue_img):
                     # Если вернуть функцию, нужно нижний код сдвинуть вправо и удалить константу
                 # Процент элементов на экране, которые должны совпадать, чтобы считать экран одинаковым
                 # Чем меньше число, тем более похожими будут считаться различные экраны
-                COUNT_EL = 20
+                COUNT_EL = 10
 
                 screens = cursor.execute("SELECT id, list FROM screen").fetchall()  # Читаем свойства экранов
                 id_screen = None  # id текущего экрана в БД
