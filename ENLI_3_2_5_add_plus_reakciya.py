@@ -671,7 +671,7 @@ def all_paths(tree, node):
 
 
 
-def proshivka_po_derevy(time_dlya_proshivki):
+def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
     """ Проверка возможности применения действий по пути из дерева.
         * Дерево рисуется из текущей t0
         * Находится связь с 1 (+), 2 (-), 5 (нейтрал)
@@ -789,11 +789,11 @@ def proshivka_po_derevy(time_dlya_proshivki):
         if found:
             break  # выход из внешнего цикла
 
-
-
     # print(f"found = {found}")
     if not found:
-        # Если нет возможных действий - то применить первое действие из возможных
+        # TODO добавить прошивку по первой части сущности, затем по второй и т.д. А если нет действий - применить возможные
+        # 26.12.23 - прошить по первому элементу из vhodyashie_in для построения цепочки действий
+        # Если нет цепочек действий - то применить первое действие из возможных
         found1 = False
         print(f'Возможные действия: {vozmozhnie_deystviya}')
         # print(f'Количество возможных действий: {len(vozmozhnie_deystviya)}')
@@ -840,7 +840,7 @@ def proshivka_po_derevy(time_dlya_proshivki):
                 if found1:
                     break
         if not found1:
-            print(f'Запущена функция Концентратор действий, т.к. все возможные действия - отрицательные')
+            print(f'Запущена функция Концентратор действий, т.к. все возможные действия - отрицательные или их вообще нет')
             concentrator_deystviy()
 
 
@@ -1226,7 +1226,7 @@ if __name__ == '__main__':
             print(f'in_pamyat перед удалением первого элемента: {in_pamayt}')
             in_pamayt.pop(0)
             print(f'Удалён первый элемент из in_pamyat, теперь список такой: {in_pamayt}')
-
+# TODO проверить к какой точке записываются + и - реакции. К in_pamyat или к текущей to? Точнее к какому мосту?
         elif vvedeno_luboe == ('2'):
             # нужно проверить имеется ли уже связь м/у t0 и tp
             print("Состояние перед (-) реакцией было такое: ", posledniy_t_0,". С ней и создаётся связь")
@@ -1391,7 +1391,7 @@ if __name__ == '__main__':
             # schetchik = 0   # 07.11.23 - добавлено обнуление, чтобы не перешло состояние к старому экрану
             source = None
 
-        else:
+        else:   # TODO проверить к какой точке записываются + и - реакции. К in_pamyat или к текущей to? Точнее к какому мосту?
             if schetchik == 1:
                 print(f'in_pamyat сейчас такая: {in_pamayt}')
                 if in_pamayt != []:
@@ -1411,15 +1411,10 @@ if __name__ == '__main__':
                             # sozdat_svyaz(posledniy_t_0, poisk_svyazi_t_i_t01[0], 1)
                             # 21.12.23 - прошивка по дереву будет проходить через time, а не через time_0
                             try:
-                                proshivka_po_derevy(poisk_svyazi_t_i_t01[0])
+                                proshivka_po_derevy(poisk_svyazi_t_i_t01[0], in_pamayt)   # Добавил передачу in_pamyat для создания цепочки действий
                             except RecursionError:
                                 print("!!!!!!!!!!!!!!!!!Произошла ошибка: maximum recursion depth exceeded in comparison!!!!!!!!!!!!!!!!!!")
-                    else:
-                        try:
-                            proshivka_po_derevy(posledniy_t_0)
-                        except RecursionError:
-                            print(
-                                "!!!!!!!!!!!!!!!!!Произошла ошибка: maximum recursion depth exceeded in comparison!!!!!!!!!!!!!!!!!!")
+
             elif schetchik >= 10:
                 functions()
 
