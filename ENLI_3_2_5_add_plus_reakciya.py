@@ -160,7 +160,6 @@ def proverka_nalichiya_svyazey_t_t_o():
         if poisk_svyazi_t_s_t0 != []:
             # Такая точка существует - присвоить ей posl_t0
             for poisk_svyazi_t_s_t01 in poisk_svyazi_t_s_t0:
-                proverka_svyazi_ot_t0_k_t_dlya_perevorota(posledniy_t_0)
                 posledniy_t_0 = poisk_svyazi_t_s_t01[0]
                 # ydalit_svyaz(posledniy_t, posledniy_t_0)
                 # sozdat_svyaz(posledniy_t_0, posledniy_t, 1)
@@ -175,7 +174,6 @@ def proverka_nalichiya_svyazey_t_t_o():
             sozdat_svyaz(posledniy_t, new_t0, 1)
             sozdat_svyaz(new_t0, posledniy_tp, 1)  # 21.06.23 - Добавил дублирующую связь от t0 к tp
             # v3.0.0 - posledniy_t становится новая связующая (.) м/у внешней горящей и старым posledniy_t
-            proverka_svyazi_ot_t0_k_t_dlya_perevorota(posledniy_t_0)
             posledniy_t_0 = new_t0
             print("После ввода in была создана новая t0 и posl_to теперь: ", posledniy_t_0)
         # 22.12.23 отсеивание, чтобы экран не попадал в кратковременную память
@@ -185,17 +183,6 @@ def proverka_nalichiya_svyazey_t_t_o():
             # 21.12.23 - Добавление (in) в память. Берётся именно последний (t)
             print(f'В in_pamyat: {in_pamayt} добавляется posledniy_t: {posledniy_t}')
             in_pamayt.append(posledniy_t)
-
-
-def proverka_svyazi_ot_t0_k_t_dlya_perevorota(staraya_t0):
-    # Найти связь, где id_start = старый t0 (из которого осуществляется переход) и  id_finish = (t), поменять их местами
-    poisk_svyazi_t_s_t0 = cursor.execute("SELECT svyazi.id_finish FROM svyazi JOIN tochki ON svyazi.id_finish = "
-                                         "tochki.ID WHERE svyazi.id_start = ? AND tochki.name = 'time'",
-                                         (staraya_t0, )).fetchall()
-    if poisk_svyazi_t_s_t0:
-        for poisk_svyazi_t_s_t01 in poisk_svyazi_t_s_t0:
-            ydalit_svyaz(staraya_t0, poisk_svyazi_t_s_t01[0])
-            sozdat_svyaz(poisk_svyazi_t_s_t01[0], staraya_t0, 1)
 
 
 def proverka_signal_porog():
@@ -417,7 +404,7 @@ def sozdat_svyaz(id_start, id_finish, weight):
                 cursor.execute("UPDATE svyazi SET weight = weight + 0.1 WHERE ID = ?", proverka_svyazi1)
 
 
-# TODO скорее всего эта функция переворота не нужна
+
 def ydalit_svyaz(id_start, id_finish):
     # проверить есть ли уже такая связь
     proverka_svyazi = tuple(cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = ?",
@@ -869,7 +856,6 @@ def sbor_deystviya(tp, t0=None):
 
     # 22.06.23 - если передаётся t0 - то он и становится posl_t0
     if t0:
-        proverka_svyazi_ot_t0_k_t_dlya_perevorota(posledniy_t_0)
         posledniy_t_0 = t0
         print(f'Posl_t0 в сборе действий стал = {posledniy_t_0}')
         # if poisk_time:
@@ -890,7 +876,6 @@ def sbor_deystviya(tp, t0=None):
                 # sozdat_svyaz(new_tochka_t0, tp, 1)  # 3.2.2 - убрал обратную связь
                 sozdat_svyaz(posledniy_t_0, new_tochka_t0, 1)
                 sozdat_svyaz(new_tochka_t0, tp, 1)
-                proverka_svyazi_ot_t0_k_t_dlya_perevorota(posledniy_t_0)
                 posledniy_t_0 = new_tochka_t0
                 print("Posl_to (5) из-за сбора действий и создания новой t0 = ", posledniy_t_0)
                 # 21.12.23 - Добавление связи от posl_t0 к time
@@ -900,7 +885,6 @@ def sbor_deystviya(tp, t0=None):
         else:
             for poisk_svyazi_tp_s_t01 in poisk_svyazi_tp_s_t0:
                 for poisk_svyazi_tp_s_t02 in poisk_svyazi_tp_s_t01:
-                    proverka_svyazi_ot_t0_k_t_dlya_perevorota(posledniy_t_0)
                     posledniy_t_0 = poisk_svyazi_tp_s_t02
                     print("Posl_to теперь в сборе действий, когда нашлось нужное t0 стал = ", posledniy_t_0)
                     # cursor.execute("UPDATE tochki SET work = 1 WHERE ID = ?", (posledniy_t_0,))
@@ -1220,8 +1204,10 @@ if __name__ == '__main__':
             schetchik = 0  # 12.09.23 Добавил переход к началу цикла, если была применена реакция
             posledniy_tp = 0
             posledniy_t = 0
-            proverka_svyazi_ot_t0_k_t_dlya_perevorota(posledniy_t_0)
-            posledniy_t_0 = old_ekran
+            posledniy_t_0 = 0
+            posledniy_t = old_ekran
+            proverka_nalichiya_svyazey_t_t_o()
+            posledniy_t = 0
             print(f'Posl_t0 из-за (+) стал = {posledniy_t_0}. Состояние скинуто до старого экрана. ')
             print(f'in_pamyat перед удалением первого элемента: {in_pamayt}')
             in_pamayt.pop(0)
@@ -1252,7 +1238,6 @@ if __name__ == '__main__':
                                                         "AND LENGTH(name2) < 16", poisk_predidushego_t01).fetchall()
                         # Если такая точка найдена - то это искомый t0 к нему и переходим
                         if proverka_name2:
-                            proverka_svyazi_ot_t0_k_t_dlya_perevorota(posledniy_t_0)
                             posledniy_t_0 = poisk_predidushego_t01[0]
                             poisk_t0_dlya_otkata = False
                             print(f'Состояние после получения (-) реакции было перенесено в t0: {posledniy_t_0}. '
@@ -1262,8 +1247,10 @@ if __name__ == '__main__':
                             posl_t0_dlya_cicla = poisk_predidushego_t01[0]
             else:
                 pogasit_vse_tochki()
-                proverka_svyazi_ot_t0_k_t_dlya_perevorota(posledniy_t_0)
-                posledniy_t_0 = old_ekran
+                posledniy_t_0 = 0
+                posledniy_t = old_ekran
+                proverka_nalichiya_svyazey_t_t_o()
+                posledniy_t = 0
                 print(f'Posl_t0 из-за (-) стал = {posledniy_t_0}, при этом моста нет')
 
         elif vvedeno_luboe == ('3'):
@@ -1320,8 +1307,10 @@ if __name__ == '__main__':
             vvedeno_luboe = ''
             schetchik = 0
             perenos_sostoyaniya()
-            proverka_svyazi_ot_t0_k_t_dlya_perevorota(posledniy_t_0)
-            posledniy_t_0 = old_ekran
+            posledniy_t_0 = 0
+            posledniy_t = old_ekran
+            proverka_nalichiya_svyazey_t_t_o()
+            posledniy_t = 0
 
         elif vvedeno_luboe != "":
             bil_klick = False
@@ -1346,7 +1335,6 @@ if __name__ == '__main__':
                         sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
                         sozdat_svyaz(posledniy_t, new_tochka_time_0, 1)
                         sozdat_svyaz(new_tochka_time_0, posledniy_tp, 1)  # 21.06.23 была добавлена дублирующая связь с tp (есть ещё одна)
-                        proverka_svyazi_ot_t0_k_t_dlya_perevorota(posledniy_t_0)
                         posledniy_t_0 = new_tochka_time_0
                         print(f'Posl_t0 из-за ввода изображения стал = {posledniy_t_0}')
                         sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
@@ -1366,7 +1354,6 @@ if __name__ == '__main__':
                     sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
                     sozdat_svyaz(posledniy_t, new_tochka_time_0, 1)
                     sozdat_svyaz(new_tochka_time_0, posledniy_tp, 1)   # 21.06.23 была добавлена дублирующая связь с tp (есть ещё одна)
-                    proverka_svyazi_ot_t0_k_t_dlya_perevorota(posledniy_t_0)
                     posledniy_t_0 = new_tochka_time_0
                     print(f'Posl_t0 из-за ввода изображения (в конце обработки) стал = {posledniy_t_0}')
                     sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
@@ -1429,13 +1416,15 @@ if __name__ == '__main__':
                       f"старый t0 (в предыдущем 10м цикле) был = {t0_10}")
                 if t0_10_proverka == t0_10:
                     if in_pamayt == 0:
-                        proverka_svyazi_ot_t0_k_t_dlya_perevorota(posledniy_t_0)
-                        posledniy_t_0 = old_ekran
+                        posledniy_t_0 = 0
+                        posledniy_t = old_ekran
+                        proverka_nalichiya_svyazey_t_t_o()
+                        posledniy_t = 0
                         posledniy_otvet = 0  # 07.11.23 - раньше последний ответ становился = 0, когда счётчик был = 1.
                         print("")
                         print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
                         print("")
-                        print(f">>>>>>>>>>>>>>>>>>>>  Переход в posl_t0 = {old_ekran}  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+                        print(f">>>>>>>>>>>>>>>>>>>>  Переход в posl_t0 = {posledniy_t_0}  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
                         print("")
                         print(f">>>>>>>>>>>>>>>>>>>  Закончилась цепочка действий, началась новая  <<<<<<<<<<<<<<<<<<<<<<<")
                         print('')
