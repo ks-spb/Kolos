@@ -855,44 +855,35 @@ def sbor_deystviya(tp, t0=None):
                                 " WHERE svyazi.id_finish = ? AND tochki.name = 'time' ", (tp,))
 
     # 22.06.23 - если передаётся t0 - то он и становится posl_t0
-    if t0:
-        posledniy_t_0 = t0
-        print(f'Posl_t0 в сборе действий стал = {posledniy_t_0}')
-        # if poisk_time:
-        #     for poisk_time1 in poisk_time:
-        #         # 21.12.23 - разворачивается связь
-        #         ydalit_svyaz(poisk_time1[0], posledniy_t_0)
-        #         sozdat_svyaz(posledniy_t_0, poisk_time1[0], 1)
+    if poisk_svyazi_tp_s_t0 == ():
+        # 25.09.23 - Добавление 'name2' к t0, для возможности отсеивания по этому параметру
+        name2 = cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (tp,))
+        for name2_1 in name2:
+            # print(f'Найден name2: {name2_1} у точки: {tp}')
+            # создать t0 и к нему привязать tp
+            new_tochka_t0 = sozdat_new_tochky('time_0', 0, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, tp,
+                                              name2_1[0]+'/tp')
+            # print(f'создана new_tochka_t0 такая: {new_tochka_t0}, а была posl_t0 = {posledniy_t_0}')
+            # sozdat_svyaz(new_tochka_t0, tp, 1)  # 3.2.2 - убрал обратную связь
+            sozdat_svyaz(posledniy_t_0, new_tochka_t0, 1)
+            sozdat_svyaz(new_tochka_t0, tp, 1)
+            posledniy_t_0 = new_tochka_t0
+            print("Posl_to (5) из-за сбора действий и создания новой t0 = ", posledniy_t_0)
+            # 21.12.23 - Добавление связи от posl_t0 к time
+            if poisk_time:
+                for poisk_time1 in poisk_time:
+                    sozdat_svyaz(posledniy_t_0, poisk_time1[0], 1)
     else:
-        if poisk_svyazi_tp_s_t0 == ():
-            # 25.09.23 - Добавление 'name2' к t0, для возможности отсеивания по этому параметру
-            name2 = cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (tp,))
-            for name2_1 in name2:
-                # print(f'Найден name2: {name2_1} у точки: {tp}')
-                # создать t0 и к нему привязать tp
-                new_tochka_t0 = sozdat_new_tochky('time_0', 0, 'time', 'zazech_sosedey', 1, 0, 0, posledniy_t_0, tp,
-                                                  name2_1[0]+'/tp')
-                # print(f'создана new_tochka_t0 такая: {new_tochka_t0}, а была posl_t0 = {posledniy_t_0}')
-                # sozdat_svyaz(new_tochka_t0, tp, 1)  # 3.2.2 - убрал обратную связь
-                sozdat_svyaz(posledniy_t_0, new_tochka_t0, 1)
-                sozdat_svyaz(new_tochka_t0, tp, 1)
-                posledniy_t_0 = new_tochka_t0
-                print("Posl_to (5) из-за сбора действий и создания новой t0 = ", posledniy_t_0)
-                # 21.12.23 - Добавление связи от posl_t0 к time
-                if poisk_time:
-                    for poisk_time1 in poisk_time:
-                        sozdat_svyaz(posledniy_t_0, poisk_time1[0], 1)
-        else:
-            for poisk_svyazi_tp_s_t01 in poisk_svyazi_tp_s_t0:
-                for poisk_svyazi_tp_s_t02 in poisk_svyazi_tp_s_t01:
-                    posledniy_t_0 = poisk_svyazi_tp_s_t02
-                    print("Posl_to теперь в сборе действий, когда нашлось нужное t0 стал = ", posledniy_t_0)
-                    # cursor.execute("UPDATE tochki SET work = 1 WHERE ID = ?", (posledniy_t_0,))
-                    # if poisk_time:
-                    #     for poisk_time1 in poisk_time:
-                    #         # 21.12.23 - разворачивается связь
-                    #         ydalit_svyaz(poisk_time1[0], posledniy_t_0)
-                    #         sozdat_svyaz(posledniy_t_0, poisk_time1[0], 1)
+        for poisk_svyazi_tp_s_t01 in poisk_svyazi_tp_s_t0:
+            for poisk_svyazi_tp_s_t02 in poisk_svyazi_tp_s_t01:
+                posledniy_t_0 = poisk_svyazi_tp_s_t02
+                print("Posl_to теперь в сборе действий, когда нашлось нужное t0 стал = ", posledniy_t_0)
+                # cursor.execute("UPDATE tochki SET work = 1 WHERE ID = ?", (posledniy_t_0,))
+                # if poisk_time:
+                #     for poisk_time1 in poisk_time:
+                #         # 21.12.23 - разворачивается связь
+                #         ydalit_svyaz(poisk_time1[0], posledniy_t_0)
+                #         sozdat_svyaz(posledniy_t_0, poisk_time1[0], 1)
     list_deystviy = []
     list_deystviy += tp_kortez
     list_tp = []
