@@ -671,6 +671,7 @@ def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
         * Возможно, в будущем придётся внести изменения в выбор, чтобы была возможность применить не известный путь,
         а новый."""
     global posledniy_t_0
+    global in_pamayt
     print(f'Создаётся дерево, где time: {time_dlya_proshivki}')
     tree = create_dict([time_dlya_proshivki], 0)  # Получаем выборку связей в виде словаря (дерево)
     vozmozhnie_deystviya = []
@@ -684,6 +685,14 @@ def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
     svyaz_s_2 = []
     svyaz_s_img = []
     for path in all_paths(tree, time_dlya_proshivki):
+        # # TODO если вторая почка пути связана с (2 (+)) - то нужно остановить прошивку, чтобы не продолжались дальше действия
+        # proverka_nalichiya_svyazi_s_2_y_2i_tochki = tuple(cursor.execute(
+        #     "SELECT id_start FROM svyazi WHERE id_finish = 2 AND id_start = ?", (path[1], )))
+        # for proverka_nalichiya_svyazi_s_2_y_2i_tochki1 in proverka_nalichiya_svyazi_s_2_y_2i_tochki:
+        #     print(f'Проверка второй точки в пути: {path[1]}, связана ли она с 2(+): {proverka_nalichiya_svyazi_s_2_y_2i_tochki1[0]}')
+        # if proverka_nalichiya_svyazi_s_2_y_2i_tochki:
+        #     print('Текущая (t) связана с (+) - значит не нужно выполнять другие действия')
+        #     break
         # 22.12.23 Удаляются 1 и 2 запись в пути. Везде вместо path вставил new_path_3_i_bolee
         new_path_3_i_bolee = path[2:]
         print(f'Был путь такой: {path}, а стал такой: {new_path_3_i_bolee}')
@@ -827,8 +836,11 @@ def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
                 if found1:
                     break
         if not found1:
-            print(f'Запущена функция Концентратор действий, т.к. все возможные действия - отрицательные или их вообще нет')
-            concentrator_deystviy()
+            # print(f'Запущена функция Концентратор действий, т.к. все возможные действия - отрицательные или их вообще нет')
+            # concentrator_deystviy()   # 11.01.24 - Попробуем без концентратора действий
+            print("Нет возможных путей действий... ВНИМАНИЕ!!! Стирается первая ячейка памяти!!!")
+            # 11.01.24 - стереть первую ячейку памяти
+            in_pamayt.pop(0)
 
 
 
@@ -872,7 +884,7 @@ def sbor_deystviya(tp, t0=None):
             # 21.12.23 - Добавление связи от posl_t0 к time
             if poisk_time:
                 for poisk_time1 in poisk_time:
-                    sozdat_svyaz(posledniy_t_0, poisk_time1[0], 1)
+                    sozdat_svyaz(poisk_time1[0], posledniy_t_0, 1)
     else:
         for poisk_svyazi_tp_s_t01 in poisk_svyazi_tp_s_t0:
             for poisk_svyazi_tp_s_t02 in poisk_svyazi_tp_s_t01:
@@ -1377,6 +1389,7 @@ if __name__ == '__main__':
                     print(f'Зажигается повторно posl_t, первый в списке: {in_pamayt}')
                     cursor.execute("UPDATE 'tochki' SET work = 1 WHERE ID = ?", (in_pamayt[0],))
                     # 21.12.23 - за основу формирования дерева взята точка time, а не time_0
+                    # Найти t от posl_t0
                     poisk_svyazi_t_i_t0 = tuple(cursor.execute("SELECT svyazi.id_start "
                                                                            "FROM svyazi JOIN tochki "
                                                                            "ON svyazi.id_start = tochki.id "
