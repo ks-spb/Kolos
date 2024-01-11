@@ -872,7 +872,7 @@ def sbor_deystviya(tp, t0=None):
             # 21.12.23 - Добавление связи от posl_t0 к time
             if poisk_time:
                 for poisk_time1 in poisk_time:
-                    sozdat_svyaz(posledniy_t_0, poisk_time1[0], 1)
+                    sozdat_svyaz(poisk_time1[0], posledniy_t_0, 1)
     else:
         for poisk_svyazi_tp_s_t01 in poisk_svyazi_tp_s_t0:
             for poisk_svyazi_tp_s_t02 in poisk_svyazi_tp_s_t01:
@@ -1377,6 +1377,7 @@ if __name__ == '__main__':
                     print(f'Зажигается повторно posl_t, первый в списке: {in_pamayt}')
                     cursor.execute("UPDATE 'tochki' SET work = 1 WHERE ID = ?", (in_pamayt[0],))
                     # 21.12.23 - за основу формирования дерева взята точка time, а не time_0
+                    # Найти t от posl_t0
                     poisk_svyazi_t_i_t0 = tuple(cursor.execute("SELECT svyazi.id_start "
                                                                            "FROM svyazi JOIN tochki "
                                                                            "ON svyazi.id_start = tochki.id "
