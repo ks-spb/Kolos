@@ -178,11 +178,11 @@ def proverka_nalichiya_svyazey_t_t_o():
             print("После ввода in была создана новая t0 и posl_to теперь: ", posledniy_t_0)
         # 22.12.23 отсеивание, чтобы экран не попадал в кратковременную память
 
-        print(f'novoye_name содержит id_ekran_? -> {novoye_name}')
+        # print(f'novoye_name содержит id_ekran_? -> {novoye_name}')
         if "id_ekran_" not in novoye_name:
             # 21.12.23 - Добавление (in) в память. Берётся именно последний (t)
-            print(f'В in_pamyat: {in_pamayt} добавляется posledniy_t: {posledniy_t}')
-            in_pamayt.append(posledniy_t)
+            print(f'В in_pamyat: {in_pamyat} добавляется posledniy_t: {posledniy_t}')
+            in_pamyat.append(posledniy_t)
 
 
 def proverka_signal_porog():
@@ -570,7 +570,7 @@ def concentrator_deystviy():
             pogasit_vse_tochki()  # 13.09.23 - добавил гашение всех точек, чтобы совершить случайное действие и ждать на
             # него реакцию
     else:
-        if in_pamayt != 0:
+        if in_pamyat != 0:
             print("\033[31m {}".format(' '))
             print("\033[31m {}".format('Не понятно, что дальше делать. Возможно отсутствуют известные объекты. '
                                        'Необходима помощь или повторная отправка команды'), '------------------')
@@ -671,7 +671,10 @@ def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
         * Возможно, в будущем придётся внести изменения в выбор, чтобы была возможность применить не известный путь,
         а новый."""
     global posledniy_t_0
-    global in_pamayt
+    global in_pamyat
+    global in_pamyat_name
+    global posledniy_t
+    global posledniy_tp
     print(f'Создаётся дерево, где time: {time_dlya_proshivki}')
     tree = create_dict([time_dlya_proshivki], 0)  # Получаем выборку связей в виде словаря (дерево)
     vozmozhnie_deystviya = []
@@ -695,7 +698,7 @@ def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
         #     break
         # 22.12.23 Удаляются 1 и 2 запись в пути. Везде вместо path вставил new_path_3_i_bolee
         new_path_3_i_bolee = path[2:]
-        print(f'Был путь такой: {path}, а стал такой: {new_path_3_i_bolee}')
+        # print(f'Был путь такой: {path}, а стал такой: {new_path_3_i_bolee}')
         if len(new_path_3_i_bolee) > 0:
             # print(f'Проверка пути: {new_path_3_i_bolee}, 2я точка такая: {new_path_3_i_bolee[1]}')
             for tochka in new_path_3_i_bolee:   # ??? Рассматриваются сразу все точки в дереве. Ограничить только вторым движением?
@@ -736,10 +739,10 @@ def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
                 nayti_name2 = tuple(cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (tochka,)))
                 if nayti_name2:
                     for nayti_name2_1 in nayti_name2:
-                        # print(
-                        #     f"Нашли следующий name2: {nayti_name2_1[0]} у точки: {tochka}, длина name2={len(nayti_name2_1[0])}")
+                        print(
+                            f"Нашли следующий name2: {nayti_name2_1[0]} у точки: {tochka}, длина name2={len(nayti_name2_1[0])}")
                         # если длина name2 = 16 - то это хэш
-                        if len(nayti_name2_1[0]) == 16:
+                        if len(nayti_name2_1[0]) == 18:
                             # проверить горит ли такой же (in):
                             nayti_in = tuple(
                                 cursor.execute("SELECT ID FROM tochki WHERE name = ? AND work < 1", nayti_name2_1))
@@ -749,7 +752,8 @@ def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
                                 print("Этот (in) не горит - пропуск точки, переход к следующей")
                                 if tochka not in svyaz_s_img:
                                     svyaz_s_img.append(tochka)
-            if svyaz_s_1 and not svyaz_s_2:
+
+            if svyaz_s_1 and not svyaz_s_2 and not svyaz_s_img:
                 # Если имеется связь с (+) - то применить этот путь
                 poisk_tp_v_pervoy_tochke_pyti = tuple(cursor.execute("SELECT svyazi.id_finish "
                 "FROM svyazi JOIN tochki "
@@ -787,8 +791,6 @@ def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
 
     # print(f"found = {found}")
     if not found:
-        # TODO добавить прошивку по первой части сущности, затем по второй и т.д. А если нет действий - применить возможные
-        # 26.12.23 - прошить по первому элементу из vhodyashie_in для построения цепочки действий
         # Если нет цепочек действий - то применить первое действие из возможных
         found1 = False
         print(f'Возможные действия: {vozmozhnie_deystviya}')
@@ -838,9 +840,21 @@ def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
         if not found1:
             # print(f'Запущена функция Концентратор действий, т.к. все возможные действия - отрицательные или их вообще нет')
             # concentrator_deystviy()   # 11.01.24 - Попробуем без концентратора действий
-            print("Нет возможных путей действий... ВНИМАНИЕ!!! Стирается первая ячейка памяти!!!")
-            # 11.01.24 - стереть первую ячейку памяти
-            in_pamayt.pop(0)
+            # 11.01.24 - Если нет действий - то разбить сущность на составляющие (она уже разбита в in_pamyat_name).
+            # Взять из этого списка первый элемент и проработать с ним прошивку
+            if in_pamyat_name:
+                print(f'Запускается прошивка по первому элементу (in): {in_pamyat_name[0]}')
+                for in_pamyat_name1 in in_pamyat_name[0]:
+                    poisk_bykvi_iz_vvedeno_v2(in_pamyat_name1)
+                in_pamyat_name.pop(0)
+                proverka_nalichiya_svyazey_t_t_o()
+                posledniy_tp = 0
+                posledniy_t = 0
+                # print(f'После ввода первого элемента in posl_t0 должен перейти на: {posledniy_t_0}')
+            else:
+                print("Нет возможных путей действий... ВНИМАНИЕ!!! Стирается первая ячейка памяти!!!")
+                # 11.01.24 - стереть первую ячейку памяти
+                in_pamyat.pop(0)
 
 
 
@@ -986,7 +1000,7 @@ def perenos_sostoyaniya():
         proverka_nalichiya_svyazey_t_t_o()
         old_ekran = posledniy_t
     else:
-        print('!!!!!!!!!!!!!ВНМИАНИЕ!!!!!!ЭКРАН НЕ ИЗМЕНИЛСЯ!!!!!!!!!!!')
+        print('!!!!!!!!!!!!!ВНИМАНИЕ!!!!!!ЭКРАН НЕ ИЗМЕНИЛСЯ!!!!!!!!!!!')
     posledniy_t = 0
     posledniy_tp = 0
 
@@ -1087,7 +1101,8 @@ if __name__ == '__main__':
     most_new = 0
     time.sleep(0.1)
 
-    in_pamayt = []   # 20.12.23 - Список для хранения входящих (in)
+    in_pamyat = []   # 20.12.23 - Список для хранения входящих ID (in)
+    in_pamyat_name = []   #12.01.24 - Список для хранения входящих в виде name, а не ID
 
     perenos_sostoyaniya()   # 30.11.23 - убрал posledniy_t_0=3 и поставил сразу перенос состояния в экран
 
@@ -1193,7 +1208,7 @@ if __name__ == '__main__':
         if vvedeno_luboe == ('0'):
             tree = ()
             A = False
-            in_pamayt = []
+            in_pamyat = []
             continue
 
         elif vvedeno_luboe == ('1'):
@@ -1212,9 +1227,10 @@ if __name__ == '__main__':
             proverka_nalichiya_svyazey_t_t_o()
             posledniy_t = 0
             print(f'Posl_t0 из-за (+) стал = {posledniy_t_0}. Состояние скинуто до старого экрана. ')
-            print(f'in_pamyat перед удалением первого элемента: {in_pamayt}')
-            in_pamayt.pop(0)
-            print(f'Удалён первый элемент из in_pamyat, теперь список такой: {in_pamayt}')
+            print(f'in_pamyat перед удалением первого элемента: {in_pamyat}')
+            in_pamyat.pop(0)
+            print(f'Удалён первый элемент из in_pamyat, теперь список такой: {in_pamyat}')
+            in_pamyat_name = []
 # TODO проверить к какой точке записываются + и - реакции. К in_pamyat или к текущей to? Точнее к какому мосту?
         elif vvedeno_luboe == ('2'):
             # нужно проверить имеется ли уже связь м/у t0 и tp
@@ -1225,7 +1241,7 @@ if __name__ == '__main__':
             # schetchik = 0   # 12.09.23 Добавил переход к началу цикла, если была применена реакция
             posledniy_tp = 0
             posledniy_t = 0
-            if in_pamayt != 0:
+            if in_pamyat != 0:
                 # После отрицательной реакции - состояние переносится к предыдущей t0, которая не является кликом
                 # (т.е. name2 менее 16 знаков)
                 poisk_t0_dlya_otkata = True
@@ -1298,7 +1314,8 @@ if __name__ == '__main__':
 
         elif vvedeno_luboe == ('7'):
             print("Стирание краткосрочной памяти")
-            in_pamayt = []
+            in_pamyat = []
+            in_pamyat_name = []
 
         elif vvedeno_luboe == ('8'):
             # запуск автоматического срабатывания счётчика без нажатия enter
@@ -1367,8 +1384,14 @@ if __name__ == '__main__':
                     # print(f'Сообщение не содержит точку или click: {vvedeno_luboe1}')
                     poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe1)
                     bil_klick = False
+            # 12.01.23 - Если введено не list (т.е. не содержит клик) - то сохранить во входящих
+            # print(f'vvedeno_luboe = {vvedeno_luboe}')
+            if not isinstance(vvedeno_luboe, list):
+                for vvedeno_luboe_split in vvedeno_luboe.split():
+                    print(f"Добавляется в in_pamyat_name {vvedeno_luboe_split}")
+                    in_pamyat_name.append(vvedeno_luboe_split)
 
-
+            print(f'in_pamyat_name содержит следующее: {in_pamyat_name}')
             vvedeno_luboe = ''
             proverka_nalichiya_svyazey_t_t_o()
             functions()
@@ -1383,11 +1406,11 @@ if __name__ == '__main__':
 
         else:   # TODO проверить к какой точке записываются + и - реакции. К in_pamyat или к текущей to? Точнее к какому мосту?
             if schetchik == 1:
-                print(f'in_pamyat сейчас такая: {in_pamayt}')
-                if in_pamayt != []:
+                print(f'in_pamyat сейчас такая: {in_pamyat}')
+                if in_pamyat != []:
                     # Вместо моста - зажечь повторно posl_t от первой (in)
-                    print(f'Зажигается повторно posl_t, первый в списке: {in_pamayt}')
-                    cursor.execute("UPDATE 'tochki' SET work = 1 WHERE ID = ?", (in_pamayt[0],))
+                    print(f'Зажигается повторно posl_t, первый в списке: {in_pamyat}')
+                    cursor.execute("UPDATE 'tochki' SET work = 1 WHERE ID = ?", (in_pamyat[0],))
                     # 21.12.23 - за основу формирования дерева взята точка time, а не time_0
                     # Найти t от posl_t0
                     poisk_svyazi_t_i_t0 = tuple(cursor.execute("SELECT svyazi.id_start "
@@ -1402,7 +1425,7 @@ if __name__ == '__main__':
                             # sozdat_svyaz(posledniy_t_0, poisk_svyazi_t_i_t01[0], 1)
                             # 21.12.23 - прошивка по дереву будет проходить через time, а не через time_0
                             try:
-                                proshivka_po_derevy(poisk_svyazi_t_i_t01[0], in_pamayt)   # Добавил передачу in_pamyat для создания цепочки действий
+                                proshivka_po_derevy(poisk_svyazi_t_i_t01[0], in_pamyat)   # Добавил передачу in_pamyat для создания цепочки действий
                             except RecursionError:
                                 print("!!!!!!!!!!!!!!!!!Произошла ошибка: maximum recursion depth exceeded in comparison!!!!!!!!!!!!!!!!!!")
 
@@ -1419,7 +1442,7 @@ if __name__ == '__main__':
                 print(f"Изменился ли t0? Текущий posl_t0 = {posledniy_t_0}, t0_proverka = posl_t0 = {t0_10_proverka}, "
                       f"старый t0 (в предыдущем 10м цикле) был = {t0_10}")
                 if t0_10_proverka == t0_10:
-                    if in_pamayt == 0:
+                    if in_pamyat == 0:
                         posledniy_t_0 = 0
                         posledniy_t = old_ekran
                         proverka_nalichiya_svyazey_t_t_o()
