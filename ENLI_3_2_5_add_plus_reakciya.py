@@ -698,7 +698,7 @@ def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
         #     break
         # 22.12.23 Удаляются 1 и 2 запись в пути. Везде вместо path вставил new_path_3_i_bolee
         new_path_3_i_bolee = path[2:]
-        print(f'Был путь такой: {path}, а стал такой: {new_path_3_i_bolee}')
+        # print(f'Был путь такой: {path}, а стал такой: {new_path_3_i_bolee}')
         if len(new_path_3_i_bolee) > 0:
             # print(f'Проверка пути: {new_path_3_i_bolee}, 2я точка такая: {new_path_3_i_bolee[1]}')
             for tochka in new_path_3_i_bolee:   # ??? Рассматриваются сразу все точки в дереве. Ограничить только вторым движением?
@@ -739,10 +739,10 @@ def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
                 nayti_name2 = tuple(cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (tochka,)))
                 if nayti_name2:
                     for nayti_name2_1 in nayti_name2:
-                        # print(
-                        #     f"Нашли следующий name2: {nayti_name2_1[0]} у точки: {tochka}, длина name2={len(nayti_name2_1[0])}")
+                        print(
+                            f"Нашли следующий name2: {nayti_name2_1[0]} у точки: {tochka}, длина name2={len(nayti_name2_1[0])}")
                         # если длина name2 = 16 - то это хэш
-                        if len(nayti_name2_1[0]) == 16:
+                        if len(nayti_name2_1[0]) == 18:
                             # проверить горит ли такой же (in):
                             nayti_in = tuple(
                                 cursor.execute("SELECT ID FROM tochki WHERE name = ? AND work < 1", nayti_name2_1))
@@ -752,7 +752,8 @@ def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
                                 print("Этот (in) не горит - пропуск точки, переход к следующей")
                                 if tochka not in svyaz_s_img:
                                     svyaz_s_img.append(tochka)
-            if svyaz_s_1 and not svyaz_s_2:
+
+            if svyaz_s_1 and not svyaz_s_2 and not svyaz_s_img:
                 # Если имеется связь с (+) - то применить этот путь
                 poisk_tp_v_pervoy_tochke_pyti = tuple(cursor.execute("SELECT svyazi.id_finish "
                 "FROM svyazi JOIN tochki "
@@ -999,7 +1000,7 @@ def perenos_sostoyaniya():
         proverka_nalichiya_svyazey_t_t_o()
         old_ekran = posledniy_t
     else:
-        print('!!!!!!!!!!!!!ВНМИАНИЕ!!!!!!ЭКРАН НЕ ИЗМЕНИЛСЯ!!!!!!!!!!!')
+        print('!!!!!!!!!!!!!ВНИМАНИЕ!!!!!!ЭКРАН НЕ ИЗМЕНИЛСЯ!!!!!!!!!!!')
     posledniy_t = 0
     posledniy_tp = 0
 
@@ -1229,6 +1230,7 @@ if __name__ == '__main__':
             print(f'in_pamyat перед удалением первого элемента: {in_pamyat}')
             in_pamyat.pop(0)
             print(f'Удалён первый элемент из in_pamyat, теперь список такой: {in_pamyat}')
+            in_pamyat_name = []
 # TODO проверить к какой точке записываются + и - реакции. К in_pamyat или к текущей to? Точнее к какому мосту?
         elif vvedeno_luboe == ('2'):
             # нужно проверить имеется ли уже связь м/у t0 и tp
@@ -1313,6 +1315,7 @@ if __name__ == '__main__':
         elif vvedeno_luboe == ('7'):
             print("Стирание краткосрочной памяти")
             in_pamyat = []
+            in_pamyat_name = []
 
         elif vvedeno_luboe == ('8'):
             # запуск автоматического срабатывания счётчика без нажатия enter
@@ -1381,11 +1384,13 @@ if __name__ == '__main__':
                     # print(f'Сообщение не содержит точку или click: {vvedeno_luboe1}')
                     poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe1)
                     bil_klick = False
+            # 12.01.23 - Если введено не list (т.е. не содержит клик) - то сохранить во входящих
+            # print(f'vvedeno_luboe = {vvedeno_luboe}')
+            if not isinstance(vvedeno_luboe, list):
+                for vvedeno_luboe_split in vvedeno_luboe.split():
+                    print(f"Добавляется в in_pamyat_name {vvedeno_luboe_split}")
+                    in_pamyat_name.append(vvedeno_luboe_split)
 
-            for vvedeno_luboe_split in vvedeno_luboe.split():
-                print(f"Добавляется в in_pamyat_name {vvedeno_luboe_split}")
-                in_pamyat_name.append(vvedeno_luboe_split)
-                # Todo сохранить In, если это не экран для последующей работы с ним?
             print(f'in_pamyat_name содержит следующее: {in_pamyat_name}')
             vvedeno_luboe = ''
             proverka_nalichiya_svyazey_t_t_o()
