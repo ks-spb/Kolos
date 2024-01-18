@@ -740,22 +740,23 @@ def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
                     nayti_name2 = tuple(cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (tochka,)))
                     if nayti_name2:
                         for nayti_name2_1 in nayti_name2:
-                            # print(f"Нашли следующий name2: {nayti_name2_1[0]} у точки: {tochka}, "
-                            #       f"длина name2={len(nayti_name2_1[0])}")
+                            print(f"Нашли следующий name2: {nayti_name2_1[0]} у точки: {tochka}, "
+                                  f"длина name2={len(nayti_name2_1[0])}")
                             name2_1 = nayti_name2_1[0]
                             # если длина name2 = 18 - то это хэш
                             if len(nayti_name2_1[0]) in [18, 19]:
                                 # Необходимо удалить 2 последних знака из name2, чтобы получился name
                                 if len(nayti_name2_1[0]) == 18:
                                     new_name = name2_1[:-2]
-                                    # print(f'name2 был такой: {name2_1}, а стал такой: {new_name}')
+                                    print(f'name2 был такой: {name2_1}, а стал такой: {new_name}')
                                 elif len(nayti_name2_1[0]) == 19:
                                     new_name = name2_1[:-3]
-                                    # print(f'name2 был такой: {name2_1}, а стал такой: {new_name}')
+                                    print(f'name2 был такой: {name2_1}, а стал такой: {new_name}')
                                 # проверить горит ли такой же (in):
                                 nayti_in = tuple(
-                                    cursor.execute("SELECT ID FROM tochki WHERE name = ? AND work < 1", (new_name,)))
-                                # print(f"Длина name2 у to ({tochka}) = 18, найден соответствующий (in), который не горит: {nayti_in}")
+                                    cursor.execute("SELECT ID FROM tochki WHERE name = ? AND work < 1 "
+                                                   "AND type = 'mozg'", (new_name,)))
+                                print(f"Длина name2 у to ({tochka}) = 18, найден соответствующий (in), который не горит: {nayti_in}")
                                 if nayti_in:
                                     # print(f'Добавлена точка в svyaz_s_img, теперь список такой: {svyaz_s_img}')
                                     # print("Этот (in) не горит - пропуск точки, переход к следующей")
