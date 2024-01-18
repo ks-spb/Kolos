@@ -669,6 +669,9 @@ def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
         * Если имеется связь с 1 (+) - то применить этот путь. Все остальные пути попадают в возможные действия.
         * Разбираются возможные действия. Если точка не в списке отрицательных и не в списке действий, объекты
         которых отсутствуют на экране - то применить это действие."""
+    # TODO исправить: не применяются возможные действия - зачем они тогда?
+    # TODO исправить: списки по наличию связей с 1, 2 и img собираются со всех путей и блокируются все пути.
+
     global posledniy_t_0
     global in_pamyat
     global in_pamyat_name
@@ -683,13 +686,13 @@ def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
     # print("Количество возможных путей действий: ", len(all_paths(tree, posledniy_t_0)))
     # Проверка имеется ли связь с 1 или 2 у точек на пути
     found = False
-    svyaz_s_1 = []
-    svyaz_s_2 = []
-    svyaz_s_img = []
     for path in all_paths(tree, time_dlya_proshivki):
+        svyaz_s_1 = []
+        svyaz_s_2 = []
+        svyaz_s_img = []
         # 22.12.23 Удаляются 1 и 2 запись в пути. Везде вместо path вставил new_path_3_i_bolee
         new_path_3_i_bolee = path[2:]
-        # print(f'Был путь такой: {path}, а стал такой: {new_path_3_i_bolee}')
+        print(f'Был путь такой: {path}, а разбирается такой: {new_path_3_i_bolee}')
         if len(new_path_3_i_bolee) > 0:
             # print(f'Проверка пути: {new_path_3_i_bolee}, 2я точка такая: {new_path_3_i_bolee[1]}')
             for tochka in new_path_3_i_bolee:
@@ -730,22 +733,36 @@ def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
                 nayti_name2 = tuple(cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (tochka,)))
                 if nayti_name2:
                     for nayti_name2_1 in nayti_name2:
-                        print(f"Нашли следующий name2: {nayti_name2_1[0]} у точки: {tochka}, "
-                              f"длина name2={len(nayti_name2_1[0])}")
-                        # если длина name2 = 16 - то это хэш
-                        if len(nayti_name2_1[0]) == 18:
+                        # print(f"Нашли следующий name2: {nayti_name2_1[0]} у точки: {tochka}, "
+                        #       f"длина name2={len(nayti_name2_1[0])}")
+                        name2_1 = nayti_name2_1[0]
+                        # если длина name2 = 18 - то это хэш
+                        if len(nayti_name2_1[0]) in [18, 19]:
+                            # Необходимо удалить 2 последних знака из name2, чтобы получился name
+                            if len(nayti_name2_1[0]) == 18:
+                                new_name = name2_1[:-2]
+                                # print(f'name2 был такой: {name2_1}, а стал такой: {new_name}')
+                            elif len(nayti_name2_1[0]) == 19:
+                                new_name = name2_1[:-3]
+                                # print(f'name2 был такой: {name2_1}, а стал такой: {new_name}')
                             # проверить горит ли такой же (in):
                             nayti_in = tuple(
-                                cursor.execute("SELECT ID FROM tochki WHERE name = ? AND work < 1", nayti_name2_1))
-                            print(f"Длина name2 у to ({tochka}) = 16, найден соответствующий (in), который не горит: {nayti_in}")
+                                cursor.execute("SELECT ID FROM tochki WHERE name = ? AND work < 1", (new_name,)))
+                            # print(f"Длина name2 у to ({tochka}) = 18, найден соответствующий (in), который не горит: {nayti_in}")
                             if nayti_in:
                                 # print(f'Добавлена точка в svyaz_s_img, теперь список такой: {svyaz_s_img}')
-                                print("Этот (in) не горит - пропуск точки, переход к следующей")
+                                # print("Этот (in) не горит - пропуск точки, переход к следующей")
                                 if tochka not in svyaz_s_img:
                                     svyaz_s_img.append(tochka)
+                if tochka not in (svyaz_s_1 or svyaz_s_2 or svyaz_s_img):
+                    print(f'Точка: {tochka}, отсутствет в списках: svyaz_s_1 - {svyaz_s_1}, svyaz_s_2 - {svyaz_s_2}, '
+                          f'svyaz_s_img - {svyaz_s_img} и добавлена в vozmozhnie_deystviya - {vozmozhnie_deystviya}')
+                    vozmozhnie_deystviya.append(tochka)
+            print(f'Собраны следующие списки: svyaz_s_1 - {svyaz_s_1}, svyaz_s_2 - {svyaz_s_2}, svyaz_s_img - '
+                  f'{svyaz_s_img}, vozmozhnie_deystviya - {vozmozhnie_deystviya}, otricatelnie_deystviya - '
+                  f'{otricatelnie_deystviya}')
 
-            if svyaz_s_1 and not svyaz_s_2:
-                # TODO совершаются действия по объектам, которые не нашлись на экране.
+            if svyaz_s_1 and not svyaz_s_2 and not svyaz_s_img:
                 # Если имеется связь с (+) - то применить этот путь
                 poisk_tp_v_pervoy_tochke_pyti = tuple(cursor.execute("SELECT svyazi.id_finish "
                 "FROM svyazi JOIN tochki "
@@ -787,7 +804,8 @@ def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
                             # print(f'Применить действие, если t0 - start: {poisk_tp_v_pervoy_tochke_pyti}')
                             if poisk_tp_v_pervoy_tochke_pyti:
                                 for poisk_tp_v_pervoy_tochke_pyti1 in poisk_tp_v_pervoy_tochke_pyti:
-                                    print('Совершается действие 2')
+                                    print(f'Совершается действие poisk_tp_v_pervoy_tochke_pyti1: '
+                                          f'{poisk_tp_v_pervoy_tochke_pyti1[0]}')
                                     sbor_deystviya(poisk_tp_v_pervoy_tochke_pyti1[0], vozmozhnie_deystviya1)
                                     found1 = True
                                     break
