@@ -661,22 +661,71 @@ def all_paths(tree, node):
 
 
 
-def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
+def celevaya_proshivka():
+    global in_pamyat
+
+
+
+def proshivka_po_derevy(time_dlya_proshivki):
     """ Проверка возможности применения действий по пути из дерева.
         * Дерево рисуется из текущей t
-        * Находится связь с 1 (+), 2 (-), 5 (нейтрал)
+        * Находится связь с 1 (+), 2 (-)
         * Ограничено зажигание действий, если нет этого объекта на экране
         * Если имеется связь с 1 (+) - то применить этот путь. Все остальные пути попадают в возможные действия.
         * Разбираются возможные действия. Если точка не в списке отрицательных и не в списке действий, объекты
         которых отсутствуют на экране - то применить это действие."""
-    # TODO исправить: не применяются возможные действия - зачем они тогда?
-    # TODO исправить: списки по наличию связей с 1, 2 и img собираются со всех путей и блокируются все пути.
 
     global posledniy_t_0
     global in_pamyat
     global in_pamyat_name
     global posledniy_t
     global posledniy_tp
+
+    # 18.01.24 - дополнительная прошивка находит t0 с +, находит нужный tp, а затем находит все t0, которые с ним связаны
+    # эти t0 и будут целевыми, по которым произойдёт отсеивание путей при поступательном движении к цели.
+
+    print(f'Создаётся целевое дерево, где time: {in_pamyat[0]}')
+    tree_celevoe = create_dict([in_pamyat[0]], 0)  # Получаем выборку связей в виде словаря (дерево)
+    print(f"Возможный путь действий: ", all_paths(tree_celevoe, in_pamyat[0]))
+    svyaz_s_1_celevoe = []
+    celevoe_t0 = []
+    for path_celevoe in all_paths(tree_celevoe, time_dlya_proshivki):
+        new_path_3_i_bolee_celevoe = path_celevoe[2:]
+        if new_path_3_i_bolee_celevoe:
+            for tochka_celevoe in new_path_3_i_bolee_celevoe:
+                poisk_tp_celevoe = cursor.execute("SELECT svyazi.id_finish "
+                                          "FROM svyazi JOIN tochki "
+                                          "ON svyazi.id_finish = tochki.id "
+                                          "WHERE svyazi.id_start = ? AND tochki.name = 'time_p'",
+                                          (tochka_celevoe,)).fetchall()
+                for poisk_tp_celevoe1 in poisk_tp_celevoe:
+                    # print(f"Найдена tp_celevoe: {poisk_tp_celevoe1[0]}, связанная с t0 = {tochka_celevoe}. "
+                    #       f"Дальше эта tp вписывается в списки")
+
+                    proverka_nalichiya_svyazi_s_1_celevoe = tuple(cursor.execute(
+                        "SELECT id_start FROM svyazi WHERE id_finish = 1 AND id_start = ?", (tochka_celevoe,)))
+                    # print(f'Нашли следующие связи c 1: {proverka_nalichiya_svyazi_s_1}')
+                    for proverka_nalichiya_svyazi_s_1_celevoe1 in proverka_nalichiya_svyazi_s_1_celevoe:
+                        # print(f'Присоединение к svyaz_s_1: {proverka_nalichiya_svyazi_s_1_1[0]}')
+                        if proverka_nalichiya_svyazi_s_1_celevoe1[0]:
+                            if poisk_tp_celevoe1[0] not in svyaz_s_1_celevoe:
+                                svyaz_s_1_celevoe.append(poisk_tp_celevoe1[0])
+    print(f'Найдены следующие (tp), которые являются целевыми: {svyaz_s_1_celevoe}')
+    # теперь по этим (tp) ищутся все целевые t0
+    for svyaz_s_1_celevoe1  in svyaz_s_1_celevoe:
+        # Найти to (id_start) в связях, где id_finish - это tp, а name = time_0 из таблицы точки
+        poisk_t0_celevoe = cursor.execute("SELECT svyazi.id_start "
+                                          "FROM svyazi JOIN tochki "
+                                          "ON svyazi.id_start = tochki.id "
+                                          "WHERE svyazi.id_finish = ? AND tochki.name = 'time_0'",
+                                          (svyaz_s_1_celevoe1,)).fetchall()
+        # print(f'Найдены следующие целевые t0 от целевого tp: {poisk_t0_celevoe}')
+        if poisk_t0_celevoe:
+            for poisk_t0_celevoe1 in poisk_t0_celevoe:
+                celevoe_t0.append(poisk_t0_celevoe1[0])
+    print(f'Список целевых t0 по которым будет происходить отсеивание путей следующий: {celevoe_t0}')
+
+    # Этап прошивки по текущему состоянию системы
     print(f'Создаётся дерево, где time: {time_dlya_proshivki}')
     tree = create_dict([time_dlya_proshivki], 0)  # Получаем выборку связей в виде словаря (дерево)
     vozmozhnie_deystviya = []
@@ -690,24 +739,28 @@ def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
         svyaz_s_1 = []
         svyaz_s_2 = []
         svyaz_s_img = []
+        # 18.01.24 - Отсеивание пути, если он не содержит целевые to.
         # 22.12.23 Удаляются 1 и 2 запись в пути. Везде вместо path вставил new_path_3_i_bolee
         new_path_3_i_bolee = path[2:]
-        print(f'Был путь такой: {path}, а разбирается такой: {new_path_3_i_bolee}')
-        if len(new_path_3_i_bolee) > 0:
-            # print(f'Проверка пути: {new_path_3_i_bolee}, 2я точка такая: {new_path_3_i_bolee[1]}')
-            for tochka in new_path_3_i_bolee:
-                # print(f'Прошивка по дереву. Рассматриваем точку: {tochka}')
+        print(f'Был путь такой: {path}, а разбирается такой: {new_path_3_i_bolee}, фильтрация присутствует ли он в '
+              f'целевых to: {celevoe_t0}?')
+        # TODO остановился на этой фильтрации
+        if not set(new_path_3_i_bolee).intersection(set(celevoe_t0)):
+            if new_path_3_i_bolee:
+                # print(f'Проверка пути: {new_path_3_i_bolee}, 2я точка такая: {new_path_3_i_bolee[1]}')
+                # 18.01.24 - Для проверки действия рассматривается только первый шаг из дерева, чтобы можно было
+                # выполнить последовательность, а не перескакивать шаги
                 # 18.01.24 - найти (tp) от этой точки и её записывать в списки
                 poisk_tp = cursor.execute("SELECT svyazi.id_finish "
                                           "FROM svyazi JOIN tochki "
                                           "ON svyazi.id_finish = tochki.id "
                                           "WHERE svyazi.id_start = ? AND tochki.name = 'time_p'",
-                                          (tochka,)).fetchall()
+                                          (new_path_3_i_bolee[0],)).fetchall()
                 for poisk_tp1 in poisk_tp:
-                    print(f"Найдена tp: {poisk_tp1[0]}, связанная с t0 = {tochka}. Дальше эта tp вписывается в списки")
+                    print(f"Найдена tp: {poisk_tp1[0]}, связанная с t0 = {new_path_3_i_bolee[0]}. Дальше эта tp вписывается в списки")
 
                     proverka_nalichiya_svyazi_s_1 = tuple(cursor.execute(
-                        "SELECT id_start FROM svyazi WHERE id_finish = 1 AND id_start = ?", (tochka,)))
+                        "SELECT id_start FROM svyazi WHERE id_finish = 1 AND id_start = ?", (new_path_3_i_bolee[0],)))
                     # print(f'Нашли следующие связи c 1: {proverka_nalichiya_svyazi_s_1}')
                     for proverka_nalichiya_svyazi_s_1_1 in proverka_nalichiya_svyazi_s_1:
                         # print(f'Присоединение к svyaz_s_1: {proverka_nalichiya_svyazi_s_1_1[0]}')
@@ -716,7 +769,7 @@ def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
                                 svyaz_s_1.append(poisk_tp1[0])
 
                     proverka_nalichiya_svyazi_s_2 = tuple(cursor.execute(
-                        "SELECT id_start FROM svyazi WHERE id_finish = 2 AND id_start = ?", (tochka,)))
+                        "SELECT id_start FROM svyazi WHERE id_finish = 2 AND id_start = ?", (new_path_3_i_bolee[0],)))
                     # print(f'Нашли следующие связи c 2: {proverka_nalichiya_svyazi_s_2}')
                     for proverka_nalichiya_svyazi_s_2_1 in proverka_nalichiya_svyazi_s_2:
                         # print(f'Присоединение к svyaz_s_2: {proverka_nalichiya_svyazi_s_2_1[0]}')
@@ -737,10 +790,10 @@ def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
 
                     # 22.09.23 - ограничение на зажигание (t) и (tp), если не горят соответствующие (in) объекты:
                     # поиск name2 - в нём хранится информация о хэше объекта
-                    nayti_name2 = tuple(cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (tochka,)))
+                    nayti_name2 = tuple(cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (new_path_3_i_bolee[0],)))
                     if nayti_name2:
                         for nayti_name2_1 in nayti_name2:
-                            print(f"Нашли следующий name2: {nayti_name2_1[0]} у точки: {tochka}, "
+                            print(f"Нашли следующий name2: {nayti_name2_1[0]} у точки: {new_path_3_i_bolee[0]}, "
                                   f"длина name2={len(nayti_name2_1[0])}")
                             name2_1 = nayti_name2_1[0]
                             # если длина name2 = 18 - то это хэш
@@ -756,40 +809,43 @@ def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
                                 nayti_in = tuple(
                                     cursor.execute("SELECT ID FROM tochki WHERE name = ? AND work < 1 "
                                                    "AND type = 'mozg'", (new_name,)))
-                                print(f"Длина name2 у to ({tochka}) = 18, найден соответствующий (in), который не горит: {nayti_in}")
+                                print(f"Длина name2 у to ({new_path_3_i_bolee[0]}) = 18, найден соответствующий (in), который не горит: {nayti_in}")
                                 if nayti_in:
                                     # print(f'Добавлена точка в svyaz_s_img, теперь список такой: {svyaz_s_img}')
                                     # print("Этот (in) не горит - пропуск точки, переход к следующей")
-                                    if tochka not in svyaz_s_img:
+                                    if new_path_3_i_bolee[0] not in svyaz_s_img:
                                         svyaz_s_img.append(poisk_tp1[0])
                     if poisk_tp1[0] not in (svyaz_s_1 or svyaz_s_2 or svyaz_s_img):
                         print(f'Точка действия: {poisk_tp1[0]}, отсутствует в списках: svyaz_s_1 - {svyaz_s_1}, svyaz_s_2 - {svyaz_s_2}, '
                               f'svyaz_s_img - {svyaz_s_img} и добавлена в vozmozhnie_deystviya - {vozmozhnie_deystviya}')
                         if poisk_tp1[0] not in vozmozhnie_deystviya:
+                            # TODO в возможные действия собирать только 1й шаг
                             vozmozhnie_deystviya.append(poisk_tp1[0])
-            print(f'Собраны следующие списки: svyaz_s_1 - {svyaz_s_1}, svyaz_s_2 - {svyaz_s_2}, svyaz_s_img - '
-                  f'{svyaz_s_img}, vozmozhnie_deystviya - {vozmozhnie_deystviya}, otricatelnie_deystviya - '
-                  f'{otricatelnie_deystviya}')
+                print(f'Собраны следующие списки: svyaz_s_1 - {svyaz_s_1}, svyaz_s_2 - {svyaz_s_2}, svyaz_s_img - '
+                      f'{svyaz_s_img}, vozmozhnie_deystviya - {vozmozhnie_deystviya}, otricatelnie_deystviya - '
+                      f'{otricatelnie_deystviya}')
 
-            if svyaz_s_1 and not svyaz_s_2 and not svyaz_s_img:
-                # Если имеется связь с (+) - то применить этот путь
-                poisk_tp_v_pervoy_tochke_pyti = tuple(cursor.execute("SELECT svyazi.id_finish "
-                "FROM svyazi JOIN tochki "
-                "ON svyazi.id_finish = tochki.id "
-                "WHERE svyazi.id_start = ? AND tochki.name = 'time_p'", (new_path_3_i_bolee[0],)))
-                print(f'Применить действие, если t0 - start: {poisk_tp_v_pervoy_tochke_pyti}')
-                if poisk_tp_v_pervoy_tochke_pyti:
-                    for poisk_tp_v_pervoy_tochke_pyti1 in poisk_tp_v_pervoy_tochke_pyti:
-                        print(f"Совершается действие {poisk_tp_v_pervoy_tochke_pyti1}")
-                        sbor_deystviya(poisk_tp_v_pervoy_tochke_pyti1[0], new_path_3_i_bolee[0])
-                        found = True   # выход из внешнего цикла
-                        break
+                if svyaz_s_1 and not svyaz_s_2 and not svyaz_s_img:
+                    # Если имеется связь с (+) - то применить этот путь
+                    poisk_tp_v_pervoy_tochke_pyti = tuple(cursor.execute("SELECT svyazi.id_finish "
+                    "FROM svyazi JOIN tochki "
+                    "ON svyazi.id_finish = tochki.id "
+                    "WHERE svyazi.id_start = ? AND tochki.name = 'time_p'", (new_path_3_i_bolee[0],)))
+                    print(f'Применить действие, если t0 - start: {poisk_tp_v_pervoy_tochke_pyti}')
+                    if poisk_tp_v_pervoy_tochke_pyti:
+                        for poisk_tp_v_pervoy_tochke_pyti1 in poisk_tp_v_pervoy_tochke_pyti:
+                            print(f"Совершается действие {poisk_tp_v_pervoy_tochke_pyti1}")
+                            sbor_deystviya(poisk_tp_v_pervoy_tochke_pyti1[0], new_path_3_i_bolee[0])
+                            found = True   # выход из внешнего цикла
+                            break
+            if found:
+                break  # выход из внешнего цикла
         if found:
             break  # выход из внешнего цикла
 
     # print(f"found = {found}")
     if not found:
-        # Если нет цепочек действий - то применить первое действие из возможных
+        # Если нет действия только с положительной реакцией - то применить первое действие из возможных
         found1 = False
         print(f'Возможные действия: {vozmozhnie_deystviya}')
         # print(f'Количество возможных действий: {len(vozmozhnie_deystviya)}')
@@ -810,12 +866,15 @@ def proshivka_po_derevy(time_dlya_proshivki, vhodyashie_in):
                     break
         if not found1:
             # 11.01.24 - Если нет действий - то разбить сущность на составляющие (она уже разбита в in_pamyat_name).
-            # Взять из этого списка первый элемент и проработать с ним прошивку
+            # Этот список вставить в начало in_pamyat вместо первого рассматриваемого элемента
             if in_pamyat_name:
-                print(f'Запускается прошивка по первому элементу (in): {in_pamyat_name[0]}')
-                for in_pamyat_name1 in in_pamyat_name[0]:
-                    poisk_bykvi_iz_vvedeno_v2(in_pamyat_name1)
-                in_pamyat_name.pop(0)
+                # удаляется первый элемент из in_pamyat и на место него вставляются элементы из in_pamyat_name
+                print(f'удаляется первый элемент из in_pamyat: {in_pamyat} и на место него вставляются элементы из '
+                      f'in_pamyat_name: {in_pamyat_name}')
+                in_pamyat = in_pamyat_name + in_pamyat.pop(0)
+                print(f'Получается следующая in_pamyat: {in_pamyat}')
+                poisk_bykvi_iz_vvedeno_v2(in_pamyat[0])
+                in_pamyat_name = []
                 proverka_nalichiya_svyazey_t_t_o()
                 posledniy_tp = 0
                 posledniy_t = 0
@@ -1204,9 +1263,9 @@ if __name__ == '__main__':
             print(f'in_pamyat перед удалением первого элемента: {in_pamyat}')
             in_pamyat.pop(0)
             print(f'Удалён первый элемент из in_pamyat, теперь список такой: {in_pamyat}')
-            in_pamyat_name.pop(0)
-            print(f'Удалён первый элемент из in_pamyat_name, теперь список такой: {in_pamyat_name}')
-# TODO проверить к какой точке записываются + и - реакции. К in_pamyat или к текущей to? Точнее к какому мосту?
+            if in_pamyat_name:
+                in_pamyat_name.pop(0)
+                print(f'Удалён первый элемент из in_pamyat_name, теперь список такой: {in_pamyat_name}')
         elif vvedeno_luboe == ('2'):
             # нужно проверить имеется ли уже связь м/у t0 и tp
             print("Состояние перед (-) реакцией было такое: ", posledniy_t_0,". С ней и создаётся связь")
@@ -1379,7 +1438,7 @@ if __name__ == '__main__':
             # schetchik = 0   # 07.11.23 - добавлено обнуление, чтобы не перешло состояние к старому экрану
             source = None
 
-        else:   # TODO проверить к какой точке записываются + и - реакции. К in_pamyat или к текущей to? Точнее к какому мосту?
+        else:
             if schetchik == 1:
                 print(f'in_pamyat сейчас такая: {in_pamyat}')
                 if in_pamyat != []:
@@ -1400,7 +1459,7 @@ if __name__ == '__main__':
                             # sozdat_svyaz(posledniy_t_0, poisk_svyazi_t_i_t01[0], 1)
                             # 21.12.23 - прошивка по дереву будет проходить через time, а не через time_0
                             try:
-                                proshivka_po_derevy(poisk_svyazi_t_i_t01[0], in_pamyat)   # Добавил передачу in_pamyat для создания цепочки действий
+                                proshivka_po_derevy(poisk_svyazi_t_i_t01[0])   # Добавил передачу in_pamyat для создания цепочки действий
                             except RecursionError:
                                 print("!!!!!!!!!!!!!!!!!Произошла ошибка: maximum recursion depth exceeded in comparison!!!!!!!!!!!!!!!!!!")
 
