@@ -898,13 +898,19 @@ def proshivka_po_derevy(time_dlya_proshivki):
                 posledniy_t = 0
                 # print(f'После ввода первого элемента in posl_t0 должен перейти на: {posledniy_t_0}')
             else:
-                print("Нет возможных путей действий... ВНИМАНИЕ!!! Стирается первая ячейка памяти!!!")
-                # 11.01.24 - стереть первую ячейку памяти
+                print(f"Нет возможных путей действий... Состояние принудительно переводится в 1 элемент in_pamyat: {in_pamyat}")
+                new_t0 = sozdat_new_tochky('time_0', 1, 'time', 'zazech_sosedey', 1, 0,
+                                           0, posledniy_t_0, in_pamyat[0], '')
+                sozdat_svyaz(posledniy_t_0, new_t0, 1)
+                sozdat_svyaz(in_pamyat[0], new_t0, 1)
+                posledniy_t_0 = new_t0
+                posledniy_tp = 0
+                posledniy_t = 0
 
                 # todo перенести концентратор в другое место
-                if len(in_pamyat) == 1:
-                    print("Нет больше возможных путей и стёрто последнее in_pamyat - включается концентратор действий")
-                    concentrator_deystviy()
+                # if len(in_pamyat) == 1:
+                #     print("Нет больше возможных путей и стёрто последнее in_pamyat - включается концентратор действий")
+                #     concentrator_deystviy()
 
 
 
