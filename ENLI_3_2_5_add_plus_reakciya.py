@@ -569,7 +569,7 @@ def concentrator_deystviy():
         if vliyanie_na_deystvie:
             choice = random.choices(list_deystviy, weights=vliyanie_na_deystvie, k=1)[0]
             print(f'Случайный ответ следующий: {choice}')
-            sbor_deystviya(choice, 0)
+            sbor_deystviya(choice, [0])
             pogasit_vse_tochki()  # 13.09.23 - добавил гашение всех точек, чтобы совершить случайное действие и ждать на
             # него реакцию
     else:
@@ -691,6 +691,7 @@ def proshivka_po_derevy(time_dlya_proshivki):
     global posledniy_t
     global posledniy_tp
     global zolotoy_pyt
+    global izmenilos_li_sostyanie
 
     # 18.01.24 - дополнительная прошивка находит t0 с +, находит нужный tp, а затем находит все t0, которые с ним связаны
     # эти t0 и будут целевыми, по которым произойдёт отсеивание путей при поступательном движении к цели.
@@ -928,6 +929,7 @@ def proshivka_po_derevy(time_dlya_proshivki):
                 posledniy_t_0 = new_t0
                 posledniy_tp = 0
                 posledniy_t = 0
+                izmenilos_li_sostyanie = posledniy_t_0
                 # print(f'После ввода первого элемента in posl_t0 должен перейти на: {posledniy_t_0}')
             else:
                 # Для выполнения циклов последовательных действий после того, как программа выполнила действий в первом
@@ -940,25 +942,23 @@ def proshivka_po_derevy(time_dlya_proshivki):
                 # Проверить - текущее состояние - это тоже самое состояние, связанное с in_pamyat[0]. Найти связь м/у
                 # первым in_pamyat и t0. Если t0 = текущему posledniy_t0 - то состояние не переводится, а включается
                 # концентратор действий.
-                proverka_sostoyaniya = cursor.execute("SELECT svyazi.id_finish FROM svyazi JOIN tochki ON svyazi.id_finish = tochki.ID"
-                                " WHERE svyazi.id_start = ? AND tochki.name = 'time_0' ", (in_pamyat[0],)).fetchone()
-
-                for proverka_sostoyaniya1 in proverka_sostoyaniya:
-                    print(f'Нашлись следующие связи ')
-                    print(f'Текущее состояние (posledniy_t0) = {posledniy_t_0}, а проверка состояние для перевода в '
-                          f'первый элемент in_pamyat = {proverka_sostoyaniya1[0]}')
-                    if proverka_sostoyaniya1[0] != posledniy_t_0:
-                        print(f"Нет возможных путей действий... Состояние принудительно переводится в 1 элемент in_pamyat: {in_pamyat}")
-                        new_t0 = sozdat_new_tochky('time_0', 1, 'time', 'zazech_sosedey', 1, 0,
-                                                   0, posledniy_t_0, in_pamyat[0], '')
-                        sozdat_svyaz(posledniy_t_0, new_t0, 1)
-                        sozdat_svyaz(in_pamyat[0], new_t0, 1)
-                        posledniy_t_0 = new_t0
-                        posledniy_tp = 0
-                        posledniy_t = 0
-                    else:
-                        print("Нет больше возможных путей и стёрто последнее in_pamyat - включается концентратор действий")
-                        concentrator_deystviy()
+                print(f'Проверка - изменилось ли состояние первого in_pamayt = {izmenilos_li_sostyanie}, равна ли '
+                      f'posledniy_t_0 = {posledniy_t_0}?')
+                if izmenilos_li_sostyanie != posledniy_t_0:
+                    print(f"Состояние изменилось и нет возможных путей действий... Состояние принудительно переводится "
+                          f"в 1 элемент in_pamyat: {in_pamyat}")
+                    new_t0 = sozdat_new_tochky('time_0', 1, 'time', 'zazech_sosedey', 1, 0,
+                                               0, posledniy_t_0, in_pamyat[0], '')
+                    sozdat_svyaz(posledniy_t_0, new_t0, 1)
+                    sozdat_svyaz(in_pamyat[0], new_t0, 1)
+                    posledniy_t_0 = new_t0
+                    posledniy_tp = 0
+                    posledniy_t = 0
+                    izmenilos_li_sostyanie = posledniy_t_0
+                else:
+                    print("Состояние не изменилось и нет больше возможных путей - включается концентратор действий")
+                    concentrator_deystviy()
+                    izmenilos_li_sostyanie = 0
 
 
 
@@ -968,6 +968,7 @@ def sbor_deystviya(tp, celevoe_tp):
     global posledniy_t_0
     global posledniy_otvet
     global in_pamyat
+    global izmenilos_li_sostyanie
     B = True
     tp_kortez = (tp, )
 
@@ -976,6 +977,7 @@ def sbor_deystviya(tp, celevoe_tp):
           f' первый элемент из in_pamyat: {in_pamyat}')
     if tp in celevoe_tp:
         in_pamyat.pop(0)
+        izmenilos_li_sostyanie = 0
 
     # 22.06.23 - гашение ответов, для блокировки повторов.
     cursor.execute("UPDATE tochki SET work = 0 AND signal = 0 WHERE ID = ?", (tp,))
@@ -1215,6 +1217,7 @@ if __name__ == '__main__':
     in_pamyat = []   # 20.12.23 - Список для хранения входящих ID (in)
     in_pamyat_name = []   #12.01.24 - Список для хранения входящих в виде name, а не ID
     zolotoy_pyt = []   # 19.01.24 - Путь, являющийся самым коротким для достижения положительного результата
+    izmenilos_li_sostyanie = 0
 
     perenos_sostoyaniya()   # 30.11.23 - убрал posledniy_t_0=3 и поставил сразу перенос состояния в экран
 
