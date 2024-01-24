@@ -213,7 +213,7 @@ def proverka_signal_porog():
                         # print("Этот (in) горит")
                         cursor.execute("UPDATE tochki SET work = 1 WHERE ID = (?)", nayti_tochki_signal_porog1)
                         cursor.execute("UPDATE tochki SET signal = 0.9 WHERE ID = (?)", nayti_tochki_signal_porog1)
-                        cursor.execute("UPDATE tochki SET puls = 10 WHERE ID = (?) AND name = 'time_0'", nayti_tochki_signal_porog1)
+                        cursor.execute("UPDATE tochki SET puls = 0 WHERE ID = (?) AND name = 'time_0'", nayti_tochki_signal_porog1)
                     else:
                         # если (in) не горит - погасить сигнал у этой (t)
                         # print(f"Этот (in): {nayti_tochki_signal_porog1} не горит. Обнуление сигнала")
@@ -223,7 +223,7 @@ def proverka_signal_porog():
                     # print("Длина name2 не равна 16")
                     cursor.execute("UPDATE tochki SET work = 1 WHERE ID = (?)", nayti_tochki_signal_porog1)
                     cursor.execute("UPDATE tochki SET signal = 0.9 WHERE ID = (?)", nayti_tochki_signal_porog1)
-                    cursor.execute("UPDATE tochki SET puls = 10 WHERE ID = (?) AND name = 'time_0'", nayti_tochki_signal_porog1)
+                    cursor.execute("UPDATE tochki SET puls = 0 WHERE ID = (?) AND name = 'time_0'", nayti_tochki_signal_porog1)
 
 
 
@@ -1125,6 +1125,7 @@ def rasprostranenie_potenciala():
     poisk_puls = tuple(cursor.execute("SELECT ID FROM tochki WHERE puls > 0"))
     if poisk_puls:
         for poisk_puls1 in poisk_puls:
+            print(f'Для передачи потенциала рассматривается точка: {poisk_puls1}')
             # сложный поиск, где находится ID start, если задан id_finish, при этом id_start должен быть с name = time_0
             poisk_obratnogo_soseda_id_start = tuple(cursor.execute("SELECT svyazi.id_start "
                                                                  "FROM svyazi JOIN tochki "
@@ -1157,6 +1158,42 @@ def rasprostranenie_potenciala():
                     # puls_proverka = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_obratnogo_soseda1))
                     # for puls_proverka1 in puls_proverka:
                         # print(f"Старый пульс = {puls_stariy[0]}, передаваемый: {new_puls}, теперь он равен: {puls_proverka1}")
+
+                    # 24.01.24 - Добавление распространения потенциала на другие точки из слоя
+                    # Найти name2 у рассматриваемой точки
+                    poisk_name2 = (cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", poisk_puls1)).fetchone()
+                    if poisk_name2:
+                        # Распространить пульс этой точки на остальные, находящиеся в этом же слое.
+                        for poisk_name21 in poisk_name2:
+                            # print(f'Найден name2: {poisk_name21} у рассматриваемой точки: {poisk_puls1}, её пульс равен: {new_puls}')
+                            # Найти точки с таким же name2
+                            poisk_tochki_s_name2 = (cursor.execute("SELECT ID FROM tochki WHERE name2 = ?", (poisk_name21,)))
+                            for poisk_tochki_s_name21 in poisk_tochki_s_name2:
+                                # print(f'Найдена точка слоя (с таким же name2): {poisk_tochki_s_name21}, '
+                                #       f'а изначально рассматривалась: {poisk_puls1}')
+                                if poisk_tochki_s_name21 != poisk_puls1:
+                                    # Для проверки изменения пульса
+                                    # proverka_izmemeniya_puls = (cursor.execute("SELECT puls FROM tochki "
+                                    #                                            "WHERE ID = ?", poisk_tochki_s_name21)).fetchone()
+                                    # for proverka_izmemeniya_puls1 in proverka_izmemeniya_puls:
+                                    #     print(f'Для проверки текущий пульс у точки: {poisk_tochki_s_name21} из слоя равен: {proverka_izmemeniya_puls1}, а новый передаваемый пульс равен: {new_puls}')
+
+                                    # Если эта не та же самая точка - то присвоить ей новый потенциал или оставить больший.
+                                    cursor.execute("UPDATE tochki SET puls = ? WHERE ID = ? AND puls < ?",
+                                                   (new_puls, poisk_tochki_s_name21[0], new_puls))
+
+                                    # Для проверки изменения пульса:
+                                    # proverka_izmemeniya_puls2 = (cursor.execute("SELECT puls FROM tochki "
+                                    #                                            "WHERE ID = ?",
+                                    #                                             poisk_tochki_s_name21)).fetchone()
+                                    # for proverka_izmemeniya_puls21 in proverka_izmemeniya_puls2:
+                                    #     print(
+                                    #         f'Для проверки текущий пульс у точки: {poisk_tochki_s_name21} из слоя теперь должен быть изменён и стал равен: {proverka_izmemeniya_puls21}')
+
+                                    # увеличение сигнала, чтобы была возможность найти точку в функции концентратор действий
+                                    cursor.execute("UPDATE tochki SET signal = 0.1 WHERE ID = ? AND signal < 0.1",
+                                                   (poisk_tochki_s_name21[0],))
+
             # обнуляется родительский puls
             cursor.execute("UPDATE tochki SET puls = 0 WHERE ID = ?", poisk_puls1)
 
@@ -1179,7 +1216,7 @@ def pereimenovat_name2_y_to(ID, rod2):
                 if nayti_name21[0] == 'Key.tap':
                     # если это нажатие на кнопку - то вписать в name2 t0 дополнительно /key
                     cursor.execute("UPDATE 'tochki' SET name2 = name2 || '/Key' WHERE ID = ?", (ID, ))
-                    print(f'Должно обновиться name2 у точки: {ID}')
+                    # print(f'Должно обновиться name2 у точки: {ID}')
 
 
 
@@ -1325,6 +1362,11 @@ if __name__ == '__main__':
             tree = ()
             A = False
             in_pamyat = []
+            cursor.execute("UPDATE tochki SET puls = 0 AND signal = 0 AND work = 0")
+            posledniy_t = 0
+            posledniy_tp = 0
+            old_ekran = 0
+            posledniy_t_0 = 0
             continue
 
         elif vvedeno_luboe == ('1'):
