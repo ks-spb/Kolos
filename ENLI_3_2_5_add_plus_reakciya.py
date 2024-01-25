@@ -741,7 +741,7 @@ def proshivka_po_derevy(time_dlya_proshivki):
         cursor.execute("UPDATE tochki SET puls = 00 WHERE ID = ?", (celevoe_t01,))
 
     # Этап прошивки по текущему состоянию системы
-    print(f'Создаётся дерево, где time: {time_dlya_proshivki}')
+    # print(f'Создаётся дерево, где time: {time_dlya_proshivki}')
     tree = create_dict([time_dlya_proshivki], 0)  # Получаем выборку связей в виде словаря (дерево)
     vozmozhnie_deystviya = []
     otricatelnie_deystviya = []
@@ -749,7 +749,6 @@ def proshivka_po_derevy(time_dlya_proshivki):
     # print(f'Дерево действий такое: {tree}')
     # print(f"Текущий t0 = {posledniy_t_0}. Возможный путь действий: ", all_paths(tree, time_dlya_proshivki))
     # print("Количество возможных путей действий: ", len(all_paths(tree, posledniy_t_0)))
-    # Проверка имеется ли связь с 1 или 2 у точек на пути
     found = False
     pyti = all_paths(tree, time_dlya_proshivki)
     # 24.01.24 - Если золотой путь не 0 и он короче, чем рассматриваемый путь - то не рассматривать новый путь.
@@ -765,7 +764,6 @@ def proshivka_po_derevy(time_dlya_proshivki):
             novie_pyti.append(pyti1)
     novie_pyti.append(zolotoy_pyt)   # 24.01.24 - Добавлен золотой путь в список всех путей.
     for path in sorted(novie_pyti, key=len):
-        # todo добавить отсеивание, что если длина нового пути больше, чем золотого - то и не нужно его рассматривать
         svyaz_s_1 = []
         svyaz_s_2 = []
         svyaz_s_img = []
@@ -774,11 +772,11 @@ def proshivka_po_derevy(time_dlya_proshivki):
         print(f'Рассматривается путь: {path}')
         if path != zolotoy_pyt:
             new_path_3_i_bolee = path[2:]
-            print(f'Был путь такой (не золотой): {path}, а разбирается такой: {new_path_3_i_bolee}, фильтрация присутствует ли он в '
-              f'целевых to: {celevoe_t0}')
+            # print(f'Был путь такой: {path}, а разбирается такой: {new_path_3_i_bolee}, фильтрация присутствует ли он в '
+            #   f'целевых to: {celevoe_t0}')
         else:
             new_path_3_i_bolee = path
-            print(f'Рассматриваемый путь золотой, он не укорачивается')
+            # print(f'Рассматриваемый путь золотой, он не укорачивается')
         # Проверка - присутствуют ли элементы из проверяемого пути new_path_3_i_bolee в целевых to. Если да -
         # то работать с этим путём, а если нет - перейти на другой путь.
         proverka_prisutstviya = []
@@ -788,7 +786,6 @@ def proshivka_po_derevy(time_dlya_proshivki):
                     proverka_prisutstviya.append(element)
             print(f'proverka_prisutstviya такая: {proverka_prisutstviya}')
             if proverka_prisutstviya:
-
                 # 18.01.24 - Для проверки действия рассматривается только первый шаг из дерева, чтобы можно было
                 # выполнить последовательность, а не перескакивать шаги
                 # 18.01.24 - найти (tp) от этой точки и её записывать в списки
@@ -798,7 +795,7 @@ def proshivka_po_derevy(time_dlya_proshivki):
                                           "WHERE svyazi.id_start = ? AND tochki.name = 'time_p'",
                                           (new_path_3_i_bolee[0],)).fetchall()
                 for poisk_tp1 in poisk_tp:
-                    print(f"Найдена tp: {poisk_tp1[0]}, связанная с t0 = {new_path_3_i_bolee[0]}. Дальше эта tp вписывается в списки")
+                    # print(f"Найдена tp: {poisk_tp1[0]}, связанная с t0 = {new_path_3_i_bolee[0]}. Дальше эта tp вписывается в списки")
                     proverka_nalichiya_svyazi_s_1 = tuple(cursor.execute(
                         "SELECT id_start FROM svyazi WHERE id_finish = 1 AND id_start = ?", (new_path_3_i_bolee[0],)))
                     # print(f'Нашли следующие связи c 1: {proverka_nalichiya_svyazi_s_1}')
@@ -856,8 +853,8 @@ def proshivka_po_derevy(time_dlya_proshivki):
                                     if new_path_3_i_bolee[0] not in svyaz_s_img:
                                         svyaz_s_img.append(poisk_tp1[0])
                     if poisk_tp1[0] not in (svyaz_s_1 or svyaz_s_2 or svyaz_s_img):
-                        print(f'Точка действия: {poisk_tp1[0]}, отсутствует в списках: svyaz_s_1 - {svyaz_s_1}, svyaz_s_2 - {svyaz_s_2}, '
-                              f'svyaz_s_img - {svyaz_s_img} и добавлена в vozmozhnie_deystviya - {vozmozhnie_deystviya}')
+                        # print(f'Точка действия: {poisk_tp1[0]}, отсутствует в списках: svyaz_s_1 - {svyaz_s_1}, svyaz_s_2 - {svyaz_s_2}, '
+                        #       f'svyaz_s_img - {svyaz_s_img} и добавлена в vozmozhnie_deystviya - {vozmozhnie_deystviya}')
                         if poisk_tp1[0] not in vozmozhnie_deystviya:
                             vozmozhnie_deystviya.append(poisk_tp1[0])
                 print(f'Собраны следующие списки: svyaz_s_1 - {svyaz_s_1}, svyaz_s_2 - {svyaz_s_2}, svyaz_s_img - '
@@ -867,7 +864,7 @@ def proshivka_po_derevy(time_dlya_proshivki):
                 #todo Убрать возможные действия?
 
                 # 22.01.24 - Внедрён золотой путь.
-                print(f'Длина золотого пути: {len(zolotoy_pyt)}, длина нового пути: {len(new_path_3_i_bolee)}')
+                # print(f'Длина золотого пути: {len(zolotoy_pyt)}, длина нового пути: {len(new_path_3_i_bolee)}')
                 if not svyaz_s_img:
                     # Если объекта нет на экране - то золотой путь не изменяется, а если объекты на экране есть - то,
                     # если новый путь короче - он становится золотым.
@@ -880,7 +877,9 @@ def proshivka_po_derevy(time_dlya_proshivki):
                 else:
                     # Если отсутствует изображение - то этот путь уже не может быть золотым.
                     zolotoy_pyt = []
-                    print('Обнуляется золотой путь - т.к. отсутствует объект на экране')
+                    # print('Обнуляется золотой путь - т.к. отсутствует объект на экране')
+                    print("")
+                    out_red('!Не найден объект по которому нужно кликать. Отменяется действие и обнуляется путь.')
         if found:
             break  # выход из внешнего цикла
 
@@ -894,9 +893,9 @@ def proshivka_po_derevy(time_dlya_proshivki):
         print(f'Применить первое действие: {poisk_tp_v_pervoy_tochke_pyti} в золотом пути: {zolotoy_pyt}')
         if poisk_tp_v_pervoy_tochke_pyti:
             for poisk_tp_v_pervoy_tochke_pyti1 in poisk_tp_v_pervoy_tochke_pyti:
-                print(f"Совершается действие {poisk_tp_v_pervoy_tochke_pyti1}")
+                # print(f"Совершается действие {poisk_tp_v_pervoy_tochke_pyti1}")
                 sbor_deystviya(poisk_tp_v_pervoy_tochke_pyti1[0], svyaz_s_1_celevoe)
-                print(f'Совершено первое действие {zolotoy_pyt} - удалить из списка')
+                # print(f'Совершено первое действие {zolotoy_pyt} - удалить из списка')
                 zolotoy_pyt.pop(0)
                 found = True  # выход из внешнего цикла
                 break
@@ -908,22 +907,22 @@ def proshivka_po_derevy(time_dlya_proshivki):
         print(f'Возможные действия: {vozmozhnie_deystviya}, Золотой путь: {zolotoy_pyt}')
         # print(f'Количество возможных действий: {len(vozmozhnie_deystviya)}')
         # print(f'svyaz_s_img такой: {svyaz_s_img}')
-        if vozmozhnie_deystviya:
-            for vozmozhnie_deystviya1 in vozmozhnie_deystviya:
-                # Проверить является ли эта точка отрицательной.
-                # print(f'Проверка имеется ли возможное действие {vozmozhnie_deystviya1} в списках: отрицательные действия: '
-                #       f'{otricatelnie_deystviya}, связь с 5: {svyaz_s_5}, связь с img: {svyaz_s_img}')
-                if not vozmozhnie_deystviya1 in otricatelnie_deystviya:
-                    # if not vozmozhnie_deystviya1 in svyaz_s_5:
-                        # print(f'Применить возможное действие: {vozmozhnie_deystviya1}')
-                                print(f'Совершается первое действие из списка возможных: {vozmozhnie_deystviya1}')
-                                sbor_deystviya(vozmozhnie_deystviya1, svyaz_s_1_celevoe)
-                                print(f'Совершено первое действие {zolotoy_pyt} - удалить из списка')
-                                zolotoy_pyt.pop(0)
-                                found1 = True
-                                break
-                if found1:
-                    break
+        # if vozmozhnie_deystviya:
+        #     for vozmozhnie_deystviya1 in vozmozhnie_deystviya:
+        #         # Проверить является ли эта точка отрицательной.
+        #         # print(f'Проверка имеется ли возможное действие {vozmozhnie_deystviya1} в списках: отрицательные действия: '
+        #         #       f'{otricatelnie_deystviya}, связь с 5: {svyaz_s_5}, связь с img: {svyaz_s_img}')
+        #         if not vozmozhnie_deystviya1 in otricatelnie_deystviya:
+        #             # if not vozmozhnie_deystviya1 in svyaz_s_5:
+        #                 # print(f'Применить возможное действие: {vozmozhnie_deystviya1}')
+        #                         print(f'Совершается первое действие из списка возможных: {vozmozhnie_deystviya1}')
+        #                         sbor_deystviya(vozmozhnie_deystviya1, svyaz_s_1_celevoe)
+        #                         print(f'Совершено первое действие {zolotoy_pyt} - удалить из списка')
+        #                         zolotoy_pyt.pop(0)
+        #                         found1 = True
+        #                         break
+        #         if found1:
+        #             break
         if not found1:
             # 11.01.24 - Если нет действий - то разбить сущность на составляющие (она уже разбита в in_pamyat_name).
             # Этот список вставить в начало in_pamyat вместо первого рассматриваемого элемента
