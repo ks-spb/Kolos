@@ -778,7 +778,9 @@ def proshivka_po_derevy(time_dlya_proshivki):
                 else:
                     print(f'Путь: {pyti1} добавлен в новые пути - т.к. длина золотого пути = 0')
                     novie_pyti.append(pyti1)
-                vse_pyti_iz_proshivki.append(pyti1)
+                # Вместо t0 в антипрошивку передаются rod2 этих t0.
+                pyt_rod2 = zapis_rod2_vmesto_t0_v_pyti(pyti1)
+                vse_pyti_iz_proshivki.append(pyt_rod2)
     if zolotoy_pyt:
         svyaz_s_img_zolotogo_pyti = proverka_nalichiya_svyazi_s_img(zolotoy_pyt[0])
         print(f'Проверяется следующий шаг золотого пути: {zolotoy_pyt} - связан ли он с объектом и имеется ли он на экране:'
@@ -951,6 +953,19 @@ def create_anti_dict(point_list, work_dict=dict()):
 
 
 
+def zapis_rod2_vmesto_t0_v_pyti(vse_pyti_iz_proshivki):
+    """Для соединения прямых путей в антипрошивке нужно изменить дерево и записывать rod2 каждого t0 -
+    это точки (t) и (tp)"""
+    pyt_rod2 = []
+    for vse_pyti_iz_proshivki1 in vse_pyti_iz_proshivki:
+        nayti_rod2 = cursor.execute("SELECT rod2 FROM tochki WHERE ID = ?", (vse_pyti_iz_proshivki1,))
+        for nayti_rod21 in nayti_rod2:
+            pyt_rod2.append(nayti_rod21[0])
+    print(f'Вместо пути: {vse_pyti_iz_proshivki} был сделан путь из rod2: {pyt_rod2}')
+    return pyt_rod2
+
+
+
 def anti_proshivka(celevie_t0, vse_pyti_iz_proshivki, svyaz_s_1_celevoe):
     """
     Функция находит деревья по пути от целевых t0 (общих точек времени), связанных с нужным действием, которое вызывало
@@ -960,49 +975,32 @@ def anti_proshivka(celevie_t0, vse_pyti_iz_proshivki, svyaz_s_1_celevoe):
     """
     global zolotoy_pyt
 
+    print('Работа функции "anti_proshivka" ')
     vse_sobrannie_pyti = []
     print(f"Переданы следующие целевые to: {celevie_t0} и все пути из прошивки: {vse_pyti_iz_proshivki}")
-    if len(celevie_t0) > 1:
-        for celevie_t01 in celevie_t0:
-            anti_tree = create_anti_dict(celevie_t01[0], 0)
-            print(f'Была передана t0: {celevie_t01[0]} из целевых t0: {celevie_t01} и был сделан обратный путь: {anti_tree}')
-            for path in all_paths(anti_tree, celevie_t01[0]):
-                print(f'Рассматривается обратный путь: {path}')
-                if path:
-                    path.reverse()
-                    print(f'Путь развернулся: {path}')
-                    # проверить имеют ли точки из этого пути во всех обратных путях
-                    for pryamoy_pyt in vse_pyti_iz_proshivki:
-                        for element in path:
-                            if element in pryamoy_pyt:
-                                print(f'Найден элемент: {element} из обратного пути: {path} в прямом пути: {pryamoy_pyt}')
-                                # Находится индекс этого элемента в прямом пути, чтобы вместо него вставить обратный путь
-                                index = pryamoy_pyt.index(element)
-                                print(f'Элемент: {element} расположен в пути: {pryamoy_pyt} со следующим индексом: {index}')
-                                sobranniy_pyt = pryamoy_pyt[:index] + path
-                                print(f'Новый собранный путь из прямого и обратного пути: {sobranniy_pyt}')
-                                vse_sobrannie_pyti.append(sobranniy_pyt)
-                                break
-    else:
-        anti_tree = create_anti_dict(celevie_t0)
-        print(f'Была передана целевая t0 1 шт: {celevie_t0} и был сделан обратный путь: {anti_tree}')
-        for path in all_paths(anti_tree, celevie_t0[0]):
+    if len(celevie_t0) == 1:
+        celevie_t0 = [celevie_t0]
+    for celevie_t01 in celevie_t0:
+        print(f'Работа над целевой t0: {celevie_t01}')
+        anti_tree = create_anti_dict(celevie_t01)
+        print(f'Найдены все обратные пути: {all_paths(anti_tree, celevie_t01[0])}')
+        for path in all_paths(anti_tree, celevie_t01[0]):
             print(f'Рассматривается обратный путь: {path}')
             if path:
                 path.reverse()
                 print(f'Путь развернулся: {path}')
+                pyt_rod2 = zapis_rod2_vmesto_t0_v_pyti(path)
                 # проверить имеют ли точки из этого пути во всех обратных путях
                 for pryamoy_pyt in vse_pyti_iz_proshivki:
-                    for element in path:
+                    for element in pyt_rod2:
                         if element in pryamoy_pyt:
-                            print(f'Найден элемент: {element} из обратного пути: {path} в прямом пути: {pryamoy_pyt}')
+                            print(f'Найден элемент: {element} из обратного пути: {pyt_rod2} в прямом пути: {pryamoy_pyt}')
                             # Находится индекс этого элемента в прямом пути, чтобы вместо него вставить обратный путь
                             index = pryamoy_pyt.index(element)
                             print(f'Элемент: {element} расположен в пути: {pryamoy_pyt} со следующим индексом: {index}')
-                            sobranniy_pyt = pryamoy_pyt[:index] + path
+                            sobranniy_pyt = pryamoy_pyt[:index] + pyt_rod2
                             print(f'Новый собранный путь из прямого и обратного пути: {sobranniy_pyt}')
                             vse_sobrannie_pyti.append(sobranniy_pyt)
-                            break
     sortirovka_vseh_sobrannih_pytey = sorted(vse_sobrannie_pyti, key=len)
     print(f'Все собранные пути в антипрошивке: {sortirovka_vseh_sobrannih_pytey}')
     if sortirovka_vseh_sobrannih_pytey:
