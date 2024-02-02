@@ -630,26 +630,21 @@ def poisk_pol_i_otric_reakciy(ID):
 
 
 
-def create_dict(point_list, level, work_dict=dict(), max_level=5):
+def create_dict(point_list, work_dict=dict()):
     """ Рекурсивная функция получающая все связи в виде словаря из БД """
-    # print(f'Текущий level = {level}, max_level = {max_level}')
-    if level == max_level:
-        return work_dict
-    else:
-        # print(f'point_list = {point_list}')
-        for point in point_list:
-            # print(f'point = {point}')
-            # Выбрать id_finish из связей, где id_finish = ID в табл. точки и id_start = point и name = time_0.
-            points = cursor.execute(
-                "SELECT svyazi.id_finish "
-                "FROM svyazi JOIN tochki "
-                "ON svyazi.id_finish = tochki.id "
-                "WHERE svyazi.id_start = ? AND (tochki.name = 'time_0' OR tochki.name = 'time')", (point,)).fetchall()
-            nodes = [row[0] for row in points]
-            if nodes:
-                work_dict[point] = nodes
-                level += 1
-                create_dict(work_dict[point], level, work_dict)
+    # print(f'point_list = {point_list}')
+    for point in point_list:
+        # print(f'point = {point}')
+        # Выбрать id_finish из связей, где id_finish = ID в табл. точки и id_start = point и name = time_0.
+        points = cursor.execute(
+            "SELECT svyazi.id_finish "
+            "FROM svyazi JOIN tochki "
+            "ON svyazi.id_finish = tochki.id "
+            "WHERE svyazi.id_start = ? AND (tochki.name = 'time_0' OR tochki.name = 'time')", (point,)).fetchall()
+        nodes = [row[0] for row in points]
+        if nodes:
+            work_dict[point] = nodes
+            create_dict(work_dict[point], work_dict)
     return work_dict
 
 
@@ -705,7 +700,7 @@ def proshivka_po_derevy(time_dlya_proshivki):
     # эти t0 и будут целевыми, по которым произойдёт отсеивание путей при поступательном движении к цели.
 
     # print(f'Создаётся целевое дерево, где time: {in_pamyat[0]}')
-    tree_celevoe = create_dict([in_pamyat[0]], 0)  # Получаем выборку связей в виде словаря (дерево)
+    tree_celevoe = create_dict([in_pamyat[0]])  # Получаем выборку связей в виде словаря (дерево)
     # print(f"Возможный целевой путь действий: ", all_paths(tree_celevoe, in_pamyat[0]))
     svyaz_s_1_celevoe = []   # Список всех tp, действия которых могут привести к (+) реакции
     celevoe_t0 = []
@@ -750,7 +745,7 @@ def proshivka_po_derevy(time_dlya_proshivki):
 
     # Этап прошивки по текущему состоянию системы
     # print(f'Создаётся дерево, где time: {time_dlya_proshivki}')
-    tree = create_dict([time_dlya_proshivki], 0)  # Получаем выборку связей в виде словаря (дерево)
+    tree = create_dict([time_dlya_proshivki])  # Получаем выборку связей в виде словаря (дерево)
     otricatelnie_deystviya = []
     novie_pyti = []
     vse_pyti_iz_proshivki = []   # Список всех путей из прошивки для передачи в анти_прошивку
@@ -930,7 +925,7 @@ def proshivka_po_derevy(time_dlya_proshivki):
                 izmenilos_li_sostyanie = posledniy_t_0
             else:
                 out_red("Состояние не изменилось и нет больше возможных путей - включается поиск обратных путей")
-                anti_proshivka(celevoe_t0, vse_pyti_iz_proshivki, svyaz_s_1_celevoe)   # Поиск обратных путей от целевых t0 для соединения через слой
+                proshivka_po_sloyam_i_potencialy(celevoe_t0, vse_pyti_iz_proshivki, svyaz_s_1_celevoe)   # Поиск обратных путей от целевых t0 для соединения через слой
                 izmenilos_li_sostyanie = 0
 
 
@@ -1022,6 +1017,131 @@ def anti_proshivka(celevie_t0, vse_pyti_iz_proshivki, svyaz_s_1_celevoe):
 
 
 
+def proshivka_po_sloyam_i_potencialy(celevie_t0, vse_pyti_iz_proshivki, svyaz_s_1_celevoe):
+    """Функция создаёт деревья, используя слои у точек, при этом состояние переходит в текущий экран, создаются связи со
+    всеми объектами на экране, соседние точки находятся, если имеется потенциал."""
+    global zolotoy_pyt
+
+    print('Работа функции "proshivka_po_sloyam_i_potencialy" ')
+    vse_sobrannie_pyti = []
+    # print(f"Переданы следующие целевые to: {celevie_t0} и все пути из прошивки: {vse_pyti_iz_proshivki}")
+
+    id_ekrana = tekyshiy_ekran()
+
+    tree_potencial = create_potecial_dict([id_ekrana])   # Для прошивки путей по текущему экрану найден его ID.
+    print(f'Собран словарь для построения путей: {tree_potencial}')
+
+    # Построение дерева из словаря
+    vse_potencialnie_pyti = all_paths(tree_potencial, id_ekrana)
+    print(f'Найдены все потенциальные пути: {vse_potencialnie_pyti}')
+
+    # Проверка - присутствуют ли элементы из потенциального пути vse_sobrannie_pyti1 в целевых to. Если да -
+    # то работать с этим путём, а если нет - перейти на другой путь.
+    for vse_sobrannie_pyti1 in sorted(vse_sobrannie_pyti, key=len):
+        print(f'Рассматривается путь: {vse_sobrannie_pyti1}')
+        proverka_prisutstviya = []
+        if vse_sobrannie_pyti1:
+            for element in vse_sobrannie_pyti1:
+                if element in celevie_t0:
+                    proverka_prisutstviya.append(element)
+            print(f'proverka_prisutstviya в потенциальном пути такая: {proverka_prisutstviya}')
+        if proverka_prisutstviya:
+            zolotoy_pyt = vse_sobrannie_pyti1
+            print(f'Золотой путь теперь такой: {zolotoy_pyt}')
+            poisk_tp_v_pervoy_tochke_pyti = tuple(cursor.execute("SELECT svyazi.id_finish "
+                                                                 "FROM svyazi JOIN tochki "
+                                                                 "ON svyazi.id_finish = tochki.id "
+                                                                 "WHERE svyazi.id_start = ? AND tochki.name = 'time_p'",
+                                                                 (zolotoy_pyt[0],)))
+            print(f'Применить первое действие: {poisk_tp_v_pervoy_tochke_pyti} в золотом пути: {zolotoy_pyt}')
+            if poisk_tp_v_pervoy_tochke_pyti:
+                for poisk_tp_v_pervoy_tochke_pyti1 in poisk_tp_v_pervoy_tochke_pyti:
+                    # print(f"Совершается действие {poisk_tp_v_pervoy_tochke_pyti1}")
+                    sbor_deystviya(poisk_tp_v_pervoy_tochke_pyti1[0], svyaz_s_1_celevoe)
+                    print(f'Совершено первое действие {zolotoy_pyt} - удалить из списка')
+                    zolotoy_pyt.pop(0)
+            break
+
+def create_potecial_dict (point_list, work_dict=dict()):
+    """Создаётся словарь из точек и их слоёв, для последующего построения деревьев путей."""
+    # print(f'point_list = {point_list}')
+    for point in point_list:
+        # print(f'point = {point}')
+        # Выбрать id_finish из связей, где id_finish = ID в табл. точки и id_start = point и name = time_0.
+        points = cursor.execute(
+            "SELECT svyazi.id_finish "
+            "FROM svyazi JOIN tochki "
+            "ON svyazi.id_finish = tochki.id "
+            "WHERE svyazi.id_start = ? AND (tochki.name = 'time_0' OR tochki.name = 'time')", (point,)).fetchall()
+        nodes = [row[0] for row in points]
+        sloi_nodes = nodes
+        # Добавить к найденным соседям и их слои
+
+        # Для проверки поиска точек с puls
+        # nayti_tochka_puls = (cursor.execute("SELECT ID FROM tochki WHERE puls > 0"))
+        # for nayti_tochka_puls1 in nayti_tochka_puls:
+            # print(f'Найдены следующие точки с пульсом > 0: {nayti_tochka_puls1}')
+
+        print(f'Найдены точки: {nodes} для словаря и построения пути у которых puls>0 и name=time_0 и id_start = {point}')
+        if nodes:
+            for nodes1 in nodes:
+                # Найти name2 у рассматриваемой точки для поиска других слоёв
+                poisk_name2 = (cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (nodes1,))).fetchone()
+                if poisk_name2:
+                    for poisk_name21 in poisk_name2:
+                        # Найти точки с таким же name2
+                        poisk_tochki_s_name2 = (
+                            cursor.execute("SELECT ID FROM tochki WHERE name2 = ?", (poisk_name21,)))
+                        for poisk_tochki_s_name21 in poisk_tochki_s_name2:
+                            print(f'Найдена точка слоя (с таким же name2): {poisk_tochki_s_name21}, '
+                                  f'а изначально рассматривалась: {nodes1}')
+                            if poisk_tochki_s_name21 not in sloi_nodes:
+                                sloi_nodes.append(poisk_tochki_s_name21[0])
+                                print(f'Добавлена в nodes: {nodes} точка слоя: {poisk_tochki_s_name21[0]}')
+            work_dict[point] = sloi_nodes
+            create_potecial_dict(work_dict[point], work_dict)
+    return work_dict
+
+
+def tekyshiy_ekran():
+    # Находится ID текущего экрана.
+    id_ekran = screen.screenshot_hash
+    new_name_id_ekran = "id_ekran_" + str(id_ekran)
+    print(f'Новый нейм экрана: {new_name_id_ekran}')
+    poisk_id_ekrana = cursor.execute("SELECT ID FROM tochki WHERE name = ?", (new_name_id_ekran,)).fetchone()
+    if poisk_id_ekrana:
+        for poisk_id_ekrana1 in poisk_id_ekrana:
+            id_tekushiy_ekran = poisk_id_ekrana1
+            print(f'Текущий экран: {id_tekushiy_ekran}')
+        return id_tekushiy_ekran
+
+
+
+def zazhiganie_obiektov_na_ekrane():
+    # Если экран обновился (определяется по времени), то обновляем точки
+    # last_update_screen = screen.last_update
+    # Деактивация точек относящихся к элементам экрана
+    cursor.execute("UPDATE 'tochki' SET work = 0 WHERE type = 'mozg' AND length(name) = 16")
+    # Активация точек относящихся к элементам экрана, которые есть на текущем экране
+    list_goryashih_in = []
+    for h in screen.get_all_hashes():
+        cursor.execute("UPDATE 'tochki' SET work = 1 WHERE type = 'mozg' AND name = ?", (h,))
+        goryashie_in = cursor.execute("SELECT ID FROM tochki WHERE work = 1 AND type = 'mozg' "
+                                      "AND name = ?", (h,)).fetchall()
+        if goryashie_in:
+            list_goryashih_in.append(goryashie_in)
+    print(f'Имеются следующие объекты на экране записанные в БД: {list_goryashih_in}')
+    print(f'in_pamyat сейчас такая: {in_pamyat}, а in_pamyat_name: {in_pamyat_name}')
+    id_ekrana = tekyshiy_ekran()
+    if id_ekrana:
+        for list_goryashih_in1 in list_goryashih_in:
+            for list_goryashih_in2 in list_goryashih_in1:
+                print(f'Для создания связи передаются следующие точки id_ekrana: {id_ekrana}, list_goryashih_in1: {list_goryashih_in2[0]}')
+                #todo Для построения дерева потенциальных путей необходимо соединение с t, а не c (in), а это ID+2
+                sozdat_svyaz(id_ekrana, list_goryashih_in2[0]+2, 1)
+
+
+
 def proverka_nalichiya_svyazi_s_img(tochka):
     """Проверяется точка пути на наличие связей с объектом (иконкой, изображением), которого на этом экране нет"""
     # 22.09.23 - ограничение на зажигание (t) и (tp), если не горят соответствующие (in) объекты:
@@ -1049,6 +1169,7 @@ def proverka_nalichiya_svyazi_s_img(tochka):
                 if nayti_in:
                     for nayti_in1 in nayti_in:
                         return nayti_in1[0]
+
 
 
 def sbor_deystviya(tp, celevoe_tp):
@@ -1161,6 +1282,7 @@ def sbor_deystviya(tp, celevoe_tp):
         print("")
 
 
+
 def sozdat_svyaz_s_4():
     # функция берёт posl_tp и соединяет с (4), если такой связи нет - тем самым создавая сущность
     global posledniy_tp
@@ -1172,6 +1294,7 @@ def sozdat_svyaz_s_4():
         sozdat_svyaz(posledniy_tp, 4, 1)
 
 
+
 def sozdat_svyaz_s_4_ot_luboy_tochki(tochka):
     # в функцию передаётся ID точки и соединяет с (4), если такой связи нет - тем самым создавая сущность
     poisk_svyazi_s_4 = tuple(cursor.execute("SELECT ID FROM svyazi WHERE id_start = ? AND id_finish = 4", (tochka,)))
@@ -1180,9 +1303,10 @@ def sozdat_svyaz_s_4_ot_luboy_tochki(tochka):
         sozdat_svyaz(tochka, 4, 1)
 
 
+
 def ymenshenie_signal():
     # функция находит все (.), где сигнал более 0 и уменьшает на 0,1 или на 0,01
-    ymenshenie_signal_ = tuple(cursor.execute("SELECT ID FROM tochki WHERE signal >= 0.01"))
+    # ymenshenie_signal_ = tuple(cursor.execute("SELECT ID FROM tochki WHERE signal >= 0.01"))
     cursor.execute("UPDATE tochki SET signal = signal - 0.1 WHERE signal >= 0.1 AND signal < 1")
     cursor.execute("UPDATE tochki SET signal = signal - 0.01 WHERE signal >= 0 AND signal < 0.1")
     # print("Уменьшен сигнал у следующих точек: ", ymenshenie_signal_)
@@ -1215,6 +1339,7 @@ def rasprostranenie_potenciala():
     точек. Чтобы оказать влияние на выбор следующего действия (зажигания точки действия)."""
     poisk_puls = tuple(cursor.execute("SELECT ID FROM tochki WHERE puls > 0"))
     if poisk_puls:
+        # print(f'Найдены следующие точки с puls > 0: {poisk_puls}')
         for poisk_puls1 in poisk_puls:
             # print(f'Для передачи потенциала рассматривается точка: {poisk_puls1}')
             # сложный поиск, где находится ID start, если задан id_finish, при этом id_start должен быть с name = time_0
@@ -1248,7 +1373,7 @@ def rasprostranenie_potenciala():
                     # Проверка увеличение пульса
                     # puls_proverka = tuple(cursor.execute("SELECT puls FROM tochki WHERE ID = ?", poisk_obratnogo_soseda1))
                     # for puls_proverka1 in puls_proverka:
-                        # print(f"Старый пульс = {puls_stariy[0]}, передаваемый: {new_puls}, теперь он равен: {puls_proverka1}")
+                    #     print(f"Старый пульс = {puls_stariy[0]}, передаваемый: {new_puls}, теперь он равен: {puls_proverka1}")
 
                     # 24.01.24 - Добавление распространения потенциала на другие точки из слоя
                     # Найти name2 у рассматриваемой точки
@@ -1286,7 +1411,8 @@ def rasprostranenie_potenciala():
                                                    (poisk_tochki_s_name21[0],))
 
             # обнуляется родительский puls
-            cursor.execute("UPDATE tochki SET puls = puls -0.5 WHERE ID = ?", poisk_puls1)   # 29.01.24 - Добавил не обнуление, а уменьшение на -1 пульса
+            cursor.execute("UPDATE tochki SET puls = puls -0.5 WHERE ID = ?", poisk_puls1)   # 29.01.24 - Добавил не обнуление, а уменьшение на -0.5 пульса
+
 
 
 def pereimenovat_name2_y_to(ID, rod2):
@@ -1370,26 +1496,7 @@ if __name__ == '__main__':
             report.save(scr)  # Сохранение скриншота и элемента
             # -------------------------------
 
-        # Если экран обновился (определяется по времени), то обновляем точки
-        # last_update_screen = screen.last_update
-        # Деактивация точек относящихся к элементам экрана
-        cursor.execute("UPDATE 'tochki' SET work = 0 WHERE type = 'mozg' AND length(name) = 16")
-        # Активация точек относящихся к элементам экрана, которые есть на текущем экране
-        list_goryashih_in = []
-        for h in screen.get_all_hashes():
-            cursor.execute("UPDATE 'tochki' SET work = 1 WHERE type = 'mozg' AND name = ?", (h,))
-            goryashie_in = cursor.execute("SELECT ID FROM tochki WHERE work = 1 AND type = 'mozg' "
-                                          "AND name = ?", (h,)).fetchall()
-            if goryashie_in:
-                list_goryashih_in.append(goryashie_in)
-        print(f'Имеются следующие объекты на экране записанные в БД: {list_goryashih_in}')
-        print(f'in_pamyat сейчас такая: {in_pamyat}, а in_pamyat_name: {in_pamyat_name}')
-
-        # -------------------------------------------------------
-        # print(f'Найдены элементы на экране (все возможные): {screen.get_all_hashes()}')
-        # Прочитать из БД и распечатать точки, которые могли быть изменены
-        # points = cursor.execute("SELECT ID FROM tochki WHERE work = 1").fetchall()
-        # print(f"Горят следующие точки: {points}")
+        zazhiganie_obiektov_na_ekrane()
 
         schetchik += 1
         print('************************************************************************')
