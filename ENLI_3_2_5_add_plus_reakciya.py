@@ -632,9 +632,11 @@ def poisk_pol_i_otric_reakciy(ID):
 
 def create_dict(point_list, work_dict=dict()):
     """ Рекурсивная функция получающая все связи в виде словаря из БД """
-    # print(f'point_list = {point_list}')
+    print("*********************************************")
+    print('Работа функции create dict')
+    print(f'point_list = {point_list}')
     for point in point_list:
-        # print(f'point = {point}')
+        print(f'point = {point}')
         # Выбрать id_finish из связей, где id_finish = ID в табл. точки и id_start = point и name = time_0.
         points = cursor.execute(
             "SELECT svyazi.id_finish "
@@ -642,9 +644,12 @@ def create_dict(point_list, work_dict=dict()):
             "ON svyazi.id_finish = tochki.id "
             "WHERE svyazi.id_start = ? AND (tochki.name = 'time_0' OR tochki.name = 'time')", (point,)).fetchall()
         nodes = [row[0] for row in points]
+        print(f'nodes = {nodes}')
         if nodes:
             work_dict[point] = nodes
+            print(f'work_dict теперь такой: {work_dict}, передаётся в новый запуск этой же функции. Point_list = {work_dict[point]}')
             create_dict(work_dict[point], work_dict)
+    print("*********************************************************")
     return work_dict
 
 
@@ -1028,7 +1033,7 @@ def proshivka_po_sloyam_i_potencialy(celevie_t0, vse_pyti_iz_proshivki, svyaz_s_
 
     id_ekrana = tekyshiy_ekran()
 
-    tree_potencial = create_dict([id_ekrana])   # Для прошивки путей по текущему экрану найден его ID.
+    tree_potencial = create_potecial_dict([id_ekrana])   # Для прошивки путей по текущему экрану найден его ID.
     print(f'Собран словарь для построения путей: {tree_potencial}')
 
     # Построение дерева из словаря
@@ -1064,9 +1069,11 @@ def proshivka_po_sloyam_i_potencialy(celevie_t0, vse_pyti_iz_proshivki, svyaz_s_
 
 def create_potecial_dict (point_list, work_dict=dict()):
     """Создаётся словарь из точек и их слоёв, для последующего построения деревьев путей."""
-    # print(f'point_list = {point_list}')
+    print('**************************************************')
+    print('Работа функции create_potecial_dict')
+    print(f'point_list = {point_list}')
     for point in point_list:
-        # print(f'point = {point}')
+        print(f'point = {point}')
         # Выбрать id_finish из связей, где id_finish = ID в табл. точки и id_start = point и name = time_0.
         points = cursor.execute(
             "SELECT svyazi.id_finish "
@@ -1074,7 +1081,8 @@ def create_potecial_dict (point_list, work_dict=dict()):
             "ON svyazi.id_finish = tochki.id "
             "WHERE svyazi.id_start = ? AND (tochki.name = 'time_0' OR tochki.name = 'time')", (point,)).fetchall()
         nodes = [row[0] for row in points]
-        sloi_nodes = nodes
+        print(f'nodes = {nodes}')
+        # sloi_nodes = nodes
         # Добавить к найденным соседям и их слои
 
         # Для проверки поиска точек с puls
@@ -1086,19 +1094,23 @@ def create_potecial_dict (point_list, work_dict=dict()):
         if nodes:
             for nodes1 in nodes:
                 # Найти name2 у рассматриваемой точки для поиска других слоёв
-                poisk_name2 = (cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (nodes1,))).fetchone()
+                poisk_name2 = (cursor.execute("SELECT name2 FROM tochki WHERE ID = ? AND name = 'time_0'", (nodes1,))).fetchone()
                 if poisk_name2:
                     for poisk_name21 in poisk_name2:
-                        # Найти точки с таким же name2
-                        poisk_tochki_s_name2 = (
-                            cursor.execute("SELECT ID FROM tochki WHERE name2 = ?", (poisk_name21,)))
-                        for poisk_tochki_s_name21 in poisk_tochki_s_name2:
-                            print(f'Найдена точка слоя (с таким же name2): {poisk_tochki_s_name21}, '
-                                  f'а изначально рассматривалась: {nodes1}')
-                            if poisk_tochki_s_name21 not in sloi_nodes:
-                                sloi_nodes.append(poisk_tochki_s_name21[0])
-                                print(f'Добавлена в nodes: {nodes} точка слоя: {poisk_tochki_s_name21[0]}')
-            work_dict[point] = sloi_nodes
+                        print(f'poisk_name21 = {poisk_name21}')
+                        if poisk_name21 != '':
+                            # Найти точки с таким же name2
+                            poisk_tochki_s_name2 = (
+                                cursor.execute("SELECT ID FROM tochki WHERE name2 = ? AND name = 'time_0'", (poisk_name21,)))
+                            for poisk_tochki_s_name21 in poisk_tochki_s_name2:
+                                print(f'Найдена точка слоя (с таким же name2): {poisk_tochki_s_name21[0]}, '
+                                      f'а изначально рассматривалась: {nodes1}')
+                                if poisk_tochki_s_name21[0] != nodes1:
+                                    if poisk_tochki_s_name21[0] not in nodes:
+                                        nodes.append(poisk_tochki_s_name21[0])
+                                        print(f'Добавлена в nodes: {nodes} точка слоя: {poisk_tochki_s_name21[0]}')
+            work_dict[point] = nodes
+            print(f'В повторный запуск функции передаётся work_dict[point]: {work_dict[point]} и work_dict: {work_dict}')
             create_potecial_dict(work_dict[point], work_dict)
     return work_dict
 
@@ -1137,7 +1149,7 @@ def zazhiganie_obiektov_na_ekrane():
         for list_goryashih_in1 in list_goryashih_in:
             for list_goryashih_in2 in list_goryashih_in1:
                 print(f'Для создания связи передаются следующие точки id_ekrana: {id_ekrana}, list_goryashih_in1: {list_goryashih_in2[0]}')
-                #todo Для построения дерева потенциальных путей необходимо соединение с t, а не c (in), а это ID+2
+                # Для построения дерева потенциальных путей необходимо соединение с t, а не c (in), а это ID+2
                 sozdat_svyaz(id_ekrana, list_goryashih_in2[0]+2, 1)
 
 
@@ -1321,14 +1333,14 @@ def perenos_sostoyaniya():
     global posledniy_tp
     id_ekran = screen.screenshot_hash
     new_name_id_ekran = "id_ekran_" + str(id_ekran)
-    print(f'Новый нейм экрана: {new_name_id_ekran}')
+    print(f'Новый нейм экрана в перенос состояния: {new_name_id_ekran}')
     poisk_bykvi_iz_vvedeno_v2(new_name_id_ekran)
     print(f"Сейчас такой экран ID: {posledniy_t}, старый экран такой: {old_ekran}")
     if old_ekran != posledniy_t:
         proverka_nalichiya_svyazey_t_t_o()
         old_ekran = posledniy_t
-    else:
-        print('!!!!!!!!!!!!!ВНИМАНИЕ!!!!!!ЭКРАН НЕ ИЗМЕНИЛСЯ!!!!!!!!!!!')
+    # else:
+        # print('!!!!!!!!!!!!!ВНИМАНИЕ!!!!!!ЭКРАН НЕ ИЗМЕНИЛСЯ!!!!!!!!!!!')
     posledniy_t = 0
     posledniy_tp = 0
 
@@ -1466,7 +1478,7 @@ if __name__ == '__main__':
     last_update_screen = 0  # Время последнего обновления экрана
     schetchik = 0
     most_new = 0
-    time.sleep(0.1)
+    time.sleep(0.5)
 
     in_pamyat = []   # 20.12.23 - Список для хранения входящих ID (in)
     in_pamyat_name = []   #12.01.24 - Список для хранения входящих в виде name, а не ID
@@ -1488,15 +1500,16 @@ if __name__ == '__main__':
         # if screen.last_update != last_update_screen:
         screen.get_screen()
         scrsh = screen.screenshot
-        if scrsh is not None:
-            # -------------------------------
-            # Сохранение изображений в отчете
-            report.set_folder('update_points')  # Инициализация папки для сохранения изображений
-            scr = report.circle_an_object(scrsh, screen.hashes_elements.values())  # Обводим элементы
-            report.save(scr)  # Сохранение скриншота и элемента
+        # if scrsh is not None:
+        #     # -------------------------------
+        #     # Сохранение изображений в отчете
+        #     report.set_folder('update_points')  # Инициализация папки для сохранения изображений
+        #     scr = report.circle_an_object(scrsh, screen.hashes_elements.values())  # Обводим элементы
+        #     report.save(scr)  # Сохранение скриншота и элемента
             # -------------------------------
 
         zazhiganie_obiektov_na_ekrane()
+        perenos_sostoyaniya()   # 02.02.24 - Снова добавил в срабатывания в каждый счётчик.
 
         schetchik += 1
         print('************************************************************************')
@@ -1795,7 +1808,7 @@ if __name__ == '__main__':
 
                 schetchik = 0
 
-                perenos_sostoyaniya()   # 30.11.23 - убрано из срабатывания в каждый счётчик
+                perenos_sostoyaniya()   # 30.11.23 - убрано из срабатывания в каждый счётчик, 02.02.24 - снова добавлена в срабатывание в каждый счётчик
 
                 # 28.11.23 - Если за 10 счётчиков не произошло никаких реакций, действий - то posl_t0 становится
                 # old_ekran, а если произошло - продолжаются действия и posl_t0 не изменяется
