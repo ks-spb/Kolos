@@ -1028,7 +1028,7 @@ def proshivka_po_sloyam_i_potencialy(celevie_t0, vse_pyti_iz_proshivki, svyaz_s_
 
     id_ekrana = tekyshiy_ekran()
 
-    tree_potencial = create_potecial_dict([id_ekrana])   # Для прошивки путей по текущему экрану найден его ID.
+    tree_potencial = create_dict([id_ekrana])   # Для прошивки путей по текущему экрану найден его ID.
     print(f'Собран словарь для построения путей: {tree_potencial}')
 
     # Построение дерева из словаря
