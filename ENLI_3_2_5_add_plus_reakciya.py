@@ -1043,16 +1043,17 @@ def proshivka_po_sloyam_i_potencialy(celevie_t0, vse_pyti_iz_proshivki, svyaz_s_
 
     # Проверка - присутствуют ли элементы из потенциального пути vse_sobrannie_pyti1 в целевых to. Если да -
     # то работать с этим путём, а если нет - перейти на другой путь.
-    for path_potancial in all_paths(tree_potencial, id_ekrana):
-        new_path_potencial = sorted(path_potancial, key=len)
-        new_path_potencial = [new_path_potencial[2:]]
+    vse_potencial_pyti = all_paths(tree_potencial, id_ekrana)
+    print(f'vse_potencial_pyti: {sorted(vse_potencial_pyti, key=len)}')
+    for path_potancial in sorted(vse_potencial_pyti, key=len):
+        new_path_potencial = path_potancial[2:]
         proverka_prisutstviya = []
         print(f'Рассматривается путь (была сортировка и укорочение: {new_path_potencial}')
         if new_path_potencial:
             for element in new_path_potencial:
                 if element in celevie_t0:
                     proverka_prisutstviya.append(element)
-            print(f'proverka_prisutstviya в потенциальном пути такая: {proverka_prisutstviya}')
+            print(f'proverka_prisutstviya целевых t0: {celevie_t0} в потенциальном пути такая: {proverka_prisutstviya}')
         if proverka_prisutstviya:
             zolotoy_pyt = new_path_potencial
             print(f'Золотой путь теперь такой: {zolotoy_pyt}')
@@ -1071,10 +1072,10 @@ def proshivka_po_sloyam_i_potencialy(celevie_t0, vse_pyti_iz_proshivki, svyaz_s_
             break
 
 
-def create_potencial_dict (point_list, work_dict=dict()):
+def create_potencial_dict(point_list, work_dict=dict()):
     """Создаётся словарь из точек и их слоёв, для последующего построения деревьев путей."""
-    # print('**************************************************')
-    # print(f'Работа функции create_potencial_dict, были переданы point_list = {point_list} и work_dict = {work_dict}')
+    print('**************************************************')
+    print(f'Работа функции create_potencial_dict, были переданы point_list = {point_list} и work_dict = {work_dict}')
     # print(f'point_list = {point_list}')
     if point_list != []:
         for point in point_list:
@@ -1085,22 +1086,21 @@ def create_potencial_dict (point_list, work_dict=dict()):
                 "FROM svyazi JOIN tochki "
                 "ON svyazi.id_finish = tochki.id "
                 "WHERE svyazi.id_start = ? AND (tochki.name = 'time_0' OR tochki.name = 'time')", (point,)).fetchall()
-            if points:
-                nodes = [row[0] for row in points]
-                # print(f'nodes по основной точке = {nodes}')
+            nodes = [row[0] for row in points]
+            # print(f'nodes по основной точке = {nodes}')
 
             # Добавить поиск соседей и от других точек слоя
             poisk_name2 = (
-                cursor.execute("SELECT name2 FROM tochki WHERE ID = ? AND name = 'time_0'", (point,))).fetchone()
+                cursor.execute("SELECT name2 FROM tochki WHERE ID = ? AND name = 'time_0' AND name2 LIKE '%id_ekran%'", (point,))).fetchone()
             if poisk_name2:
                 for poisk_name21 in poisk_name2:
-                    # print(f'poisk_name21 = {poisk_name21}')
+                    print(f'poisk_name21 = {poisk_name21}')
                     if poisk_name21 != '':
                         # Найти точки с таким же name2
                         poisk_tochki_s_name2 = (
                             cursor.execute("SELECT ID FROM tochki WHERE name2 = ? AND name = 'time_0'", (poisk_name21,)))
                         for poisk_tochki_s_name21 in poisk_tochki_s_name2:
-                            # print(f'Найдены следующие точки: {poisk_tochki_s_name21}, которые являются слоями для рассматриваемой точки: {point}')
+                            print(f'Найдены следующие точки: {poisk_tochki_s_name21}, которые являются слоями для рассматриваемой точки: {point}')
                             if poisk_tochki_s_name21[0] != point:
                                 # print(f'Ищутся связи и у точки слоя: {poisk_tochki_s_name21[0]}')
                                 points_name2 = cursor.execute(
@@ -1123,18 +1123,18 @@ def create_potencial_dict (point_list, work_dict=dict()):
 
             # print(f'Найдены точки: {nodes} для словаря и построения пути у которых puls>0 и name=time_0 и id_start = {point}')
             # Проверяется есть ли искомая point в словаре
-            if work_dict:
+            if nodes:
                 if point not in work_dict:
                     # print(f'point: {point} не найдена в словаре: {work_dict}')
                     work_dict[point] = nodes
                     # print(f'В повторный запуск функции передаётся work_dict[point]: {work_dict[point]} и work_dict: {work_dict}')
                     create_potencial_dict(work_dict[point], work_dict)
-            else:
-                # print(f'work_dict - пустой')
-                work_dict[point] = nodes
-                # print(
-                    # f'В повторный запуск функции передаётся work_dict[point]: {work_dict[point]} и work_dict: {work_dict}')
-                create_potencial_dict(work_dict[point], work_dict)
+            # else:
+            #     # print(f'work_dict - пустой')
+            #     work_dict[point] = nodes
+            #     # print(
+            #         # f'В повторный запуск функции передаётся work_dict[point]: {work_dict[point]} и work_dict: {work_dict}')
+            #     create_potencial_dict(work_dict[point], work_dict)
     # else:
         # print('закончился перебор вариантов, начался новый')
     return work_dict
