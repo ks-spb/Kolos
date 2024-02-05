@@ -758,7 +758,7 @@ def proshivka_po_derevy(time_dlya_proshivki):
     tree = create_dict([time_dlya_proshivki])  # Получаем выборку связей в виде словаря (дерево)
     otricatelnie_deystviya = []
     novie_pyti = []
-    vse_pyti_iz_proshivki = []   # Список всех путей из прошивки для передачи в анти_прошивку
+    # vse_pyti_iz_proshivki = []   # Список всех путей из прошивки для передачи в анти_прошивку
     # print(f'Дерево действий такое: {tree}')
     # print(f"Текущий t0 = {posledniy_t_0}. Возможный путь действий: ", all_paths(tree, time_dlya_proshivki))
     # print("Количество возможных путей действий: ", len(all_paths(tree, posledniy_t_0)))
@@ -771,25 +771,25 @@ def proshivka_po_derevy(time_dlya_proshivki):
         # Проверка первая точка пути является ли объектом и есть ли он на экране:
         if pyti1:
             svyaz_s_img_pyti = proverka_nalichiya_svyazi_s_img(pyti1[0])
-            print(f'Проверяется - связана следующая точка с объектом на экране, который отсутствует')
+            # print(f'Проверяется - связана следующая точка с объектом на экране, который отсутствует')
             if not svyaz_s_img_pyti:
-                print("Либо объект есть на экране, либо точка не связана с объектом")
+                # print("Либо объект есть на экране, либо точка не связана с объектом")
                 if len(zolotoy_pyt) != 0:
                     if len(zolotoy_pyt) > len(pyti1):
-                        print(f'Путь: {pyti1} добавлен в рассматриваемые - он короче, чем золотой')
+                        # print(f'Путь: {pyti1} добавлен в рассматриваемые - он короче, чем золотой')
                         novie_pyti.append(pyti1)
-                    else:
-                        print(f'Путь: {pyti1} не добавлен в новые пути - т.к. он длиннее золотого')
+                    # else:
+                        # print(f'Путь: {pyti1} не добавлен в новые пути - т.к. он длиннее золотого')
                 else:
-                    print(f'Путь: {pyti1} добавлен в новые пути - т.к. длина золотого пути = 0')
+                    # print(f'Путь: {pyti1} добавлен в новые пути - т.к. длина золотого пути = 0')
                     novie_pyti.append(pyti1)
                 # Вместо t0 в антипрошивку передаются rod2 этих t0.
-                pyt_rod2 = zapis_rod2_vmesto_t0_v_pyti(pyti1)
-                vse_pyti_iz_proshivki.append(pyt_rod2)
+                # pyt_rod2 = zapis_rod2_vmesto_t0_v_pyti(pyti1)
+                # vse_pyti_iz_proshivki.append(pyt_rod2)
     if zolotoy_pyt:
         svyaz_s_img_zolotogo_pyti = proverka_nalichiya_svyazi_s_img(zolotoy_pyt[0])
-        print(f'Проверяется следующий шаг золотого пути: {zolotoy_pyt} - связан ли он с объектом и имеется ли он на экране:'
-              f'{svyaz_s_img_zolotogo_pyti}. Если пусто - добавляется во все пути, иначе - обнуляется золотой путь.')
+        # print(f'Проверяется следующий шаг золотого пути: {zolotoy_pyt} - связан ли он с объектом и имеется ли он на экране:'
+        #       f'{svyaz_s_img_zolotogo_pyti}. Если пусто - добавляется во все пути, иначе - обнуляется золотой путь.')
         if not svyaz_s_img_zolotogo_pyti:
             novie_pyti.append(zolotoy_pyt)   # 24.01.24 - Добавлен золотой путь в список всех путей.
         else:
@@ -799,7 +799,7 @@ def proshivka_po_derevy(time_dlya_proshivki):
         svyaz_s_2 = []
         # 18.01.24 - Отсеивание пути, если он не содержит целевые to.
         # 22.12.23 Удаляются 1 и 2 запись в пути. Везде вместо path вставил new_path_3_i_bolee
-        print(f'Рассматривается путь: {new_path_3_i_bolee}')
+        # print(f'Рассматривается путь: {new_path_3_i_bolee}')
         # Проверка - присутствуют ли элементы из проверяемого пути new_path_3_i_bolee в целевых to. Если да -
         # то работать с этим путём, а если нет - перейти на другой путь.
         proverka_prisutstviya = []
@@ -807,7 +807,7 @@ def proshivka_po_derevy(time_dlya_proshivki):
             for element in new_path_3_i_bolee:
                 if element in celevoe_t0:
                     proverka_prisutstviya.append(element)
-            print(f'proverka_prisutstviya такая: {proverka_prisutstviya}')
+            # print(f'proverka_prisutstviya такая: {proverka_prisutstviya}')
             if proverka_prisutstviya:
                 # 18.01.24 - Для проверки действия рассматривается только первый шаг из дерева, чтобы можно было
                 # выполнить последовательность, а не перескакивать шаги
@@ -848,16 +848,16 @@ def proshivka_po_derevy(time_dlya_proshivki):
                                     if poisk_tp1[0] not in otricatelnie_deystviya:
                                         otricatelnie_deystviya.append(poisk_tp1[0])
 
-                print(f'Собраны следующие списки: svyaz_s_1 - {svyaz_s_1}, svyaz_s_2 - {svyaz_s_2}, '
-                      f'otricatelnie_deystviya - {otricatelnie_deystviya}')
+                # print(f'Собраны следующие списки: svyaz_s_1 - {svyaz_s_1}, svyaz_s_2 - {svyaz_s_2}, '
+                #       f'otricatelnie_deystviya - {otricatelnie_deystviya}')
 
                 # 22.01.24 - Внедрён золотой путь.
                 # print(f'Длина золотого пути: {len(zolotoy_pyt)}, длина нового пути: {len(new_path_3_i_bolee)}')
                 if len(zolotoy_pyt) == 0:
-                    print(f'Путь: {new_path_3_i_bolee} теперь золотой путь (был пустым)')
+                    # print(f'Путь: {new_path_3_i_bolee} теперь золотой путь (был пустым)')
                     zolotoy_pyt = new_path_3_i_bolee
                 elif len(zolotoy_pyt) > len(new_path_3_i_bolee):
-                    print(f'Путь: {new_path_3_i_bolee} стал золотым, а был: {zolotoy_pyt} т.к. новый короче')
+                    # print(f'Путь: {new_path_3_i_bolee} стал золотым, а был: {zolotoy_pyt} т.к. новый короче')
                     zolotoy_pyt = new_path_3_i_bolee
         if found:
             break  # выход из внешнего цикла
@@ -885,8 +885,8 @@ def proshivka_po_derevy(time_dlya_proshivki):
         # Этот список вставить в начало in_pamyat вместо первого рассматриваемого элемента
         if in_pamyat_name:
             # удаляется первый элемент из in_pamyat и на место него вставляются элементы из in_pamyat_name
-            print(f'удаляется первый элемент из in_pamyat: {in_pamyat} и на место него вставляются элементы из '
-                  f'in_pamyat_name: {in_pamyat_name}')
+            # print(f'удаляется первый элемент из in_pamyat: {in_pamyat} и на место него вставляются элементы из '
+            #       f'in_pamyat_name: {in_pamyat_name}')
             in_pamyat.pop(0)
             naydennie_id_name = []
             for in_pamyat_name1 in in_pamyat_name:
@@ -899,7 +899,7 @@ def proshivka_po_derevy(time_dlya_proshivki):
                 posledniy_t = 0
             # print(f'naydennie_id_name перед совмещением с in_pamyat: {naydennie_id_name}')
             in_pamyat = naydennie_id_name + in_pamyat
-            print(f'Получается следующая in_pamyat: {in_pamyat}')
+            # print(f'Получается следующая in_pamyat: {in_pamyat}')
             in_pamyat_name = []
             # создать новую (t0), где связь будет с первым элементом in_pamyat
             new_t0 = sozdat_new_tochky('time_0', 1, 'time', 'zazech_sosedey', 1, 0,
@@ -920,11 +920,11 @@ def proshivka_po_derevy(time_dlya_proshivki):
             # Проверить - текущее состояние - это тоже самое состояние, связанное с in_pamyat[0]. Найти связь м/у
             # первым in_pamyat и t0. Если t0 = текущему posledniy_t0 - то состояние не переводится, а включается
             # концентратор действий.
-            print(f'Проверка - изменилось ли состояние первого in_pamayt = {izmenilos_li_sostyanie}, равна ли '
-                  f'posledniy_t_0 = {posledniy_t_0}?')
+            # print(f'Проверка - изменилось ли состояние первого in_pamayt = {izmenilos_li_sostyanie}, равна ли '
+            #       f'posledniy_t_0 = {posledniy_t_0}?')
             if izmenilos_li_sostyanie != posledniy_t_0:
-                print(f"Состояние изменилось и нет возможных путей действий... Состояние принудительно переводится "
-                      f"в 1 элемент in_pamyat: {in_pamyat}")
+                # print(f"Состояние изменилось и нет возможных путей действий... Состояние принудительно переводится "
+                #       f"в 1 элемент in_pamyat: {in_pamyat}")
                 new_t0 = sozdat_new_tochky('time_0', 1, 'time', 'zazech_sosedey', 1, 0,
                                            0, posledniy_t_0, in_pamyat[0], '')
                 sozdat_svyaz(posledniy_t_0, new_t0, 1)
@@ -935,7 +935,7 @@ def proshivka_po_derevy(time_dlya_proshivki):
                 izmenilos_li_sostyanie = posledniy_t_0
             else:
                 out_red("Состояние не изменилось и нет больше возможных путей - включается поиск обратных путей")
-                proshivka_po_sloyam_i_potencialy(celevoe_t0, vse_pyti_iz_proshivki, svyaz_s_1_celevoe)   # Поиск обратных путей от целевых t0 для соединения через слой
+                proshivka_po_sloyam_i_potencialy(celevoe_t0, svyaz_s_1_celevoe)   # Поиск обратных путей от целевых t0 для соединения через слой
                 izmenilos_li_sostyanie = 0
 
 
@@ -966,7 +966,7 @@ def zapis_rod2_vmesto_t0_v_pyti(vse_pyti_iz_proshivki):
         nayti_rod2 = cursor.execute("SELECT rod2 FROM tochki WHERE ID = ?", (vse_pyti_iz_proshivki1,))
         for nayti_rod21 in nayti_rod2:
             pyt_rod2.append(nayti_rod21[0])
-    print(f'Вместо пути: {vse_pyti_iz_proshivki} был сделан путь из rod2: {pyt_rod2}')
+    # print(f'Вместо пути: {vse_pyti_iz_proshivki} был сделан путь из rod2: {pyt_rod2}')
     return pyt_rod2
 
 
@@ -1027,19 +1027,17 @@ def anti_proshivka(celevie_t0, vse_pyti_iz_proshivki, svyaz_s_1_celevoe):
 
 
 
-def proshivka_po_sloyam_i_potencialy(celevie_t0, vse_pyti_iz_proshivki, svyaz_s_1_celevoe):
+def proshivka_po_sloyam_i_potencialy(celevie_t0, svyaz_s_1_celevoe):
     """Функция создаёт деревья, используя слои у точек, при этом состояние переходит в текущий экран, создаются связи со
     всеми объектами на экране, соседние точки находятся, если имеется потенциал."""
     global zolotoy_pyt
 
     print('Работа функции "proshivka_po_sloyam_i_potencialy" ')
-    vse_sobrannie_pyti = []
-    # print(f"Переданы следующие целевые to: {celevie_t0} и все пути из прошивки: {vse_pyti_iz_proshivki}")
 
     id_ekrana = tekyshiy_ekran()
 
     tree_potencial = create_potencial_dict([id_ekrana])   # Для прошивки путей по текущему экрану найден его ID.
-    print(f'Собран словарь для построения путей: {tree_potencial}')
+    print(f'Собран словарь для построения потенциальных путей: {tree_potencial}')
 
     # Проверка - присутствуют ли элементы из потенциального пути vse_sobrannie_pyti1 в целевых to. Если да -
     # то работать с этим путём, а если нет - перейти на другой путь.
@@ -1048,12 +1046,12 @@ def proshivka_po_sloyam_i_potencialy(celevie_t0, vse_pyti_iz_proshivki, svyaz_s_
     for path_potancial in sorted(vse_potencial_pyti, key=len):
         new_path_potencial = path_potancial[2:]
         proverka_prisutstviya = []
-        print(f'Рассматривается путь (была сортировка и укорочение: {new_path_potencial}')
+        # print(f'Рассматривается путь (была сортировка и укорочение: {new_path_potencial}')
         if new_path_potencial:
             for element in new_path_potencial:
                 if element in celevie_t0:
                     proverka_prisutstviya.append(element)
-            print(f'proverka_prisutstviya целевых t0: {celevie_t0} в потенциальном пути такая: {proverka_prisutstviya}')
+            # print(f'proverka_prisutstviya целевых t0: {celevie_t0} в потенциальном пути такая: {proverka_prisutstviya}')
         if proverka_prisutstviya:
             zolotoy_pyt = new_path_potencial
             print(f'Золотой путь теперь такой: {zolotoy_pyt}')
@@ -1074,8 +1072,8 @@ def proshivka_po_sloyam_i_potencialy(celevie_t0, vse_pyti_iz_proshivki, svyaz_s_
 
 def create_potencial_dict(point_list, work_dict=dict()):
     """Создаётся словарь из точек и их слоёв, для последующего построения деревьев путей."""
-    print('**************************************************')
-    print(f'Работа функции create_potencial_dict, были переданы point_list = {point_list} и work_dict = {work_dict}')
+    # print('**************************************************')
+    # print(f'Работа функции create_potencial_dict, были переданы point_list = {point_list} и work_dict = {work_dict}')
     # print(f'point_list = {point_list}')
     if point_list != []:
         for point in point_list:
@@ -1094,13 +1092,13 @@ def create_potencial_dict(point_list, work_dict=dict()):
                 cursor.execute("SELECT name2 FROM tochki WHERE ID = ? AND name = 'time_0' AND name2 LIKE '%id_ekran%'", (point,))).fetchone()
             if poisk_name2:
                 for poisk_name21 in poisk_name2:
-                    print(f'poisk_name21 = {poisk_name21}')
+                    # print(f'poisk_name21 = {poisk_name21}')
                     if poisk_name21 != '':
                         # Найти точки с таким же name2
                         poisk_tochki_s_name2 = (
                             cursor.execute("SELECT ID FROM tochki WHERE name2 = ? AND name = 'time_0'", (poisk_name21,)))
                         for poisk_tochki_s_name21 in poisk_tochki_s_name2:
-                            print(f'Найдены следующие точки: {poisk_tochki_s_name21}, которые являются слоями для рассматриваемой точки: {point}')
+                            # print(f'Найдены следующие точки: {poisk_tochki_s_name21}, которые являются слоями для рассматриваемой точки: {point}')
                             if poisk_tochki_s_name21[0] != point:
                                 # print(f'Ищутся связи и у точки слоя: {poisk_tochki_s_name21[0]}')
                                 points_name2 = cursor.execute(
@@ -1144,12 +1142,12 @@ def tekyshiy_ekran():
     # Находится ID текущего экрана.
     id_ekran = screen.screenshot_hash
     new_name_id_ekran = "id_ekran_" + str(id_ekran)
-    print(f'Новый нейм экрана: {new_name_id_ekran}')
+    # print(f'Новый нейм экрана: {new_name_id_ekran}')
     poisk_id_ekrana = cursor.execute("SELECT ID FROM tochki WHERE name = ?", (new_name_id_ekran,)).fetchone()
     if poisk_id_ekrana:
         for poisk_id_ekrana1 in poisk_id_ekrana:
             id_tekushiy_ekran = poisk_id_ekrana1
-            print(f'Текущий экран: {id_tekushiy_ekran}')
+            # print(f'Текущий экран: {id_tekushiy_ekran}')
         return id_tekushiy_ekran
 
 
@@ -1173,7 +1171,7 @@ def zazhiganie_obiektov_na_ekrane():
     if id_ekrana:
         for list_goryashih_in1 in list_goryashih_in:
             for list_goryashih_in2 in list_goryashih_in1:
-                print(f'Для создания связи передаются следующие точки id_ekrana: {id_ekrana}, list_goryashih_in1: {list_goryashih_in2[0]}')
+                # print(f'Для создания связи передаются следующие точки id_ekrana: {id_ekrana}, list_goryashih_in1: {list_goryashih_in2[0]}')
                 # Для построения дерева потенциальных путей необходимо соединение с t, а не c (in), а это ID+2
                 sozdat_svyaz(id_ekrana, list_goryashih_in2[0]+2, 1)
 
@@ -1808,8 +1806,8 @@ if __name__ == '__main__':
                 print(f'in_pamyat сейчас такая: {in_pamyat}')
                 if in_pamyat != []:
                     # Вместо моста - зажечь повторно posl_t от первой (in)
-                    print(f'Зажигается повторно posl_t, первый в списке: {in_pamyat}')
-                    cursor.execute("UPDATE 'tochki' SET work = 1 WHERE ID = ?", (in_pamyat[0],))
+                    # print(f'Зажигается повторно posl_t, первый в списке: {in_pamyat}')
+                    # cursor.execute("UPDATE 'tochki' SET work = 1 WHERE ID = ?", (in_pamyat[0],))
                     # 21.12.23 - за основу формирования дерева взята точка time, а не time_0
                     # Найти t от posl_t0
                     poisk_svyazi_t_i_t0 = tuple(cursor.execute("SELECT svyazi.id_start "
