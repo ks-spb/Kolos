@@ -632,11 +632,11 @@ def poisk_pol_i_otric_reakciy(ID):
 
 def create_dict(point_list, work_dict=dict()):
     """ Рекурсивная функция получающая все связи в виде словаря из БД """
-    print("*********************************************")
-    print('Работа функции create dict')
-    print(f'point_list = {point_list}')
+    # print("*********************************************")
+    # print('Работа функции create dict')
+    # print(f'point_list = {point_list}')
     for point in point_list:
-        print(f'point = {point}')
+        # print(f'point = {point}')
         # Выбрать id_finish из связей, где id_finish = ID в табл. точки и id_start = point и name = time_0.
         points = cursor.execute(
             "SELECT svyazi.id_finish "
@@ -644,24 +644,29 @@ def create_dict(point_list, work_dict=dict()):
             "ON svyazi.id_finish = tochki.id "
             "WHERE svyazi.id_start = ? AND (tochki.name = 'time_0' OR tochki.name = 'time')", (point,)).fetchall()
         nodes = [row[0] for row in points]
-        print(f'nodes = {nodes}')
+        # print(f'nodes = {nodes}')
         if nodes:
             work_dict[point] = nodes
-            print(f'work_dict теперь такой: {work_dict}, передаётся в новый запуск этой же функции. Point_list = {work_dict[point]}')
+            # print(f'work_dict теперь такой: {work_dict}, передаётся в новый запуск этой же функции. Point_list = {work_dict[point]}')
             create_dict(work_dict[point], work_dict)
-    print("*********************************************************")
+    # print("*********************************************************")
     return work_dict
 
 
 
 def all_paths(tree, node):
     """ Рекурсивная функция получающая все пути из дерева """
+    # print("****************** Работа функции all_paths ****************")
+    # print(f'Переданы tree: {tree}, node: {node}')
     if node not in tree:
+        # print('Node не нашёлся в tree')
         return [[node]]
     paths = []
     for child_node in tree[node]:
+        # print(f"Передаётся дальше в ещё одну рекурсию tree: {tree} и child_node: {child_node}")
         for path in all_paths(tree, child_node):
             paths.append([node] + path)
+            # print(f'Текущий путь такой: {paths}')
     return paths
 
 
@@ -704,9 +709,9 @@ def proshivka_po_derevy(time_dlya_proshivki):
     # 18.01.24 - дополнительная прошивка находит t0 с +, находит нужный tp, а затем находит все t0, которые с ним связаны
     # эти t0 и будут целевыми, по которым произойдёт отсеивание путей при поступательном движении к цели.
 
-    # print(f'Создаётся целевое дерево, где time: {in_pamyat[0]}')
     tree_celevoe = create_dict([in_pamyat[0]])  # Получаем выборку связей в виде словаря (дерево)
-    # print(f"Возможный целевой путь действий: ", all_paths(tree_celevoe, in_pamyat[0]))
+    print(f'Создаётся целевое дерево: {tree_celevoe}, где time: {in_pamyat[0]}')
+    print(f"Возможный целевой путь действий: ", all_paths(tree_celevoe, in_pamyat[0]))
     svyaz_s_1_celevoe = []   # Список всех tp, действия которых могут привести к (+) реакции
     celevoe_t0 = []
     for path_celevoe in all_paths(tree_celevoe, in_pamyat[0]):
@@ -1033,25 +1038,23 @@ def proshivka_po_sloyam_i_potencialy(celevie_t0, vse_pyti_iz_proshivki, svyaz_s_
 
     id_ekrana = tekyshiy_ekran()
 
-    tree_potencial = create_potecial_dict([id_ekrana])   # Для прошивки путей по текущему экрану найден его ID.
+    tree_potencial = create_potencial_dict([id_ekrana])   # Для прошивки путей по текущему экрану найден его ID.
     print(f'Собран словарь для построения путей: {tree_potencial}')
-
-    # Построение дерева из словаря
-    vse_potencialnie_pyti = all_paths(tree_potencial, id_ekrana)
-    print(f'Найдены все потенциальные пути: {vse_potencialnie_pyti}')
 
     # Проверка - присутствуют ли элементы из потенциального пути vse_sobrannie_pyti1 в целевых to. Если да -
     # то работать с этим путём, а если нет - перейти на другой путь.
-    for vse_sobrannie_pyti1 in sorted(vse_sobrannie_pyti, key=len):
-        print(f'Рассматривается путь: {vse_sobrannie_pyti1}')
+    for path_potancial in all_paths(tree_potencial, id_ekrana):
+        new_path_potencial = sorted(path_potancial, key=len)
+        new_path_potencial = [new_path_potencial[2:]]
         proverka_prisutstviya = []
-        if vse_sobrannie_pyti1:
-            for element in vse_sobrannie_pyti1:
+        print(f'Рассматривается путь (была сортировка и укорочение: {new_path_potencial}')
+        if new_path_potencial:
+            for element in new_path_potencial:
                 if element in celevie_t0:
                     proverka_prisutstviya.append(element)
             print(f'proverka_prisutstviya в потенциальном пути такая: {proverka_prisutstviya}')
         if proverka_prisutstviya:
-            zolotoy_pyt = vse_sobrannie_pyti1
+            zolotoy_pyt = new_path_potencial
             print(f'Золотой путь теперь такой: {zolotoy_pyt}')
             poisk_tp_v_pervoy_tochke_pyti = tuple(cursor.execute("SELECT svyazi.id_finish "
                                                                  "FROM svyazi JOIN tochki "
@@ -1067,51 +1070,73 @@ def proshivka_po_sloyam_i_potencialy(celevie_t0, vse_pyti_iz_proshivki, svyaz_s_
                     zolotoy_pyt.pop(0)
             break
 
-def create_potecial_dict (point_list, work_dict=dict()):
+
+def create_potencial_dict (point_list, work_dict=dict()):
     """Создаётся словарь из точек и их слоёв, для последующего построения деревьев путей."""
-    print('**************************************************')
-    print('Работа функции create_potecial_dict')
-    print(f'point_list = {point_list}')
-    for point in point_list:
-        print(f'point = {point}')
-        # Выбрать id_finish из связей, где id_finish = ID в табл. точки и id_start = point и name = time_0.
-        points = cursor.execute(
-            "SELECT svyazi.id_finish "
-            "FROM svyazi JOIN tochki "
-            "ON svyazi.id_finish = tochki.id "
-            "WHERE svyazi.id_start = ? AND (tochki.name = 'time_0' OR tochki.name = 'time')", (point,)).fetchall()
-        nodes = [row[0] for row in points]
-        print(f'nodes = {nodes}')
-        # sloi_nodes = nodes
-        # Добавить к найденным соседям и их слои
+    # print('**************************************************')
+    # print(f'Работа функции create_potencial_dict, были переданы point_list = {point_list} и work_dict = {work_dict}')
+    # print(f'point_list = {point_list}')
+    if point_list != []:
+        for point in point_list:
+            # print(f'point = {point} из point_list: {point_list}')
+            # Выбрать id_finish из связей, где id_finish = ID в табл. точки и id_start = point и name = time_0.
+            points = cursor.execute(
+                "SELECT svyazi.id_finish "
+                "FROM svyazi JOIN tochki "
+                "ON svyazi.id_finish = tochki.id "
+                "WHERE svyazi.id_start = ? AND (tochki.name = 'time_0' OR tochki.name = 'time')", (point,)).fetchall()
+            if points:
+                nodes = [row[0] for row in points]
+                # print(f'nodes по основной точке = {nodes}')
 
-        # Для проверки поиска точек с puls
-        # nayti_tochka_puls = (cursor.execute("SELECT ID FROM tochki WHERE puls > 0"))
-        # for nayti_tochka_puls1 in nayti_tochka_puls:
-            # print(f'Найдены следующие точки с пульсом > 0: {nayti_tochka_puls1}')
+            # Добавить поиск соседей и от других точек слоя
+            poisk_name2 = (
+                cursor.execute("SELECT name2 FROM tochki WHERE ID = ? AND name = 'time_0'", (point,))).fetchone()
+            if poisk_name2:
+                for poisk_name21 in poisk_name2:
+                    # print(f'poisk_name21 = {poisk_name21}')
+                    if poisk_name21 != '':
+                        # Найти точки с таким же name2
+                        poisk_tochki_s_name2 = (
+                            cursor.execute("SELECT ID FROM tochki WHERE name2 = ? AND name = 'time_0'", (poisk_name21,)))
+                        for poisk_tochki_s_name21 in poisk_tochki_s_name2:
+                            # print(f'Найдены следующие точки: {poisk_tochki_s_name21}, которые являются слоями для рассматриваемой точки: {point}')
+                            if poisk_tochki_s_name21[0] != point:
+                                # print(f'Ищутся связи и у точки слоя: {poisk_tochki_s_name21[0]}')
+                                points_name2 = cursor.execute(
+                                    "SELECT svyazi.id_finish "
+                                    "FROM svyazi JOIN tochki "
+                                    "ON svyazi.id_finish = tochki.id "
+                                    "WHERE svyazi.id_start = ? AND (tochki.name = 'time_0' OR tochki.name = 'time')",
+                                    poisk_tochki_s_name21).fetchall()
+                                for points_name21 in points_name2:
+                                    if points_name21[0] not in nodes:
+                                        if points_name21[0] > point:
+                                            # print(f'Найдена связанная точка: {points_name21[0]} с точкой слоя: {poisk_tochki_s_name21[0]}')
+                                            nodes.append(points_name21[0])
 
-        print(f'Найдены точки: {nodes} для словаря и построения пути у которых puls>0 и name=time_0 и id_start = {point}')
-        if nodes:
-            for nodes1 in nodes:
-                # Найти name2 у рассматриваемой точки для поиска других слоёв
-                poisk_name2 = (cursor.execute("SELECT name2 FROM tochki WHERE ID = ? AND name = 'time_0'", (nodes1,))).fetchone()
-                if poisk_name2:
-                    for poisk_name21 in poisk_name2:
-                        print(f'poisk_name21 = {poisk_name21}')
-                        if poisk_name21 != '':
-                            # Найти точки с таким же name2
-                            poisk_tochki_s_name2 = (
-                                cursor.execute("SELECT ID FROM tochki WHERE name2 = ? AND name = 'time_0'", (poisk_name21,)))
-                            for poisk_tochki_s_name21 in poisk_tochki_s_name2:
-                                print(f'Найдена точка слоя (с таким же name2): {poisk_tochki_s_name21[0]}, '
-                                      f'а изначально рассматривалась: {nodes1}')
-                                if poisk_tochki_s_name21[0] != nodes1:
-                                    if poisk_tochki_s_name21[0] not in nodes:
-                                        nodes.append(poisk_tochki_s_name21[0])
-                                        print(f'Добавлена в nodes: {nodes} точка слоя: {poisk_tochki_s_name21[0]}')
-            work_dict[point] = nodes
-            print(f'В повторный запуск функции передаётся work_dict[point]: {work_dict[point]} и work_dict: {work_dict}')
-            create_potecial_dict(work_dict[point], work_dict)
+
+            # Для проверки поиска точек с puls
+            # nayti_tochka_puls = (cursor.execute("SELECT ID FROM tochki WHERE puls > 0"))
+            # for nayti_tochka_puls1 in nayti_tochka_puls:
+                # print(f'Найдены следующие точки с пульсом > 0: {nayti_tochka_puls1}')
+
+            # print(f'Найдены точки: {nodes} для словаря и построения пути у которых puls>0 и name=time_0 и id_start = {point}')
+            # Проверяется есть ли искомая point в словаре
+            if work_dict:
+                if point not in work_dict:
+                    # print(f'point: {point} не найдена в словаре: {work_dict}')
+                    work_dict[point] = nodes
+                    # print(f'В повторный запуск функции передаётся work_dict[point]: {work_dict[point]} и work_dict: {work_dict}')
+                    create_potencial_dict(work_dict[point], work_dict)
+            else:
+                # print(f'work_dict - пустой')
+                work_dict[point] = nodes
+                # print(
+                    # f'В повторный запуск функции передаётся work_dict[point]: {work_dict[point]} и work_dict: {work_dict}')
+                create_potencial_dict(work_dict[point], work_dict)
+    # else:
+        # print('закончился перебор вариантов, начался новый')
     return work_dict
 
 
