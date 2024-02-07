@@ -676,6 +676,24 @@ def all_paths(tree, node):
 
 
 
+def ydalit_ekrani_iz_pytey(pyti):
+    """Функция получает список путей, определяет - является ли точка экраном. Если является - удаляется из списка."""
+    # print(f'Работа функции ydalit_ekrani_iz_pytey. Переданы пути: {pyti}')
+    for pyti1 in pyti:
+        for tochka in pyti1:
+            # print(f'Рассматривается точка для определения является ли она экраном: {tochka}')
+            poisk_ekrana = cursor.execute("SELECT ID FROM tochki WHERE ID = ? AND "
+                                          "name2 LIKE '%id_ekran%'", (tochka,))
+            for poisk_ekrana1 in poisk_ekrana:
+                # print(f'Если poisk_ekrana не пустой - то это экран: {poisk_ekrana1}')
+                if poisk_ekrana1:
+                    # print(f'Удалена точка: {tochka} из пути: {pyti1}')
+                    pyti1.remove(tochka)
+    # print(f'Работа функции ydalit_ekrani_iz_pytey. В итоге остались следующие пути: {pyti}')
+    return pyti
+
+
+
 def proshivka_po_derevy(time_dlya_proshivki):
     """
     Проверка возможности применения действий по пути из дерева.
@@ -764,12 +782,16 @@ def proshivka_po_derevy(time_dlya_proshivki):
     otricatelnie_deystviya = []
     novie_pyti = []
     # vse_pyti_iz_proshivki = []   # Список всех путей из прошивки для передачи в анти_прошивку
-    # print(f'Дерево действий такое: {tree}')
-    # print(f"Текущий t0 = {posledniy_t_0}. Возможный путь действий: ", all_paths(tree, time_dlya_proshivki))
+    print(f'Словарь действий такой: {tree}')
+    print(f"Текущий t0 = {posledniy_t_0}. Возможный путь действий: ", all_paths(tree, time_dlya_proshivki))
     # print("Количество возможных путей действий: ", len(all_paths(tree, posledniy_t_0)))
     found = False
-    pyti = all_paths(tree, time_dlya_proshivki)
-    pyti = sorted(pyti, key=len)
+    pyti_vse = all_paths(tree, time_dlya_proshivki)
+
+    # 07.02.24 - Удаляются экраны из путей
+    pyti_bez_ekranov = ydalit_ekrani_iz_pytey(pyti_vse)
+
+    pyti = sorted(pyti_bez_ekranov, key=len)
     # 24.01.24 - Если золотой путь не 0 и он короче, чем рассматриваемый путь - то не рассматривать новый путь.
     for pyti1 in pyti:
         pyti1 = pyti1[2:]   # Укорачивается путь - отсекается точка времени и t0
@@ -908,7 +930,7 @@ def proshivka_po_derevy(time_dlya_proshivki):
             in_pamyat_name = []
             # создать новую (t0), где связь будет с первым элементом in_pamyat
             new_t0 = sozdat_new_tochky('time_0', 1, 'time', 'zazech_sosedey', 1, 0,
-                                       0, posledniy_t_0, in_pamyat[0], '')
+                                       0, posledniy_t_0, in_pamyat[0], 'id_ekran')
             sozdat_svyaz(posledniy_t_0, new_t0, 1)
             sozdat_svyaz(in_pamyat[0], new_t0, 1)
             posledniy_t_0 = new_t0
@@ -931,7 +953,7 @@ def proshivka_po_derevy(time_dlya_proshivki):
                 # print(f"Состояние изменилось и нет возможных путей действий... Состояние принудительно переводится "
                 #       f"в 1 элемент in_pamyat: {in_pamyat}")
                 new_t0 = sozdat_new_tochky('time_0', 1, 'time', 'zazech_sosedey', 1, 0,
-                                           0, posledniy_t_0, in_pamyat[0], '')
+                                           0, posledniy_t_0, in_pamyat[0], 'id_ekran_принудительно')
                 sozdat_svyaz(posledniy_t_0, new_t0, 1)
                 sozdat_svyaz(in_pamyat[0], new_t0, 1)
                 posledniy_t_0 = new_t0
@@ -973,8 +995,12 @@ def proshivka_po_sloyam_i_potencialy(celevie_t0, svyaz_s_1_celevoe):
     # Проверка - присутствуют ли элементы из потенциального пути vse_sobrannie_pyti1 в целевых to. Если да -
     # то работать с этим путём, а если нет - перейти на другой путь.
     vse_potencial_pyti = all_paths(tree_potencial, id_ekrana)
-    print(f'vse_potencial_pyti: {sorted(vse_potencial_pyti, key=len)}')
-    for path_potancial in sorted(vse_potencial_pyti, key=len):
+
+    # 07.02.24 - Удаляются экраны из путей
+    pyti_bez_ekranov = ydalit_ekrani_iz_pytey(vse_potencial_pyti)
+    print(f'Все пути такие: {vse_potencial_pyti}, а стали без экранов: {sorted(pyti_bez_ekranov, key=len)}')
+
+    for path_potancial in sorted(pyti_bez_ekranov, key=len):
         new_path_potencial = path_potancial[2:]
         proverka_prisutstviya = []
         # print(f'Рассматривается путь (была сортировка и укорочение: {new_path_potencial}')
@@ -999,6 +1025,7 @@ def proshivka_po_sloyam_i_potencialy(celevie_t0, svyaz_s_1_celevoe):
                     print(f'Совершено первое действие {zolotoy_pyt} - удалить из списка')
                     zolotoy_pyt.pop(0)
             break
+
 
 
 def create_potencial_dict(point_list, work_dict=dict()):
