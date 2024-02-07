@@ -676,21 +676,25 @@ def all_paths(tree, node):
 
 
 
-def ydalit_ekrani_iz_pytey(pyti):
+def ydalit_ekrani_iz_pytey(pyti_dlya_ydaleniya):
     """Функция получает список путей, определяет - является ли точка экраном. Если является - удаляется из списка."""
-    # print(f'Работа функции ydalit_ekrani_iz_pytey. Переданы пути: {pyti}')
-    for pyti1 in pyti:
-        for tochka in pyti1:
+    # print(f'Работа функции ydalit_ekrani_iz_pytey. Переданы пути: {pyti_dlya_ydaleniya}')
+    spisok_ekranov = []
+    for pyti_dlya_ydaleniya1 in pyti_dlya_ydaleniya:
+        for tochka in pyti_dlya_ydaleniya1:
             # print(f'Рассматривается точка для определения является ли она экраном: {tochka}')
             poisk_ekrana = cursor.execute("SELECT ID FROM tochki WHERE ID = ? AND "
-                                          "name2 LIKE '%id_ekran%'", (tochka,))
+                                          "name2 LIKE 'id_ekran%'", (tochka,))
             for poisk_ekrana1 in poisk_ekrana:
                 # print(f'Если poisk_ekrana не пустой - то это экран: {poisk_ekrana1}')
                 if poisk_ekrana1:
-                    # print(f'Удалена точка: {tochka} из пути: {pyti1}')
-                    pyti1.remove(tochka)
-    # print(f'Работа функции ydalit_ekrani_iz_pytey. В итоге остались следующие пути: {pyti}')
-    return pyti
+                    # print(f'Удалена точка: {tochka} из пути: {pyti_dlya_ydaleniya1}')
+                    spisok_ekranov.append(tochka)
+        for spisok_ekranov1 in spisok_ekranov:
+            if spisok_ekranov1 in pyti_dlya_ydaleniya1:
+                pyti_dlya_ydaleniya1.remove(spisok_ekranov1)
+    # print(f'Работа функции ydalit_ekrani_iz_pytey. В итоге остались следующие пути: {pyti_dlya_ydaleniya}')
+    return pyti_dlya_ydaleniya
 
 
 
@@ -959,7 +963,7 @@ def proshivka_po_derevy(time_dlya_proshivki):
                 posledniy_t_0 = new_t0
                 posledniy_tp = 0
                 posledniy_t = 0
-                izmenilos_li_sostyanie = posledniy_t_0
+                izmenilos_li_sostyanie = new_t0
             else:
                 out_red("Состояние не изменилось и нет больше возможных путей - включается поиск потенциальных путей")
                 proshivka_po_sloyam_i_potencialy(celevoe_t0, svyaz_s_1_celevoe)   # Поиск обратных путей от целевых t0 для соединения через слой
