@@ -1580,18 +1580,18 @@ if __name__ == '__main__':
                                                                  "ON svyazi.id_finish = tochki.id "
                                                                  "WHERE svyazi.id_start = ? AND name = 'time_p' ",
                                                                  (t0_dlya_poiska_tp,)).fetchone()
-                for poisk_svyazi_s_tp1 in poisk_svyazi_s_tp:
-                    if poisk_svyazi_s_tp1:
+                if poisk_svyazi_s_tp:
+                    for poisk_svyazi_s_tp1 in poisk_svyazi_s_tp:
                         # Связь с tp имеется - значит создаётся связь с этим t0 и выход из цикла
                         sozdat_svyaz(t0_dlya_poiska_tp, 1, 1)
                         print("Состояние перед (+) реакцией было такое: ", t0_dlya_poiska_tp, ". С ней и создаётся связь")
                         C = False
-                    else:
-                        # Связь с tp не имеется - значит ищется предыдущий t0 и проверяется связь с tp у него.
-                        poisk_predidushego_t0_dlya_perehoda = cursor.execute("SELECT rod1 FROM tochki WHERE ID = ?",
-                                                           (t0_dlya_poiska_tp, )).fetchone()
-                        for poisk_predidushego_t0_dlya_perehoda1 in poisk_predidushego_t0_dlya_perehoda:
-                            t0_dlya_poiska_tp = poisk_predidushego_t0_dlya_perehoda1[0]
+                else:
+                    # Связь с tp не имеется - значит ищется предыдущий t0 и проверяется связь с tp у него.
+                    poisk_predidushego_t0_dlya_perehoda = cursor.execute("SELECT rod1 FROM tochki WHERE ID = ?",
+                                                       (t0_dlya_poiska_tp, )).fetchone()
+                    for poisk_predidushego_t0_dlya_perehoda1 in poisk_predidushego_t0_dlya_perehoda:
+                        t0_dlya_poiska_tp = poisk_predidushego_t0_dlya_perehoda1
             # source = None
             vvedeno_luboe = ''
 
