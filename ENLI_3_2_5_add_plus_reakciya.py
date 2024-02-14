@@ -994,7 +994,7 @@ def proshivka_po_sloyam_i_potencialy(celevie_t0, svyaz_s_1_celevoe):
     id_ekrana = tekyshiy_ekran()
 
     tree_potencial = create_potencial_dict([id_ekrana])   # Для прошивки путей по текущему экрану найден его ID.
-    print(f'Собран словарь для построения потенциальных путей: {tree_potencial}')
+    # print(f'Собран словарь для построения потенциальных путей: {tree_potencial}')
 
     # Проверка - присутствуют ли элементы из потенциального пути vse_sobrannie_pyti1 в целевых to. Если да -
     # то работать с этим путём, а если нет - перейти на другой путь.
@@ -1002,10 +1002,10 @@ def proshivka_po_sloyam_i_potencialy(celevie_t0, svyaz_s_1_celevoe):
 
     # 07.02.24 - Удаляются экраны из путей
     pyti_bez_ekranov = ydalit_ekrani_iz_pytey(vse_potencial_pyti)
-    print(f'Все пути такие: {vse_potencial_pyti}, а стали без экранов: {sorted(pyti_bez_ekranov, key=len)}')
+    # print(f'Все пути такие: {vse_potencial_pyti}, а стали без экранов: {sorted(pyti_bez_ekranov, key=len)}')
 
     for path_potancial in sorted(pyti_bez_ekranov, key=len):
-        new_path_potencial = path_potancial[2:]
+        new_path_potencial = path_potancial
         proverka_prisutstviya = []
         # print(f'Рассматривается путь (была сортировка и укорочение: {new_path_potencial}')
         if new_path_potencial:
@@ -1046,21 +1046,26 @@ def create_potencial_dict(point_list, work_dict=dict()):
                 "FROM svyazi JOIN tochki "
                 "ON svyazi.id_finish = tochki.id "
                 "WHERE svyazi.id_start = ? AND (tochki.name = 'time_0' OR tochki.name = 'time')", (point,)).fetchall()
-            nodes = [row[0] for row in points]
+            # nodes = [row[0] for row in points]
+            nodes = []
+            for row in points:
+                if row[0] not in work_dict:
+                    nodes.append(row[0])
             # print(f'nodes по основной точке = {nodes}')
 
             # Добавить поиск соседей и от других точек слоя
             poisk_name2 = (
-                cursor.execute("SELECT name2 FROM tochki WHERE ID = ? AND name = 'time_0' AND name2 LIKE '%id_ekran%'", (point,))).fetchone()
+                cursor.execute("SELECT name2 FROM tochki WHERE ID = ? AND name = 'time_0' AND name2 LIKE "
+                               "'%id_ekran%'", (point,))).fetchone()
             if poisk_name2:
                 for poisk_name21 in poisk_name2:
-                    # print(f'poisk_name21 = {poisk_name21}')
+                    # print(f'У текущей рассматриваймой точки {point} найден name2 = {poisk_name21}')
                     if poisk_name21 != '':
                         # Найти точки с таким же name2
                         poisk_tochki_s_name2 = (
                             cursor.execute("SELECT ID FROM tochki WHERE name2 = ? AND name = 'time_0'", (poisk_name21,)))
                         for poisk_tochki_s_name21 in poisk_tochki_s_name2:
-                            # print(f'Найдены следующие точки: {poisk_tochki_s_name21}, которые являются слоями для рассматриваемой точки: {point}')
+                            # print(f'Найдены точки с таким же name2: {poisk_tochki_s_name21}, которые являются слоями для рассматриваемой точки: {point}')
                             if poisk_tochki_s_name21[0] != point:
                                 # print(f'Ищутся связи и у точки слоя: {poisk_tochki_s_name21[0]}')
                                 points_name2 = cursor.execute(
@@ -1071,9 +1076,11 @@ def create_potencial_dict(point_list, work_dict=dict()):
                                     poisk_tochki_s_name21).fetchall()
                                 for points_name21 in points_name2:
                                     if points_name21[0] not in nodes:
-                                        if points_name21[0] > point:
+                                        if points_name21[0] not in work_dict:
                                             # print(f'Найдена связанная точка: {points_name21[0]} с точкой слоя: {poisk_tochki_s_name21[0]}')
                                             nodes.append(points_name21[0])
+                                        # else:
+                                        #     print(f'Эта точка {points_name21[0]} уже ранее рассматривалась в словаре - не добавляется')
 
 
             # Для проверки поиска точек с puls
