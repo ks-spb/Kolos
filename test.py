@@ -1,70 +1,143 @@
 """Программа делает скриншот, преобразует в строковый формат и сохраняет в excel файле"""
 
-from PIL import ImageGrab
-import numpy as np
+from PIL import Image
+import pyautogui
 import openpyxl
-import pandas as pd
+from time import sleep
 
-# Делаем скриншот экрана размером 100x100 пикселей
-screenshot = ImageGrab.grab(bbox=(0, 0, 100, 100))
+sleep(3)   # Задержка, чтобы сохранить тот экран, который нужен
 
-# Преобразуем изображение в массив numpy
-screenshotarray = np.array(screenshot)
+# Делаем скриншот всего экрана
+screenshot = pyautogui.screenshot()
 
-# Создаем новый Excel файл
+# Уменьшаем разрешение изображения до 192x108 пикселей
+resized_image = screenshot.resize((192, 108), Image.LANCZOS)
+
+# Создаем новые массивы для цветов white, yellow и red
+white_pixels = []
+yellow_pixels = []
+red_pixels = []
+violet_pixels = []
+light_blue_pixels = []
+green_pixels = []
+blue_pixels = []
+gray_pixels = []
+black_pixels = []
+
+
+# Создаем новый Excel-файл
 wb = openpyxl.Workbook()
-ws = wb.active
+ws_white = wb.create_sheet('white')
+ws_yellow = wb.create_sheet('yellow')
+ws_red = wb.create_sheet('red')
+ws_violet = wb.create_sheet('violet')
+ws_light_blue = wb.create_sheet('light_blue')
+ws_green = wb.create_sheet('green')
+ws_blue = wb.create_sheet('blue')
+ws_gray = wb.create_sheet('gray')
+ws_black = wb.create_sheet('black')
 
-# Создаем словарь для каждого цвета радуги
-rainbowcolors = {"красный": [], "серый": [], "желтый": [], "зелёный": [], "голубой": [], "синий": [],
-    "фиолетовый": [], "белый": [], "черный": []}
+
+# Получаем RGB цифры каждого пикселя и записываем в соответствующий массив и Excel-файл
+for y in range(resized_image.height):
+    for x in range(resized_image.width):
+        r, g, b = resized_image.getpixel((x, y))
+        rgb_str = f"{r},{g},{b}"
+
+        if r >= 188 and g >= 188 and b >= 188:
+            ws_white.cell(row=y + 1, column=x + 1, value=999)
+            ws_yellow.cell(row=y + 1, column=x + 1, value=0)
+            ws_red.cell(row=y + 1, column=x + 1, value=0)
+            ws_violet.cell(row=y + 1, column=x + 1, value=0)
+            ws_light_blue.cell(row=y + 1, column=x + 1, value=0)
+            ws_green.cell(row=y + 1, column=x + 1, value=0)
+            ws_blue.cell(row=y + 1, column=x + 1, value=0)
+            ws_gray.cell(row=y + 1, column=x + 1, value=0)
+            ws_black.cell(row=y + 1, column=x + 1, value=0)
+        elif r >= 188 and g >= 188 and b < 188:
+            # yellow_pixels.append(999)
+            ws_white.cell(row=y + 1, column=x + 1, value=0)
+            ws_yellow.cell(row=y + 1, column=x + 1, value=999)
+            ws_red.cell(row=y + 1, column=x + 1, value=0)
+            ws_violet.cell(row=y + 1, column=x + 1, value=0)
+            ws_light_blue.cell(row=y + 1, column=x + 1, value=0)
+            ws_green.cell(row=y + 1, column=x + 1, value=0)
+            ws_blue.cell(row=y + 1, column=x + 1, value=0)
+            ws_gray.cell(row=y + 1, column=x + 1, value=0)
+            ws_black.cell(row=y + 1, column=x + 1, value=0)
+        elif r >= 188 and g < 188 and b >= 188:
+            ws_white.cell(row=y + 1, column=x + 1, value=0)
+            ws_yellow.cell(row=y + 1, column=x + 1, value=0)
+            ws_red.cell(row=y + 1, column=x + 1, value=999)
+            ws_violet.cell(row=y + 1, column=x + 1, value=0)
+            ws_light_blue.cell(row=y + 1, column=x + 1, value=0)
+            ws_green.cell(row=y + 1, column=x + 1, value=0)
+            ws_blue.cell(row=y + 1, column=x + 1, value=0)
+            ws_gray.cell(row=y + 1, column=x + 1, value=0)
+            ws_black.cell(row=y + 1, column=x + 1, value=0)
+        elif r >= 188 and g < 188 and b < 188:
+            ws_white.cell(row=y + 1, column=x + 1, value=0)
+            ws_yellow.cell(row=y + 1, column=x + 1, value=0)
+            ws_red.cell(row=y + 1, column=x + 1, value=0)
+            ws_violet.cell(row=y + 1, column=x + 1, value=999)
+            ws_light_blue.cell(row=y + 1, column=x + 1, value=0)
+            ws_green.cell(row=y + 1, column=x + 1, value=0)
+            ws_blue.cell(row=y + 1, column=x + 1, value=0)
+            ws_gray.cell(row=y + 1, column=x + 1, value=0)
+            ws_black.cell(row=y + 1, column=x + 1, value=0)
+        elif r < 188 and g >= 188 and b >= 188:
+            ws_white.cell(row=y + 1, column=x + 1, value=0)
+            ws_yellow.cell(row=y + 1, column=x + 1, value=0)
+            ws_red.cell(row=y + 1, column=x + 1, value=0)
+            ws_violet.cell(row=y + 1, column=x + 1, value=0)
+            ws_light_blue.cell(row=y + 1, column=x + 1, value=999)
+            ws_green.cell(row=y + 1, column=x + 1, value=0)
+            ws_blue.cell(row=y + 1, column=x + 1, value=0)
+            ws_gray.cell(row=y + 1, column=x + 1, value=0)
+            ws_black.cell(row=y + 1, column=x + 1, value=0)
+        elif r < 188 and g >= 188 and b < 188:
+            ws_white.cell(row=y + 1, column=x + 1, value=0)
+            ws_yellow.cell(row=y + 1, column=x + 1, value=0)
+            ws_red.cell(row=y + 1, column=x + 1, value=0)
+            ws_violet.cell(row=y + 1, column=x + 1, value=0)
+            ws_light_blue.cell(row=y + 1, column=x + 1, value=0)
+            ws_green.cell(row=y + 1, column=x + 1, value=999)
+            ws_blue.cell(row=y + 1, column=x + 1, value=0)
+            ws_gray.cell(row=y + 1, column=x + 1, value=0)
+            ws_black.cell(row=y + 1, column=x + 1, value=0)
+        elif r < 188 and g < 188 and b >= 188:
+            ws_white.cell(row=y + 1, column=x + 1, value=0)
+            ws_yellow.cell(row=y + 1, column=x + 1, value=0)
+            ws_red.cell(row=y + 1, column=x + 1, value=0)
+            ws_violet.cell(row=y + 1, column=x + 1, value=0)
+            ws_light_blue.cell(row=y + 1, column=x + 1, value=0)
+            ws_green.cell(row=y + 1, column=x + 1, value=0)
+            ws_blue.cell(row=y + 1, column=x + 1, value=999)
+            ws_gray.cell(row=y + 1, column=x + 1, value=0)
+            ws_black.cell(row=y + 1, column=x + 1, value=0)
+        elif r < 188 and g < 188 and (b >= 56 and b < 188):
+            ws_white.cell(row=y + 1, column=x + 1, value=0)
+            ws_yellow.cell(row=y + 1, column=x + 1, value=0)
+            ws_red.cell(row=y + 1, column=x + 1, value=0)
+            ws_violet.cell(row=y + 1, column=x + 1, value=0)
+            ws_light_blue.cell(row=y + 1, column=x + 1, value=0)
+            ws_green.cell(row=y + 1, column=x + 1, value=0)
+            ws_blue.cell(row=y + 1, column=x + 1, value=0)
+            ws_gray.cell(row=y + 1, column=x + 1, value=999)
+            ws_black.cell(row=y + 1, column=x + 1, value=0)
+        elif r < 188 and g < 188 and b < 56:
+            ws_white.cell(row=y + 1, column=x + 1, value=0)
+            ws_yellow.cell(row=y + 1, column=x + 1, value=0)
+            ws_red.cell(row=y + 1, column=x + 1, value=0)
+            ws_violet.cell(row=y + 1, column=x + 1, value=0)
+            ws_light_blue.cell(row=y + 1, column=x + 1, value=0)
+            ws_green.cell(row=y + 1, column=x + 1, value=0)
+            ws_blue.cell(row=y + 1, column=x + 1, value=0)
+            ws_gray.cell(row=y + 1, column=x + 1, value=0)
+            ws_black.cell(row=y + 1, column=x + 1, value=999)
+
+# Сохраняем Excel-файл
+wb.save('pixels_colors.xlsx')
 
 
-list_white = np.where((screenshotarray[:, :, 0] >= 188) & (screenshotarray[:, :, 1] >= 188) & (screenshotarray[:, :, 2] >= 188), 999, 0)
-df = pd.DataFrame(list_white)  # Создание DataFrame из списка
-# Сохранение DataFrame в Excel файл
-df.to_excel('list_white.xlsx', index=False, header=False)
-
-list_yellow = np.where((screenshotarray[:, :, 0] >= 188) & (screenshotarray[:, :, 1] >= 188) & (screenshotarray[:, :, 2] < 188), 999, 0)
-df = pd.DataFrame(list_yellow)  # Создание DataFrame из списка
-# Сохранение DataFrame в Excel файл
-df.to_excel('list_yellow.xlsx', index=False, header=False)
-
-list_red = np.where((screenshotarray[:, :, 0] >= 188) & (screenshotarray[:, :, 1] < 188) & (screenshotarray[:, :, 2] >= 188), 999, 0)
-df = pd.DataFrame(list_red)  # Создание DataFrame из списка
-# Сохранение DataFrame в Excel файл
-df.to_excel('list_red.xlsx', index=False, header=False)
-
-list_violet = np.where((screenshotarray[:, :, 0] >= 188) & (screenshotarray[:, :, 1] < 188) & (screenshotarray[:, :, 2] < 188), 999, 0)
-df = pd.DataFrame(list_violet)  # Создание DataFrame из списка
-# Сохранение DataFrame в Excel файл
-df.to_excel('list_violet.xlsx', index=False, header=False)
-
-list_light_blue = np.where((screenshotarray[:, :, 0] < 188) & (screenshotarray[:, :, 1] >= 188) & (screenshotarray[:, :, 2] >= 188), 999, 0)
-df = pd.DataFrame(list_light_blue)  # Создание DataFrame из списка
-# Сохранение DataFrame в Excel файл
-df.to_excel('list_light_blue.xlsx', index=False, header=False)
-
-list_green = np.where((screenshotarray[:, :, 0] < 188) & (screenshotarray[:, :, 1] >= 188) & (screenshotarray[:, :, 2] < 188), 999, 0)
-df = pd.DataFrame(list_green)  # Создание DataFrame из списка
-# Сохранение DataFrame в Excel файл
-df.to_excel('list_green.xlsx', index=False, header=False)
-
-list_blue = np.where((screenshotarray[:, :, 0] < 188) & (screenshotarray[:, :, 1] < 188) & (screenshotarray[:, :, 2] >= 188), 999, 0)
-df = pd.DataFrame(list_blue)  # Создание DataFrame из списка
-# Сохранение DataFrame в Excel файл
-df.to_excel('list_blue.xlsx', index=False, header=False)
-
-list_gray = np.where((screenshotarray[:, :, 0] < 188) & (screenshotarray[:, :, 1] < 188) & ((screenshotarray[:, :, 2] >= 56) & (screenshotarray[:, :, 2] < 188)), 999, 0)
-df = pd.DataFrame(list_gray)  # Создание DataFrame из списка
-# Сохранение DataFrame в Excel файл
-df.to_excel('list_gray.xlsx', index=False, header=False)
-
-list_black = np.where((screenshotarray[:, :, 0] < 188) & (screenshotarray[:, :, 1] < 188) & (screenshotarray[:, :, 2] < 56), 999, 0)
-df = pd.DataFrame(list_black)  # Создание DataFrame из списка
-# Сохранение DataFrame в Excel файл
-df.to_excel('list_black.xlsx', index=False, header=False)
-
-wb.save("screenshot.xlsx")
-screenshot.save("screenshot.png")
 
