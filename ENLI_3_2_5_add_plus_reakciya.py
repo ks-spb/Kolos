@@ -34,7 +34,6 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
     global posledniy_t_0
     global posledniy_tp
 
-    # todo Перенёс time_t на +1 от ID - изменить, где создаются связи
     # print(f'Передано на обработку следующее: {symbol}')
     nayti_id = cursor.execute("SELECT ID FROM tochki WHERE name = ? AND type = 'mozg'", (symbol, )).fetchone()
     # print("poisk_bykvi_iz_vvedeno_v2. ID у входящей точки такой: ", nayti_id)
@@ -320,7 +319,7 @@ def out_red(text):
     print("\033[0m {}".format("**********************************"))
 
     # Воспроизведение событий клавиатуры и мыши.
-    # Данные в 1 списке, подрряд для всех событий:
+    # Данные в 1 списке, подряд для всех событий:
     # Для клавиатуры 2 элемента: 'Key.down'/'Key.up', Клавиша (символ или название)
     # Для сочетаний клавиш, 'Key.hotkey', Название или id сочетания
     # Для мыши 4 элемента: 'Button.down'/'Button.up', 'left'/'right', 'x.y',  'image' (имя изображения элемента)
@@ -363,6 +362,10 @@ def out_red(text):
                 # i += 3  # У событий вверх и вниз разная длина, поэтому счетчик увеличиваем соответственно
                 # event['x'] = int(x)
                 # event['y'] = int(y)
+
+            elif item[0] == 'position':
+                # Данные для перемещения мыши без кликов
+                event = {'type': 'mouse', 'event': 'move', 'x': item[1], 'y': item[2]}
 
             else:
                 i += 1
@@ -1536,9 +1539,10 @@ if __name__ == '__main__':
                 else:
                     # Запись события мыши
                     # position.x.y, image.id, Button.up.left,
+                    print(f'Передаются на запись следующие event: {event}')
                     if event['event'] == 'click':
+                        vvedeno_luboe.append('position.' + str(event['x']) + '.' + str(event['y']))
                         vvedeno_luboe.append('click.' + event['image'])
-                    #     vvedeno_luboe.append('position.' + str(event['x']) + '.' + str(event['y']))
                     #     vvedeno_luboe.append('image.' + str(event['image']))
                     # vvedeno_luboe.append('Button.' + event['event'] + '.' + event['key'].split('.')[1])
 
