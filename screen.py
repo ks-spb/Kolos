@@ -148,19 +148,20 @@ class Screen:
             contours, hierarchy = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
             for cnt in contours:
-                x, y, w, h = cv2.boundingRect(cnt)
+                x, y, w, h = cv2.boundingRect(cnt)   # из контуров создаются прямоугольники объектов
 
                 # Ищем элемент, которому принадлежат координаты мыши
                 rect = np.array([[x, y], [x + w, y], [x + w, y + h], [x, y + h]])  # Создаем массив вершин
                 rect_contour = rect.reshape((-1, 1, 2))  # преобразуем в формат контура
-                dist = cv2.pointPolygonTest(rect_contour, (cur_x, cur_y), True)
+                dist = cv2.pointPolygonTest(rect_contour, (cur_x, cur_y), True)   # определяется входит ли точка с координатами cur_x и cur_y в квадрат
                 if dist >= 0:
                     w1, h1 = x + w, y + h
-                    segment = region[y:h1, x:w1]
-                    cv2.imshow("Rectangle Image", segment)
-                    cv2.waitKey(0)
+                    segment = region[y:h1, x:w1]   # в квадрате 100х100 вырезаем этот найденный контур объекта (уже знаем его координаты и размеры)
+                    # cv2.imshow("Rectangle Image", segment)
+                    # cv2.waitKey(0)
                     hash = cv2.img_hash.pHash(segment)  # Получаем хэш сегмента
                     return np.array(hash).tobytes().hex()  # Преобразование хэша в шестнадцатеричную строку
+
         except:
             pass
         return None

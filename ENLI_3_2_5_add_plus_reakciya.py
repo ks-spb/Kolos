@@ -1138,8 +1138,9 @@ def zazhiganie_obiektov_na_ekrane():
         if goryashie_in:
             list_goryashih_in.append(goryashie_in)
     print(f'Имеются следующие объекты на экране записанные в БД: {list_goryashih_in}')
-    print(f'in_pamyat сейчас такая: {in_pamyat}, а in_pamyat_name: {in_pamyat_name}')
+    print(f'На экране всего найдены следующие объекты: {screen.get_all_hashes()}')
     print(f'Объект под курсором мыши: {screen.element_under_cursor()}')
+    print(f'in_pamyat сейчас такая: {in_pamyat}, а in_pamyat_name: {in_pamyat_name}')
     id_ekrana = tekyshiy_ekran()
     if id_ekrana:
         for list_goryashih_in1 in list_goryashih_in:
