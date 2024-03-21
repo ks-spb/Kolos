@@ -1139,6 +1139,7 @@ def zazhiganie_obiektov_na_ekrane():
             list_goryashih_in.append(goryashie_in)
     print(f'Имеются следующие объекты на экране записанные в БД: {list_goryashih_in}')
     print(f'in_pamyat сейчас такая: {in_pamyat}, а in_pamyat_name: {in_pamyat_name}')
+    print(f'Объект под курсором мыши: {screen.element_under_cursor()}')
     id_ekrana = tekyshiy_ekran()
     if id_ekrana:
         for list_goryashih_in1 in list_goryashih_in:
@@ -1682,11 +1683,6 @@ if __name__ == '__main__':
                 print(f'Posl_t0 из-за (-) стал = {posledniy_t_0}, при этом моста нет')
 
         elif vvedeno_luboe == ('3'):
-            # -------------------------------------
-            hash = screen.element_3under_cursor()
-            print(hash)
-            # -------------------------------------
-
             # Включение записи
             cursor.commit()  # Сохраняем изменения в БД
             sleep(0.5)

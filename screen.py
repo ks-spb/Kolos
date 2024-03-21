@@ -140,9 +140,9 @@ class Screen:
             edges = cv2.Canny(region, 100, 200)
 
             # Применяем морфологическую операцию закрытия
-            kernel = np.ones((7, 7), np.uint8)
+            kernel = np.ones((3, 3), np.uint8)
             # closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
-            closed = cv2.dilate(edges, kernel, iterations=1)
+            closed = cv2.dilate(edges, kernel, iterations=2)
 
             # Ищем контуры и проходим по ним
             contours, hierarchy = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
