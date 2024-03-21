@@ -1137,9 +1137,19 @@ def zazhiganie_obiektov_na_ekrane():
                                       "AND name = ?", (h,)).fetchall()
         if goryashie_in:
             list_goryashih_in.append(goryashie_in)
+
+    # зажигание объекта под курсором мыши
+    obiekt_pod_kursorom = screen.element_under_cursor()
+    if obiekt_pod_kursorom:
+        cursor.execute("UPDATE 'tochki' SET work = 1 WHERE type = 'mozg' AND name = ?", (obiekt_pod_kursorom,))
+        obiekt_pod_kursorom_id = cursor.execute("SELECT ID FROM tochki WHERE work = 1 AND type = 'mozg' "
+                                      "AND name = ?", (obiekt_pod_kursorom,)).fetchall()
+        if obiekt_pod_kursorom_id:
+            list_goryashih_in.append(obiekt_pod_kursorom_id)
+
     print(f'Имеются следующие объекты на экране записанные в БД: {list_goryashih_in}')
-    print(f'На экране всего найдены следующие объекты: {screen.get_all_hashes()}')
-    print(f'Объект под курсором мыши: {screen.element_under_cursor()}')
+    # print(f'На экране всего найдены следующие объекты: {screen.get_all_hashes()}')
+    print(f'Объект под курсором мыши: {obiekt_pod_kursorom}')
     print(f'in_pamyat сейчас такая: {in_pamyat}, а in_pamyat_name: {in_pamyat_name}')
     id_ekrana = tekyshiy_ekran()
     if id_ekrana:
