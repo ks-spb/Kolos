@@ -1683,7 +1683,7 @@ if __name__ == '__main__':
 
         elif vvedeno_luboe == ('3'):
             # -------------------------------------
-            hash = screen.element_under_cursor()
+            hash = screen.element_3under_cursor()
             print(hash)
             # -------------------------------------
 
