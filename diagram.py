@@ -26,7 +26,8 @@ name 'хоро'             - серый
 point_in = False
 point_out = False
 # Включить/выключить отображение t
-point_t = False
+# point_t = False
+point_t = True
 
 class Point:
     """ Точки """
