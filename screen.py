@@ -157,8 +157,8 @@ class Screen:
                 if dist >= 0:
                     w1, h1 = x + w, y + h
                     segment = region[y:h1, x:w1]
-                    # cv2.imshow("Rectangle Image", segment)
-                    # cv2.waitKey(0)
+                    cv2.imshow("Rectangle Image", segment)
+                    cv2.waitKey(0)
                     hash = cv2.img_hash.pHash(segment)  # Получаем хэш сегмента
                     return np.array(hash).tobytes().hex()  # Преобразование хэша в шестнадцатеричную строку
         except:

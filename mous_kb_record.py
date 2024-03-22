@@ -233,7 +233,9 @@ class Recorder:
         if not is_pressed:
             return  # Если кнопка отпущена, то ничего не записываем
 
-        hash_element = screen.list_search(x, y)  # Поиск элемента на экране по координатам клика
+        # hash_element = screen.list_search(x, y)  # Поиск элемента на экране по координатам клика
+        hash_element = screen.element_under_cursor()   # 21.03.24 - Поиск элемента под курсором
+        print(f'Объект под курсором для записи действий: {hash_element}')
 
         # -------------------------------
         # Сохранение изображений в отчете
@@ -243,10 +245,11 @@ class Recorder:
 
         if not hash_element:
             # Если элемент не найден, то выходим
+            print("**** ВНИМАНИЕ! Хэш элемента не найден на экране! Запись последовательности прервана! ****************")
             return
 
         # Записываем перемещение мыши
-        out = {'type': 'mouse', 'event': 'click', 'image': hash_element}
+        out = {'type': 'mouse', 'event': 'click', 'image': hash_element, 'x': x, 'y': y}
         self.record.append(out)
 
 
@@ -322,10 +325,17 @@ class Play:
             # -------------------------------
 
             if res:
-                pyautogui.moveTo(*res, 0.3)
+                # pyautogui.moveTo(*res, 0.3)
                 pyautogui.click(*res, button='left')
 
             return
+
+        if action['event'] == 'move':
+            # Просто перемещение мыши к позиции
+            koord_x = action['x']
+            koord_y = action['y']
+            pyautogui.moveTo(int(koord_x), int(koord_y), 0.3)
+
 
         # Подготовка к распознаванию как отдельных символов, так и специальных клавиш
         insert = action['key']
