@@ -7,10 +7,25 @@
 Добавлен метод нахождения элемента под курсором и получение его хэша.
 """
 
-import time
 import numpy as np
 import cv2
 import pyautogui
+
+import time
+
+
+def screenshot(x_reg: int = 0, y_reg: int = 0, region: int = 0):
+    """ Скриншот заданного квадрата или всего экрана
+
+    В качестве аргументов принимает координаты верхней левой точки квадрата и его стороны.
+    Если сторона на задана (равна 0) - то делает скриншот всего экрана
+
+    """
+    if region:
+        image = pyautogui.screenshot(region=(x_reg, y_reg, region, region))  # x, y, x+n, y+n (с верхнего левого угла)
+    else:
+        image = pyautogui.screenshot()
+    return cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
 
 class Screen:
@@ -133,8 +148,9 @@ class Screen:
             # Запоминаем координаты мыши на вырезанном участке
             cur_x, cur_y = x - x1, y - y1
 
+            scr = screenshot()  # Получаем снимок экрана
             # Вырезаем прямоугольник, в котором будем искать элемент
-            region = self.screenshot[y1:y2, x1:x2]
+            region = scr[y1:y2, x1:x2]
 
             # Применяем Canny алгоритм для поиска границ
             edges = cv2.Canny(region, 100, 200)
@@ -147,6 +163,13 @@ class Screen:
             # Ищем контуры и проходим по ним
             contours, hierarchy = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+            # -----------------------------------------------------------------------
+            # Это добавлено при отладке и может быть удалено, для работы не нужно
+            # print(len(contours))
+            # cv2.imwrite("1\image_screenshot.jpg", screen.screenshot)
+            # s = 0
+            # -----------------------------------------------------------------------
+
             for cnt in contours:
                 x, y, w, h = cv2.boundingRect(cnt)
 
@@ -154,11 +177,26 @@ class Screen:
                 rect = np.array([[x, y], [x + w, y], [x + w, y + h], [x, y + h]])  # Создаем массив вершин
                 rect_contour = rect.reshape((-1, 1, 2))  # преобразуем в формат контура
                 dist = cv2.pointPolygonTest(rect_contour, (cur_x, cur_y), True)
+
+                # -----------------------------------------------------------------------
+                # Это добавлено при отладке и может быть удалено, для работы не нужно
+                # print(f'X {x} - {x+w}, а курсор {cur_x}\nY {y} - {y+h}, а курсор {cur_y}')
+                # w1, h1 = x + w, y + h
+                # segment = region[y:h1, x:w1]
+                #
+                # hash = cv2.img_hash.pHash(segment)  # Получаем хэш сегмента
+                # hash = np.array(hash).tobytes().hex()  # Преобразование хэша в шестнадцатеричную строку
+                #
+                # # Сохранить изображение с именем, содержащим текущее время
+                # cv2.imwrite("1\image_" + hash + ".jpg", segment)
+                #
+                # s += 1
+                # ---------------------------------------------------------------------
                 if dist >= 0:
                     w1, h1 = x + w, y + h
                     segment = region[y:h1, x:w1]
-                    cv2.imshow("Rectangle Image", segment)
-                    cv2.waitKey(0)
+                    # cv2.imshow("Rectangle Image", segment)
+                    # cv2.waitKey(0)
                     hash = cv2.img_hash.pHash(segment)  # Получаем хэш сегмента
                     return np.array(hash).tobytes().hex()  # Преобразование хэша в шестнадцатеричную строку
         except:

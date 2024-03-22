@@ -685,7 +685,7 @@ def ydalit_ekrani_iz_pytey(pyti_dlya_ydaleniya):
     spisok_ekranov = []
     for pyti_dlya_ydaleniya1 in pyti_dlya_ydaleniya:
         for tochka in pyti_dlya_ydaleniya1:
-            # print(f'Рассматривается точка для определения является ли она экраном: {tochka}')
+            # print(f'Рассматривается точка для определения является ли она 3ом: {tochka}')
             poisk_ekrana = cursor.execute("SELECT ID FROM tochki WHERE ID = ? AND "
                                           "name2 LIKE 'id_ekran%'", (tochka,))
             for poisk_ekrana1 in poisk_ekrana:
