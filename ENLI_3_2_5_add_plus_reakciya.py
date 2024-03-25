@@ -1141,11 +1141,25 @@ def zazhiganie_obiektov_na_ekrane():
     # зажигание объекта под курсором мыши
     obiekt_pod_kursorom = screen.element_under_cursor()
     if obiekt_pod_kursorom:
-        cursor.execute("UPDATE 'tochki' SET work = 1 WHERE type = 'mozg' AND name = ?", (obiekt_pod_kursorom,))
-        obiekt_pod_kursorom_id = cursor.execute("SELECT ID FROM tochki WHERE work = 1 AND type = 'mozg' "
-                                      "AND name = ?", (obiekt_pod_kursorom,)).fetchall()
-        if obiekt_pod_kursorom_id:
-            list_goryashih_in.append(obiekt_pod_kursorom_id)
+        # увеличиваю work каждый раз, когда будет находиться хоть один символ совпадающий с объектом под курсором
+        # Перебор символов и выполнение запроса для каждого символа
+        for i, char in enumerate(obiekt_pod_kursorom):
+            # print(f'Рассматривается i = {i} и char = {char}')
+            cursor.execute("UPDATE tochki SET work = work + 1 WHERE SUBSTR(name, ?, 1) = ? AND type = 'mozg'",
+                           (i + 1, char))
+            poisk_work = cursor.execute("SELECT ID FROM tochki WHERE SUBSTR(name, ?, 1) = ? AND type = 'mozg'",
+                                        (i + 1, char))
+            for poisk_work1 in poisk_work:
+                for poisk_work2 in poisk_work1:
+                    # print(f'Найден следующий ID: {poisk_work1}')
+                    if poisk_work2 not in list_goryashih_in:
+                        # print(f'В list_goryashih_in добавляется возможный объект под курсором: {poisk_work2}')
+                        list_goryashih_in.append(poisk_work2)
+        # cursor.execute("UPDATE 'tochki' SET work = 1 WHERE type = 'mozg' AND name = ?", (obiekt_pod_kursorom,))
+        # obiekt_pod_kursorom_id = cursor.execute("SELECT ID FROM tochki WHERE work > 1 AND type = 'mozg' "
+        #                               "AND name = ?", (obiekt_pod_kursorom,)).fetchall()
+        # if obiekt_pod_kursorom_id:
+        #     list_goryashih_in.append(obiekt_pod_kursorom_id)
 
     print(f'Имеются следующие объекты на экране записанные в БД: {list_goryashih_in}')
     # print(f'На экране всего найдены следующие объекты: {screen.get_all_hashes()}')
@@ -1154,10 +1168,10 @@ def zazhiganie_obiektov_na_ekrane():
     id_ekrana = tekyshiy_ekran()
     if id_ekrana:
         for list_goryashih_in1 in list_goryashih_in:
-            for list_goryashih_in2 in list_goryashih_in1:
-                # print(f'Для создания связи передаются следующие точки id_ekrana: {id_ekrana}, list_goryashih_in1: {list_goryashih_in2[0]}')
-                # Для построения дерева потенциальных путей необходимо соединение с t, а не c (in), а это ID+1
-                sozdat_svyaz(id_ekrana, list_goryashih_in2[0]+1, 1)
+            # for list_goryashih_in2 in list_goryashih_in1:
+            # print(f'Для создания связи передаются следующие точки id_ekrana: {id_ekrana}, list_goryashih_in1: {list_goryashih_in1}')
+            # Для построения дерева потенциальных путей необходимо соединение с t, а не c (in), а это ID+1
+            sozdat_svyaz(id_ekrana, list_goryashih_in1+1, 1)
 
 
 
@@ -1554,7 +1568,10 @@ if __name__ == '__main__':
                     print(f'Передаются на запись следующие event: {event}')
                     if event['event'] == 'click':
                         vvedeno_luboe.append('position.' + str(event['x']) + '.' + str(event['y']))
-                        vvedeno_luboe.append('click.' + event['image'])
+                        if event['image'] is not None:
+                            vvedeno_luboe.append('click.' + event['image'])
+                        else:
+                            vvedeno_luboe.append('click.')   # todo внедрить отличие в клике по пустым объектам (добавить дополнительные поля в определение изображения)
                     #     vvedeno_luboe.append('image.' + str(event['image']))
                     # vvedeno_luboe.append('Button.' + event['event'] + '.' + event['key'].split('.')[1])
 

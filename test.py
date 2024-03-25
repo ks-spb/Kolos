@@ -91,15 +91,75 @@ import cv2
 from PIL import Image
 
 # 1. Сделать скриншот изображения
-image = pyautogui.screenshot()
-image.save('screenshot.png')
+# image = pyautogui.screenshot()
+# image.save('screenshot.png')
+#
+#
+# # 3. Определить границы между объектами
+# img = cv2.imread('screenshot.png')
+# img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+# edges = cv2.Canny(img_gray, 100, 200)   # Чем меньше цифры - тем точнее контуры. Изначально было 100, 200.
+#
+# cv2.imshow("Edges", edges)
+# cv2.waitKey(0)
+# cv2.destroyAllWindows()
 
 
-# 3. Определить границы между объектами
-img = cv2.imread('screenshot.png')
-img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-edges = cv2.Canny(img_gray, 100, 200)   # Чем меньше цифры - тем точнее контуры. Изначально было 100, 200.
 
-cv2.imshow("Edges", edges)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+# Расчёт нейронной сети:
+#
+# import math
+#
+# def sigmoid(x):
+#     return 1 / (1 + math.exp(-x))
+#
+#
+# i1 = 1
+# i2 = 0
+# w1 = 1   # 0.45
+# w2 = 1   # 0.78
+# w3 = 1   # -0.12
+# w4 = 1   # 0.13
+# w5 = 1   # 1.5
+# w6 = 1   # -2.3
+#
+# H1input = i1 * w1 + i2 * w3   # 0.45
+# H1output = sigmoid(H1input)   # 0.61
+#
+# H2input = i1*w2+i2*w4   # 0.78
+# H2output = sigmoid(H2input)   # 0.69
+#
+# O1input = H1output*w5+H2output*w6   # -0.672
+# O1output = sigmoid(O1input)   # 0.33
+#
+# O1ideal = 1
+# iteraciya = 1
+#
+# Error = ((O1ideal-O1output)*(O1ideal-O1output))/iteraciya   # 0.45
+#
+# print(f'O1output: {O1output}    Error: {Error}')
+
+
+import sqlite3
+
+# Подключение к базе данных
+conn = sqlite3.connect('Li_db_v1_4.db')
+cursor = conn.cursor()
+
+# Строка для сравнения
+name_look = 'abfefafebeefaeef'
+
+# Перебор символов и выполнение запроса для каждого символа
+for i, char in enumerate(name_look):
+    print(f'Рассматривается i = {i} и char = {char}')
+    cursor.execute("UPDATE tochki SET work = work + 1 WHERE SUBSTR(name, ?, 1) = ? AND type = 'mozg'", (i + 1, char))
+    # cursor.execute("SELECT ID FROM tochki WHERE SUBSTR(name, ?, 1) = ?", (i+1, char))
+    # rows = cursor.fetchall()
+    # for row in rows:
+    #     print(row)
+    poisk_work = cursor.execute("SELECT ID FROM tochki WHERE SUBSTR(name, ?, 1) = ? AND type = 'mozg'", (i+1, char))
+    for poisk_work1 in poisk_work:
+        print(f'Найден следующий ID: {poisk_work1}')
+
+# Закрываем соединение с базой данных
+conn.close()
