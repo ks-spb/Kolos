@@ -790,7 +790,7 @@ def proshivka_po_derevy(time_dlya_proshivki):
     otricatelnie_deystviya = []
     novie_pyti = []
     # vse_pyti_iz_proshivki = []   # Список всех путей из прошивки для передачи в анти_прошивку
-    print(f'Словарь действий такой: {tree}')
+    # print(f'Словарь действий такой: {tree}')
     print(f"Текущий t0 = {posledniy_t_0}. Возможный путь действий: ", all_paths(tree, time_dlya_proshivki))
     # print("Количество возможных путей действий: ", len(all_paths(tree, posledniy_t_0)))
     found = False
@@ -798,15 +798,17 @@ def proshivka_po_derevy(time_dlya_proshivki):
 
     # 07.02.24 - Удаляются экраны из путей
     pyti_bez_ekranov = ydalit_ekrani_iz_pytey(pyti_vse)
-
+    # print(f'Возможные пути без экранов: {pyti_bez_ekranov}')
     pyti = sorted(pyti_bez_ekranov, key=len)
     # 24.01.24 - Если золотой путь не 0 и он короче, чем рассматриваемый путь - то не рассматривать новый путь.
     for pyti1 in pyti:
+        # print(f'Рассматривается путь: {pyti1}')
         pyti1 = pyti1[2:]   # Укорачивается путь - отсекается точка времени и t0
         # Проверка первая точка пути является ли объектом и есть ли он на экране:
         if pyti1:
             svyaz_s_img_pyti = proverka_nalichiya_svyazi_s_img(pyti1[0])
             # print(f'Проверяется - связана следующая точка с объектом на экране, который отсутствует')
+            # print(f'Проверили 1 точку ({pyti1[0]} пути: {pyti1} на наличие связи с img: {svyaz_s_img_pyti} (должна быть пустой)')
             if not svyaz_s_img_pyti:
                 # print("Либо объект есть на экране, либо точка не связана с объектом")
                 if len(zolotoy_pyt) != 0:
@@ -1180,13 +1182,12 @@ def proverka_nalichiya_svyazi_s_img(tochka):
     """Проверяется точка пути на наличие связей с объектом (иконкой, изображением), которого на этом экране нет"""
     # 22.09.23 - ограничение на зажигание (t) и (tp), если не горят соответствующие (in) объекты:
     # поиск name2 - в нём хранится информация о хэше объекта
-    nayti_name2 = tuple(cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (tochka,)))
+    nayti_name2 = tuple(cursor.execute("SELECT name2 FROM tochki WHERE ID = ? AND name2 NOT LIKE '%position%' ", (tochka,)))
     if nayti_name2:
         for nayti_name2_1 in nayti_name2:
-            # print(f"Нашли следующий name2: {nayti_name2_1[0]} у точки: {new_path_3_i_bolee[0]}, "
-            #       f"длина name2={len(nayti_name2_1[0])}")
+            # print(f"Нашли следующий name2: {nayti_name2_1[0]} у точки: {tochka} и длина name2={len(nayti_name2_1[0])}")
             name2_1 = nayti_name2_1[0]
-            # если длина name2 = 18 - то это хэш
+            # если длина name2 = 18 или 19 - то это хэш
             if len(nayti_name2_1[0]) in [18, 19]:
                 # Необходимо удалить 2 последних знака из name2, чтобы получился name
                 if len(nayti_name2_1[0]) == 18:
@@ -1803,7 +1804,7 @@ if __name__ == '__main__':
                         poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe2)
                     # print(f'Обработка vvedeno_luboe1 ({vvedeno_luboe1})')
                     # 25.09.23 - Добавление 'name2' к t0, для возможности отсеивания по этому параметру
-                    # name2 = cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (posledniy_t,))
+                    name2 = cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (posledniy_t,))
                     for name2_1 in name2:
                         # print(f'Найден name2: {name2_1} у точки: {posledniy_t}')
                         new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
