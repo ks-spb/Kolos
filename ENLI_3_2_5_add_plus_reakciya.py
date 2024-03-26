@@ -183,7 +183,8 @@ def proverka_nalichiya_svyazey_t_t_o():
         # 22.12.23 отсеивание, чтобы экран не попадал в кратковременную память
 
         # print(f'novoye_name содержит id_ekran_? -> {novoye_name}')
-        if "id_ekran_" not in novoye_name:
+        if ("id_ekran_" not in novoye_name and "Key." not in novoye_name and 'position.' not in novoye_name and
+                'click' not in novoye_name):
             # 21.12.23 - Добавление (in) в память. Берётся именно последний (t)
             print(f'В in_pamyat: {in_pamyat} добавляется posledniy_t: {posledniy_t}')
             in_pamyat.append(posledniy_t)
@@ -332,7 +333,7 @@ def out_red(text):
 
         if '.' in text[i]:
             item = text[i].split('.')
-            print(f'Преобразовали текст в item: {item}')
+            # print(f'Преобразовали текст в item: {item}')
             if item[0] == 'Key':
                 # Читаем и готовим событие для клавиатуры
                 event = {'type': 'kb'}
@@ -373,7 +374,7 @@ def out_red(text):
             try:
                 play.play_one(event)  # Воспроизводим событие
             except:
-                print('Выполнение скрипта остановлено')
+                # print('Выполнение скрипта остановлено')
                 break
 
             continue
@@ -1147,8 +1148,8 @@ def zazhiganie_obiektov_na_ekrane():
             # print(f'Рассматривается i = {i} и char = {char}')
             cursor.execute("UPDATE tochki SET work = work + 1 WHERE SUBSTR(name, ?, 1) = ? AND type = 'mozg'",
                            (i + 1, char))
-            poisk_work = cursor.execute("SELECT ID FROM tochki WHERE SUBSTR(name, ?, 1) = ? AND type = 'mozg'",
-                                        (i + 1, char))
+            poisk_work = cursor.execute("SELECT ID FROM tochki WHERE SUBSTR(name, ?, 1) = ? AND type = 'mozg'"
+                                        "AND work > 7",(i + 1, char))
             for poisk_work1 in poisk_work:
                 for poisk_work2 in poisk_work1:
                     # print(f'Найден следующий ID: {poisk_work1}')
@@ -1789,12 +1790,12 @@ if __name__ == '__main__':
                                                                   "zazech_sosedey", 1, 0, 0,
                                                                   posledniy_t_0, posledniy_t, name2_1[0]+'/t')
                             pereimenovat_name2_y_to(new_tochka_time_0, posledniy_t)
-                            print(f'Создана новая точка t0 {new_tochka_time_0} до этого был posl_to = {posledniy_t_0}')
+                            # print(f'Создана новая точка t0 {new_tochka_time_0} до этого был posl_to = {posledniy_t_0}')
                         sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
                         sozdat_svyaz(posledniy_t, new_tochka_time_0, 1)
                         sozdat_svyaz(new_tochka_time_0, posledniy_tp, 1)  # 21.06.23 была добавлена дублирующая связь с tp (есть ещё одна)
                         posledniy_t_0 = new_tochka_time_0
-                        print(f'Posl_t0 из-за ввода изображения стал = {posledniy_t_0}')
+                        # print(f'Posl_t0 из-за ввода изображения стал = {posledniy_t_0}')
                         sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
                         posledniy_tp = 0
                         posledniy_t = 0
@@ -1802,18 +1803,18 @@ if __name__ == '__main__':
                         poisk_bykvi_iz_vvedeno_v2(vvedeno_luboe2)
                     # print(f'Обработка vvedeno_luboe1 ({vvedeno_luboe1})')
                     # 25.09.23 - Добавление 'name2' к t0, для возможности отсеивания по этому параметру
-                    name2 = cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (posledniy_t,))
+                    # name2 = cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (posledniy_t,))
                     for name2_1 in name2:
                         # print(f'Найден name2: {name2_1} у точки: {posledniy_t}')
                         new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
                                                               posledniy_t, name2_1[0]+'/t')
                         pereimenovat_name2_y_to(new_tochka_time_0, posledniy_t)
-                        print(f'Создана новая t0: {new_tochka_time_0}')
+                        # print(f'Создана новая t0: {new_tochka_time_0}')
                     sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
                     sozdat_svyaz(posledniy_t, new_tochka_time_0, 1)
                     sozdat_svyaz(new_tochka_time_0, posledniy_tp, 1)   # 21.06.23 была добавлена дублирующая связь с tp (есть ещё одна)
                     posledniy_t_0 = new_tochka_time_0
-                    print(f'Posl_t0 из-за ввода изображения (в конце обработки) стал = {posledniy_t_0}')
+                    # print(f'Posl_t0 из-за ввода изображения (в конце обработки) стал = {posledniy_t_0}')
                     sozdat_svyaz_s_4_ot_luboy_tochki(posledniy_tp)
                     posledniy_tp = 0
                     posledniy_t = 0
