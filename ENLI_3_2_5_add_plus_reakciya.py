@@ -742,9 +742,10 @@ def proshivka_po_derevy(time_dlya_proshivki):
 
     tree_celevoe = create_dict([in_pamyat[0]])  # Получаем выборку связей в виде словаря (дерево)
     print(f'Создаётся целевое дерево: {tree_celevoe}, где time: {in_pamyat[0]}')
-    print(f"Возможный целевой путь действий: ", all_paths(tree_celevoe, in_pamyat[0]))
     svyaz_s_1_celevoe = []   # Список всех tp, действия которых могут привести к (+) реакции
     celevoe_t0 = []
+    celevie_pyti = all_paths(tree_celevoe, in_pamyat[0])
+    print(f"Возможный целевой путь действий: ", celevie_pyti)
     for path_celevoe in all_paths(tree_celevoe, in_pamyat[0]):
         new_path_3_i_bolee_celevoe = path_celevoe[2:]
         # print(f'Рассматривается путь: {new_path_3_i_bolee_celevoe}')
@@ -777,7 +778,12 @@ def proshivka_po_derevy(time_dlya_proshivki):
         # print(f'Найдены следующие целевые t0 от целевого tp: {poisk_t0_celevoe}')
         if poisk_t0_celevoe:
             for poisk_t0_celevoe1 in poisk_t0_celevoe:
-                celevoe_t0.append(poisk_t0_celevoe1[0])
+                for celevie_pyti1 in celevie_pyti:
+                    if poisk_t0_celevoe1[0] in celevie_pyti1:
+                        # print(f'Целевое t0: {poisk_t0_celevoe1[0]} связано с + и имеется в целевом пути')
+                        celevoe_t0.append(poisk_t0_celevoe1[0])
+                    # else:
+                    #     print(f'Целевое t0: {poisk_t0_celevoe1[0]} связано с +, но не имеется в целевом пути')
     print(f'Список целевых t0 по которым будет происходить отсеивание путей следующий: {celevoe_t0}')
 
     # 24.01.24 - Добавлено распространение потенциала для целевых t0
@@ -801,6 +807,7 @@ def proshivka_po_derevy(time_dlya_proshivki):
     # print(f'Возможные пути без экранов: {pyti_bez_ekranov}')
     pyti = sorted(pyti_bez_ekranov, key=len)
     # 24.01.24 - Если золотой путь не 0 и он короче, чем рассматриваемый путь - то не рассматривать новый путь.
+    print(f'Золотой путь сейчас такой: {zolotoy_pyt}')
     for pyti1 in pyti:
         # print(f'Рассматривается путь: {pyti1}')
         pyti1 = pyti1[2:]   # Укорачивается путь - отсекается точка времени и t0
@@ -825,8 +832,8 @@ def proshivka_po_derevy(time_dlya_proshivki):
                 # vse_pyti_iz_proshivki.append(pyt_rod2)
     if zolotoy_pyt:
         svyaz_s_img_zolotogo_pyti = proverka_nalichiya_svyazi_s_img(zolotoy_pyt[0])
-        # print(f'Проверяется следующий шаг золотого пути: {zolotoy_pyt} - связан ли он с объектом и имеется ли он на экране:'
-        #       f'{svyaz_s_img_zolotogo_pyti}. Если пусто - добавляется во все пути, иначе - обнуляется золотой путь.')
+        print(f'Проверяется следующий шаг золотого пути: {zolotoy_pyt} - связан ли он с объектом и имеется ли он на экране:'
+              f'{svyaz_s_img_zolotogo_pyti}. Если пусто - добавляется во все пути, иначе - обнуляется золотой путь.')
         if not svyaz_s_img_zolotogo_pyti:
             novie_pyti.append(zolotoy_pyt)   # 24.01.24 - Добавлен золотой путь в список всех путей.
         else:
@@ -891,10 +898,10 @@ def proshivka_po_derevy(time_dlya_proshivki):
                 # 22.01.24 - Внедрён золотой путь.
                 # print(f'Длина золотого пути: {len(zolotoy_pyt)}, длина нового пути: {len(new_path_3_i_bolee)}')
                 if len(zolotoy_pyt) == 0:
-                    # print(f'Путь: {new_path_3_i_bolee} теперь золотой путь (был пустым)')
+                    print(f'Путь: {new_path_3_i_bolee} теперь золотой путь (был пустым)')
                     zolotoy_pyt = new_path_3_i_bolee
                 elif len(zolotoy_pyt) > len(new_path_3_i_bolee):
-                    # print(f'Путь: {new_path_3_i_bolee} стал золотым, а был: {zolotoy_pyt} т.к. новый короче')
+                    print(f'Путь: {new_path_3_i_bolee} стал золотым, а был: {zolotoy_pyt} т.к. новый короче')
                     zolotoy_pyt = new_path_3_i_bolee
         if found:
             break  # выход из внешнего цикла
@@ -1214,6 +1221,7 @@ def sbor_deystviya(tp, celevoe_tp):
     global posledniy_otvet
     global in_pamyat
     global izmenilos_li_sostyanie
+    global posledniy_t
     B = True
     tp_kortez = (tp, )
 
@@ -1225,6 +1233,7 @@ def sbor_deystviya(tp, celevoe_tp):
         if in_pamyat_name:
             in_pamyat_name.pop(0)
         izmenilos_li_sostyanie = 0
+        posledniy_t = old_ekran
 
     # 22.06.23 - гашение ответов, для блокировки повторов.
     cursor.execute("UPDATE tochki SET work = 0 AND signal = 0 WHERE ID = ?", (tp,))
