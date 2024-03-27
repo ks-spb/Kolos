@@ -832,11 +832,13 @@ def proshivka_po_derevy(time_dlya_proshivki):
                 # vse_pyti_iz_proshivki.append(pyt_rod2)
     if zolotoy_pyt:
         svyaz_s_img_zolotogo_pyti = proverka_nalichiya_svyazi_s_img(zolotoy_pyt[0])
-        print(f'Проверяется следующий шаг золотого пути: {zolotoy_pyt} - связан ли он с объектом и имеется ли он на экране:'
-              f'{svyaz_s_img_zolotogo_pyti}. Если пусто - добавляется во все пути, иначе - обнуляется золотой путь.')
+        # print(f'Проверяется следующий шаг золотого пути: {zolotoy_pyt} - связан ли он с объектом и имеется ли он на экране:'
+        #       f'{svyaz_s_img_zolotogo_pyti}. Если пусто - добавляется во все пути, иначе - обнуляется золотой путь.')
         if not svyaz_s_img_zolotogo_pyti:
+            # print(f'Золотой путь добавлен в список всех путей')
             novie_pyti.append(zolotoy_pyt)   # 24.01.24 - Добавлен золотой путь в список всех путей.
         else:
+            # print(f'Обнуление золотого пути - т.к. отсутствует нужный объект под курсором или на экране')
             zolotoy_pyt = []
     for new_path_3_i_bolee in sorted(novie_pyti, key=len):
         svyaz_s_1 = []
@@ -1205,9 +1207,9 @@ def proverka_nalichiya_svyazi_s_img(tochka):
                     # print(f'name2 был такой: {name2_1}, а стал такой: {new_name}')
                 # проверить горит ли такой же (in):
                 nayti_in = tuple(
-                    cursor.execute("SELECT ID FROM tochki WHERE name = ? AND work < 1 "
+                    cursor.execute("SELECT ID FROM tochki WHERE name = ? AND work < 8 "
                                    "AND type = 'mozg'", (new_name,)))
-                # print(f"Длина name2 у to ({new_path_3_i_bolee[0]}) = 18, найден соответствующий (in), который не горит: {nayti_in}")
+                # print(f"Длина name2 у to ({tochka}) = 18, найден соответствующий (in), который не горит: {nayti_in}")
                 if nayti_in:
                     for nayti_in1 in nayti_in:
                         return nayti_in1[0]
