@@ -40,9 +40,10 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
     if not nayti_id:
         # print("poisk_bykvi_iz_vvedeno_v2. Такого ID нету")
         new_tochka_name = sozdat_new_tochky(symbol, 0, 'mozg', 'zazech_sosedey', 1, 0, 10, 0, 0, symbol)
-        # print("Создали новую точку in: ", new_tochka_name)
+
         new_tochka_time_t = sozdat_new_tochky('time', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
                                               posledniy_t, symbol)
+        print(f"Создали новую точку in ID: {new_tochka_name} и time: {new_tochka_time_t}")
         sozdat_svyaz(new_tochka_name, new_tochka_time_t, 1)
         # 06.02.24 - при получении экрана - не создавать time_p и p.
         if "id_ekran_" not in symbol:
@@ -70,7 +71,7 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
 
 
 
-def proverka_nalichiya_svyazey_in(tochka_1, symbol):
+def proverka_nalichiya_svyazey_in (tochka_1, symbol):
     # функция создаёт (new_t) между загоревшейся внешней (.) (type = mozg or print) и posledniy_t
     global posledniy_t
     global posledniy_tp
@@ -95,10 +96,11 @@ def proverka_nalichiya_svyazey_in(tochka_1, symbol):
                         # print("получился следующий список: ", proverka_list)
                         # print('лист проверки содержит следующее количество найденных ID связей: ', proverka_list)
                 if not proverka_list:
+                    # todo Создаётся лишняя точка экрана - нужно это убрать.
                     # print("то есть proverka_list не пустой и всё равно прошли дальше?")
                     new_t = sozdat_new_tochky('time', 1, 'time', 'zazech_sosedey', 1, 0, 0,
                                               tochka_1, posledniy_t, symbol)
-                    # print(f"Создана новая (т): {new_t}, где rod1 = {tochka_1} (точка in) и rod2 = {posledniy_t} (posledniy_t)")
+                    print(f"Создана новая (т): {new_t}, где rod1 = {tochka_1} (точка in) и rod2 = {posledniy_t} (posledniy_t)")
                     sozdat_svyaz(tochka_1, new_t, 1)   # weight was 0.1
                     sozdat_svyaz(posledniy_t, new_t, 1)  # weight was 0.1
                     proverka_list = []
@@ -933,30 +935,31 @@ def proshivka_po_derevy(time_dlya_proshivki):
             # удаляется первый элемент из in_pamyat и на место него вставляются элементы из in_pamyat_name
             # print(f'удаляется первый элемент из in_pamyat: {in_pamyat} и на место него вставляются элементы из '
             #       f'in_pamyat_name: {in_pamyat_name}')
-            in_pamyat.pop(0)
             naydennie_id_name = []
-            for in_pamyat_name1 in in_pamyat_name:
-                # print(f'Для добавления в in_pamyat ищется следующий ID у name: {in_pamyat_name1}')
-                for in_pamyat_name2 in in_pamyat_name1:
-                    poisk_bykvi_iz_vvedeno_v2(in_pamyat_name2)
-                # print(f'В naydennie_id_name добавлен следующий posledniy_t: {posledniy_t}')
-                naydennie_id_name.append(posledniy_t)
-                posledniy_tp = 0
-                posledniy_t = 0
-            # print(f'naydennie_id_name перед совмещением с in_pamyat: {naydennie_id_name}')
-            in_pamyat = naydennie_id_name + in_pamyat
-            # print(f'Получается следующая in_pamyat: {in_pamyat}')
+            # todo удалить in_pamyat_name если его длина = 1, значит in_pamyat такой же. Чтобы не было повтора
+            print(f'Длина in_pamyat_name: {len(in_pamyat_name)}')
+            if len(in_pamyat_name) != 1:
+                in_pamyat.pop(0)
+                for in_pamyat_name1 in in_pamyat_name:
+                    for in_pamyat_name2 in in_pamyat_name1:
+                        # print(f'Передаётся в poisk_bykvi_iz_vvedeno_v2 следующее in_pamyat_name2: {in_pamyat_name2}')
+                        poisk_bykvi_iz_vvedeno_v2(in_pamyat_name2)
+                    # print(f'В naydennie_id_name добавлен следующий posledniy_t: {posledniy_t}')
+                    naydennie_id_name.append(posledniy_t)
+                    posledniy_tp = 0
+                    posledniy_t = 0
+                    # print(f'naydennie_id_name перед совмещением с in_pamyat: {naydennie_id_name}')
+                in_pamyat = naydennie_id_name + in_pamyat
+                new_t0 = sozdat_new_tochky('time_0', 1, 'time', 'zazech_sosedey', 1, 0,
+                                           0, posledniy_t_0, in_pamyat[0], nayti_name2(in_pamyat[0]))
+                sozdat_svyaz(posledniy_t_0, new_t0, 1)
+                sozdat_svyaz(in_pamyat[0], new_t0, 1)
+                posledniy_t_0 = new_t0
             in_pamyat_name = []
-            # создать новую (t0), где связь будет с первым элементом in_pamyat
-            new_t0 = sozdat_new_tochky('time_0', 1, 'time', 'zazech_sosedey', 1, 0,
-                                       0, posledniy_t_0, in_pamyat[0], 'id_ekran')
-            sozdat_svyaz(posledniy_t_0, new_t0, 1)
-            sozdat_svyaz(in_pamyat[0], new_t0, 1)
-            posledniy_t_0 = new_t0
             posledniy_tp = 0
             posledniy_t = 0
             izmenilos_li_sostyanie = posledniy_t_0
-            # print(f'После ввода первого элемента in posl_t0 должен перейти на: {posledniy_t_0}')
+            print(f'После ввода первого элемента (in) posl_t0 должен перейти на новую созданную точку: {posledniy_t_0}')
         else:
             # Для выполнения циклов последовательных действий после того, как программа выполнила действий в первом
             # задании - она должна перейти к следующему заданию, которое теперь находится в первом элементе in_pamyat -
@@ -969,20 +972,24 @@ def proshivka_po_derevy(time_dlya_proshivki):
             # print(f'Проверка - изменилось ли состояние первого in_pamayt = {izmenilos_li_sostyanie}, равна ли '
             #       f'posledniy_t_0 = {posledniy_t_0}?')
             if izmenilos_li_sostyanie != posledniy_t_0:
-                # print(f"Состояние изменилось и нет возможных путей действий... Состояние принудительно переводится "
-                #       f"в 1 элемент in_pamyat: {in_pamyat}")
-                new_t0 = sozdat_new_tochky('time_0', 1, 'time', 'zazech_sosedey', 1, 0,
-                                           0, posledniy_t_0, in_pamyat[0], 'id_ekran_принудительно')
-                sozdat_svyaz(posledniy_t_0, new_t0, 1)
-                sozdat_svyaz(in_pamyat[0], new_t0, 1)
-                posledniy_t_0 = new_t0
-                posledniy_tp = 0
-                posledniy_t = 0
-                izmenilos_li_sostyanie = new_t0
+                # 28.03.24 - Для ухода от зацикливания, которое происходит из-за принудительного перевода состояния в
+                # новую t0 и создания связи с (t) - сделано просто создание связи с (первым in), которое и является (t).
+                # posledniy_t = in_pamyat[0]
+                print('Нужно создание связи?')
+                sozdat_svyaz(in_pamyat[0], posledniy_t_0, 1)
             else:
                 out_red("Состояние не изменилось и нет больше возможных путей - включается поиск потенциальных путей")
                 proshivka_po_sloyam_i_potencialy(celevoe_t0, svyaz_s_1_celevoe)   # Поиск обратных путей от целевых t0 для соединения через слой
                 izmenilos_li_sostyanie = 0
+
+
+
+def nayti_name2 (ID):
+    """ Поиск name2 из БД по ID (передавать в виде цифор, а не кортеж). Возвращает name2 в виде слова, а не кортеж"""
+    nayti_name2 = cursor.execute("SELECT name2 FROM tochki WHERE ID = ?", (ID,))
+    for nayti_name21 in nayti_name2:
+        for nayti_name22 in nayti_name21:
+            return nayti_name22
 
 
 
@@ -1235,7 +1242,7 @@ def sbor_deystviya(tp, celevoe_tp):
         if in_pamyat_name:
             in_pamyat_name.pop(0)
         izmenilos_li_sostyanie = 0
-        posledniy_t = old_ekran
+        posledniy_t = 0   # Был - old_ekran
 
     # 22.06.23 - гашение ответов, для блокировки повторов.
     cursor.execute("UPDATE tochki SET work = 0 AND signal = 0 WHERE ID = ?", (tp,))
@@ -1371,8 +1378,8 @@ def perenos_sostoyaniya():
     poisk_bykvi_iz_vvedeno_v2(new_name_id_ekran)
     print(f"Сейчас такой экран ID: {posledniy_t}, старый экран такой: {old_ekran}")
     if old_ekran != posledniy_t:
-        proverka_nalichiya_svyazey_t_t_o()
         old_ekran = posledniy_t
+        proverka_nalichiya_svyazey_t_t_o()
     # else:
         # print('!!!!!!!!!!!!!ВНИМАНИЕ!!!!!!ЭКРАН НЕ ИЗМЕНИЛСЯ!!!!!!!!!!!')
     posledniy_t = 0
@@ -1802,7 +1809,7 @@ if __name__ == '__main__':
                                                                   "zazech_sosedey", 1, 0, 0,
                                                                   posledniy_t_0, posledniy_t, name2_1[0]+'/t')
                             pereimenovat_name2_y_to(new_tochka_time_0, posledniy_t)
-                            # print(f'Создана новая точка t0 {new_tochka_time_0} до этого был posl_to = {posledniy_t_0}')
+                            print(f'Создана новая точка t0 {new_tochka_time_0} до этого был posl_to = {posledniy_t_0}')
                         sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
                         sozdat_svyaz(posledniy_t, new_tochka_time_0, 1)
                         sozdat_svyaz(new_tochka_time_0, posledniy_tp, 1)  # 21.06.23 была добавлена дублирующая связь с tp (есть ещё одна)
@@ -1821,7 +1828,7 @@ if __name__ == '__main__':
                         new_tochka_time_0 = sozdat_new_tochky('time_0', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
                                                               posledniy_t, name2_1[0]+'/t')
                         pereimenovat_name2_y_to(new_tochka_time_0, posledniy_t)
-                        # print(f'Создана новая t0: {new_tochka_time_0}')
+                        print(f'Создана новая t0: {new_tochka_time_0}')
                     sozdat_svyaz(posledniy_t_0, new_tochka_time_0, 1)
                     sozdat_svyaz(posledniy_t, new_tochka_time_0, 1)
                     sozdat_svyaz(new_tochka_time_0, posledniy_tp, 1)   # 21.06.23 была добавлена дублирующая связь с tp (есть ещё одна)
