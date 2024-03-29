@@ -975,7 +975,7 @@ def proshivka_po_derevy(time_dlya_proshivki):
                 # 28.03.24 - Для ухода от зацикливания, которое происходит из-за принудительного перевода состояния в
                 # новую t0 и создания связи с (t) - сделано просто создание связи с (первым in), которое и является (t).
                 # posledniy_t = in_pamyat[0]
-                print('Нужно создание связи?')
+                # print('Нужно создание связи?')
                 izmenilos_li_sostyanie = posledniy_t_0
                 # sozdat_svyaz(in_pamyat[0], posledniy_t_0, 1)
             else:
@@ -1025,7 +1025,7 @@ def proshivka_po_sloyam_i_potencialy(celevie_t0, svyaz_s_1_celevoe):
 
     # 07.02.24 - Удаляются экраны из путей
     pyti_bez_ekranov = ydalit_ekrani_iz_pytey(vse_potencial_pyti)
-    # print(f'Все пути такие: {vse_potencial_pyti}, а стали без экранов: {sorted(pyti_bez_ekranov, key=len)}')
+    print(f'Все пути такие: {vse_potencial_pyti}, а стали без экранов: {sorted(pyti_bez_ekranov, key=len)}')
 
     for path_potancial in sorted(pyti_bez_ekranov, key=len):
         new_path_potencial = path_potancial
@@ -1038,7 +1038,7 @@ def proshivka_po_sloyam_i_potencialy(celevie_t0, svyaz_s_1_celevoe):
             # print(f'proverka_prisutstviya целевых t0: {celevie_t0} в потенциальном пути такая: {proverka_prisutstviya}')
         if proverka_prisutstviya:
             zolotoy_pyt = new_path_potencial
-            print(f'Золотой путь теперь такой: {zolotoy_pyt}')
+            print(f'Золотой путь взят из потенциального: {zolotoy_pyt}')
             poisk_tp_v_pervoy_tochke_pyti = tuple(cursor.execute("SELECT svyazi.id_finish "
                                                                  "FROM svyazi JOIN tochki "
                                                                  "ON svyazi.id_finish = tochki.id "

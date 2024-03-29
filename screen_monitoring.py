@@ -170,7 +170,7 @@ def process_changes(queue_hashes, queue_img):
                     # Если вернуть функцию, нужно нижний код сдвинуть вправо и удалить константу
                 # Процент элементов на экране, которые должны совпадать, чтобы считать экран одинаковым
                 # Чем меньше число, тем более похожими будут считаться различные экраны
-                COUNT_EL = 10
+                COUNT_EL = 5
 
                 screens = cursor.execute("SELECT id, list FROM screen").fetchall()  # Читаем свойства экранов
                 id_screen = None  # id текущего экрана в БД
@@ -205,7 +205,7 @@ def process_changes(queue_hashes, queue_img):
                     # id_screen = cursor.get_last_id()
                     id_screen = cursor.execute('SELECT last_insert_rowid()').fetchone()[0]
                     print('Создаем новую запись об экране id', id_screen)
-                    cv2.imwrite(f'new_screens/scr_{id_screen}.png', screenshot)  # Сохраняем изображение в файл
+                    # cv2.imwrite(f'new_screens/scr_{id_screen}.png', screenshot)  # Сохраняем изображение в файл
                 cursor.commit()
 
                 # Если скриншот обработан, то передаем его, его хэш и список хэшей элементов в очередь
