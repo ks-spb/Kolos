@@ -190,6 +190,9 @@ def proverka_nalichiya_svyazey_t_t_o():
             # 21.12.23 - Добавление (in) в память. Берётся именно последний (t)
             print(f'В in_pamyat: {in_pamyat} добавляется posledniy_t: {posledniy_t}')
             in_pamyat.append(posledniy_t)
+            # 04.04.24 - Добавлено зажигание связей, когда был внесён новый in_pamyat
+            cursor.execute("UPDATE svyazi SET weight = 1 ")
+
 
 
 def proverka_signal_porog():
@@ -649,11 +652,13 @@ def create_dict(point_list, work_dict=dict()):
     for point in point_list:
         # print(f'point = {point}')
         # Выбрать id_finish из связей, где id_finish = ID в табл. точки и id_start = point и name = time_0.
+        # 3.04.24 - Добавлен фильтр, если вес связи меньше 1 - то нужно проигнорировать эту связь и соответственно точку
         points = cursor.execute(
             "SELECT svyazi.id_finish "
             "FROM svyazi JOIN tochki "
             "ON svyazi.id_finish = tochki.id "
-            "WHERE svyazi.id_start = ? AND (tochki.name = 'time_0' OR tochki.name = 'time')", (point,)).fetchall()
+            "WHERE (svyazi.id_start = ? AND svyazi.weight >= 1) AND (tochki.name = 'time_0' OR tochki.name = 'time')",
+            (point,)).fetchall()
         nodes = [row[0] for row in points]
         # print(f'nodes = {nodes}')
         if nodes:
@@ -797,7 +802,6 @@ def proshivka_po_derevy(time_dlya_proshivki):
     tree = create_dict([time_dlya_proshivki])  # Получаем выборку связей в виде словаря (дерево)
     otricatelnie_deystviya = []
     novie_pyti = []
-    # vse_pyti_iz_proshivki = []   # Список всех путей из прошивки для передачи в анти_прошивку
     # print(f'Словарь действий такой: {tree}')
     print(f"Текущий t0 = {posledniy_t_0}. Возможный путь действий: ", all_paths(tree, time_dlya_proshivki))
     # print("Количество возможных путей действий: ", len(all_paths(tree, posledniy_t_0)))
@@ -841,6 +845,7 @@ def proshivka_po_derevy(time_dlya_proshivki):
             novie_pyti.append(zolotoy_pyt)   # 24.01.24 - Добавлен золотой путь в список всех путей.
         else:
             # print(f'Обнуление золотого пути - т.к. отсутствует нужный объект под курсором или на экране')
+            # todo Добавить связь с (-) и перенести состояние в предыдущий экран?
             zolotoy_pyt = []
     for new_path_3_i_bolee in sorted(novie_pyti, key=len):
         svyaz_s_1 = []
@@ -850,6 +855,7 @@ def proshivka_po_derevy(time_dlya_proshivki):
         # print(f'Рассматривается путь: {new_path_3_i_bolee}')
         # Проверка - присутствуют ли элементы из проверяемого пути new_path_3_i_bolee в целевых to. Если да -
         # то работать с этим путём, а если нет - перейти на другой путь.
+        # todo Добавить отсеивание применяемых действий
         proverka_prisutstviya = []
         if new_path_3_i_bolee:
             for element in new_path_3_i_bolee:
@@ -936,7 +942,6 @@ def proshivka_po_derevy(time_dlya_proshivki):
             # print(f'удаляется первый элемент из in_pamyat: {in_pamyat} и на место него вставляются элементы из '
             #       f'in_pamyat_name: {in_pamyat_name}')
             naydennie_id_name = []
-            # todo удалить in_pamyat_name если его длина = 1, значит in_pamyat такой же. Чтобы не было повтора
             print(f'Длина in_pamyat_name: {len(in_pamyat_name)}')
             if len(in_pamyat_name) != 1:
                 in_pamyat.pop(0)
@@ -955,27 +960,25 @@ def proshivka_po_derevy(time_dlya_proshivki):
                 sozdat_svyaz(posledniy_t_0, new_t0, 1)
                 sozdat_svyaz(in_pamyat[0], new_t0, 1)
                 posledniy_t_0 = new_t0
+
             in_pamyat_name = []
             posledniy_tp = 0
             posledniy_t = 0
             izmenilos_li_sostyanie = posledniy_t_0
             print(f'После ввода первого элемента (in) posl_t0 должен перейти на новую созданную точку: {posledniy_t_0}')
         else:
-            # Для выполнения циклов последовательных действий после того, как программа выполнила действий в первом
+            # Для выполнения циклов последовательных действий после того, как программа выполнила действия в первом
             # задании - она должна перейти к следующему заданию, которое теперь находится в первом элементе in_pamyat -
-              # т.к. предыдущий первый элемент был удалён. Но если не было совершено действий и состояние не изменилось - значит
-            # нет возможных путей действий для этого задания - нужно запустить концентратор действий, чтобы сдвинуть
-            # выполнение задание на один шаг, используя доступные действия.
-            # Проверить - текущее состояние - это тоже самое состояние, связанное с in_pamyat[0]. Найти связь м/у
-            # первым in_pamyat и t0. Если t0 = текущему posledniy_t0 - то состояние не переводится, а включается
-            # концентратор действий.
+            # т.к. предыдущий первый элемент был удалён. Но если не было совершено действий и состояние не изменилось - значит
+            # нет возможных путей действий для этого задания - нужен поиск действий по слоям, чтобы сдвинуть
+            # выполнение задание на один шаг.
             print(f'Проверка - изменилось ли состояние первого in_pamayt = {izmenilos_li_sostyanie}, равна ли '
                   f'posledniy_t_0 = {posledniy_t_0}? Если равна - должен запуститься поиск потенциальных путей')
             if izmenilos_li_sostyanie != posledniy_t_0:
                 # 28.03.24 - Для ухода от зацикливания, которое происходит из-за принудительного перевода состояния в
                 # новую t0 и создания связи с (t) - сделано просто создание связи с (первым in), которое и является (t).
                 # posledniy_t = in_pamyat[0]
-                # print('Нужно создание связи?')
+                out_red("Здесь планируется добавить минус реакцию и перенос состояния в экран")
                 izmenilos_li_sostyanie = posledniy_t_0
                 # sozdat_svyaz(in_pamyat[0], posledniy_t_0, 1)
             else:
@@ -1068,7 +1071,8 @@ def create_potencial_dict(point_list, work_dict=dict()):
                 "SELECT svyazi.id_finish "
                 "FROM svyazi JOIN tochki "
                 "ON svyazi.id_finish = tochki.id "
-                "WHERE svyazi.id_start = ? AND (tochki.name = 'time_0' OR tochki.name = 'time')", (point,)).fetchall()
+                "WHERE svyazi.id_start = ? AND (tochki.name = 'time_0' OR tochki.name = 'time') AND svyazi.weight >= 1",
+                (point,)).fetchall()   # 3.04.24 - добавлена фильтрация по весу связей для предотвращения зацикливания и повтора действий
             # nodes = [row[0] for row in points]
             nodes = []
             for row in points:
@@ -1223,6 +1227,25 @@ def proverka_nalichiya_svyazi_s_img(tochka):
                         return nayti_in1[0]
 
 
+def obnylenie_vseh_svazey_s_tochkoi(tochka):
+    """Точку передавать в виде кортежа. Функция обнуляет все связи, ведущие
+    к передаваемой точке для блокировки повторных действий и зацикливания"""
+    cursor.execute("UPDATE svyazi SET weight = 0 WHERE id_finish = ?", (tochka,))
+    # Обнуление и (t0), связанных с (tp)
+    poisk_t_o = cursor.execute("SELECT svyazi.id_start FROM svyazi JOIN tochki ON svyazi.id_start = tochki.ID"
+                                " WHERE svyazi.id_finish = ? AND tochki.name = 'time_0' ", (tochka,))
+    for poisk_t_o1 in poisk_t_o:
+        cursor.execute("UPDATE svyazi SET weight = 0 WHERE id_finish = ?", poisk_t_o1)
+        print(f'Обнулены связи к to = {poisk_t_o1[0]}')
+
+    # для проверки обнуления:
+    poisk_svyazey = tuple(cursor.execute("SELECT id_start FROM svyazi WHERE id_finish = ?", (tochka,)))
+    for poisk_svyazey1 in poisk_svyazey:
+        poisk_weight = tuple(cursor.execute("SELECT weight FROM svyazi WHERE id_finish = ? AND "
+                                            "id_start = ?", (tochka, poisk_svyazey1[0])))
+        for poisk_weight1 in poisk_weight:
+            print(f'Для проверки обнуления: вес связи, где id_start = {poisk_svyazey1[0]}, id_finish = {tochka} = {poisk_weight1[0]}')
+
 
 def sbor_deystviya(tp, celevoe_tp):
     # собирает в обратном порядке сущность от последнего tp и приводит в действие ответ
@@ -1246,7 +1269,11 @@ def sbor_deystviya(tp, celevoe_tp):
         posledniy_t = 0   # Был - old_ekran
 
     # 22.06.23 - гашение ответов, для блокировки повторов.
-    cursor.execute("UPDATE tochki SET work = 0 AND signal = 0 WHERE ID = ?", (tp,))
+    # cursor.execute("UPDATE tochki SET work = 0 AND signal = 0 WHERE ID = ?", (tp,))
+
+    # 03.04.24 - Гашение связей, ведущей к этой (tp) для предотвращения повторных действий и зацикливания. Когда экран
+    # изменится - вес связей снова придёт в норму.
+    obnylenie_vseh_svazey_s_tochkoi(tp,)
 
     #14.06.23 - ввод запоминания последнего ответа, для блокирования повторов
     # posledniy_otvet = tp
@@ -1270,25 +1297,21 @@ def sbor_deystviya(tp, celevoe_tp):
                                               name2_1[0]+'/tp')
             # print(f'создана new_tochka_t0 такая: {new_tochka_t0}, а была posl_t0 = {posledniy_t_0}')
             # sozdat_svyaz(new_tochka_t0, tp, 1)  # 3.2.2 - убрал обратную связь
-            sozdat_svyaz(posledniy_t_0, new_tochka_t0, 1)
+            sozdat_svyaz(posledniy_t_0, new_tochka_t0, 0)
             sozdat_svyaz(new_tochka_t0, tp, 1)
             posledniy_t_0 = new_tochka_t0
             print("Posl_to (5) из-за сбора действий и создания новой t0 = ", posledniy_t_0)
             # 21.12.23 - Добавление связи от posl_t0 к time
             if poisk_time:
                 for poisk_time1 in poisk_time:
-                    sozdat_svyaz(poisk_time1[0], posledniy_t_0, 1)
+                    sozdat_svyaz(poisk_time1[0], posledniy_t_0, 0)
     else:
         for poisk_svyazi_tp_s_t01 in poisk_svyazi_tp_s_t0:
             for poisk_svyazi_tp_s_t02 in poisk_svyazi_tp_s_t01:
                 posledniy_t_0 = poisk_svyazi_tp_s_t02
                 print("Posl_to теперь в сборе действий, когда нашлось нужное t0 стал = ", posledniy_t_0)
-                # cursor.execute("UPDATE tochki SET work = 1 WHERE ID = ?", (posledniy_t_0,))
-                # if poisk_time:
-                #     for poisk_time1 in poisk_time:
-                #         # 21.12.23 - разворачивается связь
-                #         ydalit_svyaz(poisk_time1[0], posledniy_t_0)
-                #         sozdat_svyaz(posledniy_t_0, poisk_time1[0], 1)
+                obnylenie_vseh_svazey_s_tochkoi(posledniy_t_0,)  # 3.04.24 - добавлено для предотвращения зацикливания
+
     list_deystviy = []
     list_deystviy += tp_kortez
     list_tp = []
@@ -1381,6 +1404,10 @@ def perenos_sostoyaniya():
     if old_ekran != posledniy_t:
         old_ekran = posledniy_t
         proverka_nalichiya_svyazey_t_t_o()
+
+        # 03.04.24 - Если экран поменялся - вернуть вес всех связей к 1
+        cursor.execute("UPDATE svyazi SET weight = 1 ")
+
     # else:
         # print('!!!!!!!!!!!!!ВНИМАНИЕ!!!!!!ЭКРАН НЕ ИЗМЕНИЛСЯ!!!!!!!!!!!')
     posledniy_t = 0
