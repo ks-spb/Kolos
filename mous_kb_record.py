@@ -246,6 +246,8 @@ class Recorder:
         if not hash_element:
             # Если элемент не найден, то выходим
             print("**** ВНИМАНИЕ! Хэш элемента не найден на экране! Запись последовательности прервана! ****************")
+            out = {'type': 'mouse', 'event': 'click', 'image': hash_element, 'x': x, 'y': y}
+            self.record.append(out)
             return
 
         # Записываем перемещение мыши
