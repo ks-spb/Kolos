@@ -43,7 +43,7 @@ def poisk_bykvi_iz_vvedeno_v2(symbol):   # Функция находит ID у �
 
         new_tochka_time_t = sozdat_new_tochky('time', 0, 'time', "zazech_sosedey", 1, 0, 0, posledniy_t_0,
                                               posledniy_t, symbol)
-        print(f"Создали новую точку in ID: {new_tochka_name} и time: {new_tochka_time_t}")
+        # print(f"Создали новую точку in ID: {new_tochka_name} и time: {new_tochka_time_t}")
         sozdat_svyaz(new_tochka_name, new_tochka_time_t, 1)
         # 06.02.24 - при получении экрана - не создавать time_p и p.
         if "id_ekran_" not in symbol:
@@ -828,17 +828,18 @@ def proshivka_po_derevy(time_dlya_proshivki):
     # print("Количество возможных путей действий: ", len(all_paths(tree, posledniy_t_0)))
     found = False
     pyti_vse = all_paths(tree, time_dlya_proshivki)
-    pyti_bez_nylevih = [[x for x in sublist if x not in list_ydaleniya] for sublist in pyti_vse]
-
+    pyti_ydalenie_nylevih_svyazey = [[x for x in sublist if x not in list_ydaleniya] for sublist in pyti_vse]
+    print(f'Пути после удаления нулевых связей: {pyti_ydalenie_nylevih_svyazey}. Точки были такие: {list_ydaleniya}')
     # 07.02.24 - Удаляются экраны из путей
-    pyti_bez_ekranov = ydalit_ekrani_iz_pytey(pyti_bez_nylevih)
-    # print(f'Возможные пути без экранов: {pyti_bez_ekranov}')
+    pyti_bez_ekranov = ydalit_ekrani_iz_pytey(pyti_ydalenie_nylevih_svyazey)
+    print(f'Возможные пути без экранов: {pyti_bez_ekranov}')
     pyti = sorted(pyti_bez_ekranov, key=len)
     # 24.01.24 - Если золотой путь не 0 и он короче, чем рассматриваемый путь - то не рассматривать новый путь.
     print(f'Золотой путь сейчас такой: {zolotoy_pyt}')
     for pyti1 in pyti:
         # print(f'Рассматривается путь: {pyti1}')
-        pyti1 = pyti1[2:]   # Укорачивается путь - отсекается точка времени и t0
+        pyti1 = pyti1[1:]   # Укорачивается путь - отсекается точка времени. 08.04.24 - t0 отсекается во время составления путей - т.к. она была уже задействована
+        # print(f'Путь укорочен на 2 шага: {pyti1}')
         # Проверка первая точка пути является ли объектом и есть ли он на экране:
         if pyti1:
             svyaz_s_img_pyti = proverka_nalichiya_svyazi_s_img(pyti1[0])
@@ -860,13 +861,13 @@ def proshivka_po_derevy(time_dlya_proshivki):
                 # vse_pyti_iz_proshivki.append(pyt_rod2)
     if zolotoy_pyt:
         svyaz_s_img_zolotogo_pyti = proverka_nalichiya_svyazi_s_img(zolotoy_pyt[0])
-        # print(f'Проверяется следующий шаг золотого пути: {zolotoy_pyt} - связан ли он с объектом и имеется ли он на экране:'
-        #       f'{svyaz_s_img_zolotogo_pyti}. Если пусто - добавляется во все пути, иначе - обнуляется золотой путь.')
+        print(f'Проверяется следующий шаг золотого пути: {zolotoy_pyt} - связан ли он с объектом и имеется ли он на экране:'
+              f'{svyaz_s_img_zolotogo_pyti}. Если пусто - добавляется во все пути, иначе - обнуляется золотой путь.')
         if not svyaz_s_img_zolotogo_pyti:
-            # print(f'Золотой путь добавлен в список всех путей')
+            print(f'Золотой путь добавлен в список всех путей')
             novie_pyti.append(zolotoy_pyt)   # 24.01.24 - Добавлен золотой путь в список всех путей.
         else:
-            # print(f'Обнуление золотого пути - т.к. отсутствует нужный объект под курсором или на экране')
+            print(f'Обнуление золотого пути - т.к. отсутствует нужный объект под курсором или на экране')
             zolotoy_pyt = []
     for new_path_3_i_bolee in sorted(novie_pyti, key=len):
         svyaz_s_1 = []
