@@ -614,7 +614,7 @@ def proshivka_po_derevy(time_dlya_proshivki):
     строятся из текущего (t). Нашли to (связанные с (+) из деревьев) - определили какие при этом совершались действия
     (tp) и нашли все (t0), которые связаны с этими действиями.
     * Дальше выполняется построение деревьев действий от текущего состояния и текущей (t).
-    * Пути отсеиваются, если они длиннее целевого и
+    * Пути отсеиваются, если они длиннее целевого
     * Пути сортируются по возрастанию количества шагов и отсеиваются, если в них нет целевых (t0), у следующего шага
     имеется связь с (-) или отсутствует объект на экране (программа его не "увидела").
     * Вводится золотой путь, чтобы программа "не потерялась" при выполнении действий, а двигалась в нужном направлении.
@@ -1508,7 +1508,7 @@ if __name__ == '__main__':
     last_update_screen = 0  # Время последнего обновления экрана
     schetchik = 0
     most_new = 0
-    time.sleep(0.5)
+    time.sleep(1.0)
 
     in_pamyat = []   # 20.12.23 - Список для хранения входящих ID (in)
     in_pamyat_name = []   #12.01.24 - Список для хранения входящих в виде name, а не ID
@@ -1603,8 +1603,7 @@ if __name__ == '__main__':
             sleep(0.5)
         print("")
 
-        # print('ввели: ', vvedeno_luboe)
-        if vvedeno_luboe == ('0'):
+        if vvedeno_luboe in [' 0', '0']:
             tree = ()
             A = False
             in_pamyat = []
@@ -1613,9 +1612,10 @@ if __name__ == '__main__':
             posledniy_tp = 0
             old_ekran = 0
             posledniy_t_0 = 0
+            # print('!!!Отработана функция 0 !!!')
             continue
 
-        elif vvedeno_luboe == ('1'):
+        elif vvedeno_luboe in [' 1', '1']:
             """Создаётся связь м/у положительной реакцией и текущим состоянием. При вводе - стирается первый введённый 
              элемент задания (памяти) и состояние переводится на текущий экран."""
             # Нужно проверить имеется ли уже связь м/у t0 и tp
@@ -1660,7 +1660,7 @@ if __name__ == '__main__':
                 in_pamyat_name.pop(0)
                 print(f'Удалён первый элемент из in_pamyat_name, теперь список такой: {in_pamyat_name}')
 
-        elif vvedeno_luboe == ('2'):
+        elif vvedeno_luboe in [' 2', '2']:
             # нужно проверить имеется ли уже связь м/у t0 и tp
             # 06.02.24 - Не должна создаваться связь между экраном и отрицательной реакцией. Нужно проверить - если у
             # posl_t0 нет связи с tp - то найти предыдущий t0 и проверить у него.
@@ -1719,7 +1719,7 @@ if __name__ == '__main__':
                 posledniy_t = 0
                 print(f'Posl_t0 из-за (-) стал = {posledniy_t_0}, при этом моста нет')
 
-        elif vvedeno_luboe == ('3'):
+        elif vvedeno_luboe in [' 3', '3']:
             # Включение записи
             cursor.commit()  # Сохраняем изменения в БД
             sleep(0.5)
@@ -1727,7 +1727,7 @@ if __name__ == '__main__':
             # source = None  # Запись сохранится в месте ввода
             continue
 
-        elif vvedeno_luboe == ('4'):
+        elif vvedeno_luboe in [' 4', '4']:
             # Показать запись3
             sleep(0.5)
 
@@ -1747,28 +1747,28 @@ if __name__ == '__main__':
             vvedeno_luboe = ''
             continue
 
-        elif vvedeno_luboe == ('5'):
+        elif vvedeno_luboe in [' 5', '5']:
             # Сохранение записи
             source = 'rec'  # Запись сохранится в месте ввода
             vvedeno_luboe = ''
             # continue
 
-        elif vvedeno_luboe == ('6'):
+        elif vvedeno_luboe in [' 6', '6']:
             # Сброс состояния
             print("Сброс состояния до текущего экрана")
             perenos_sostoyaniya()
             schetchik = 0
 
-        elif vvedeno_luboe == ('7'):
+        elif vvedeno_luboe in [' 7', '7']:
             print("Стирание краткосрочной памяти")
             in_pamyat = []
             in_pamyat_name = []
 
-        elif vvedeno_luboe == ('8'):
+        elif vvedeno_luboe in [' 8', '8']:
             # запуск автоматического срабатывания счётчика без нажатия enter
             source = None
 
-        elif vvedeno_luboe == ('9'):
+        elif vvedeno_luboe in [' 9', '9']:
             stiranie_pamyati()
             # source = None
             vvedeno_luboe = ''
@@ -1860,6 +1860,8 @@ if __name__ == '__main__':
                     # cursor.execute("UPDATE 'tochki' SET work = 1 WHERE ID = ?", (in_pamyat[0],))
                     # 21.12.23 - за основу формирования дерева взята точка time, а не time_0
                     # Найти t от posl_t0
+                    """Если программа сюда перешла - значит не было ничего введено и происходит поиск возможных действий.
+                    Для поиска берётся точка t от последней t0"""
                     poisk_svyazi_t_i_t0 = tuple(cursor.execute("SELECT svyazi.id_start "
                                                                            "FROM svyazi JOIN tochki "
                                                                            "ON svyazi.id_start = tochki.id "
