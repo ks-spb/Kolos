@@ -157,15 +157,17 @@ def proshivka():
     #               c. Удалить первый пункт из списка онлайн связей
     #               d. Запустить функцию прошивку заново с пункта 3a
 
-
+    print("Работа функции proshivka")
     global in_pamyat_name
     global pyt
     global online_svyaz_list
     global spisok_otricatelnih_deystvii
     # 1. Если есть уже собранный ранее путь - пропустить эту функцию
+    print(f'Передаётся следующий путь: {pyt}')
     if pyt:
         return
     # 2. Если список pamyat пустой - пропустить эту функцию
+    print(f'Передаётся следующий in_pamyat_name: {in_pamyat_name}')
     if not in_pamyat_name:
         return
     # 3. Иначе:
@@ -174,7 +176,7 @@ def proshivka():
     print(f'Первая точка в списке онлайн связей: {pervaya_online_svyaz}')
     #   b. Найти ID точки по связи, указанной в списке Online_svyaz
     id_tochki_online_svyazi = cursor.execute("SELECT id_finish FROM svyazi WHERE ID = ?",
-                                             (pervaya_online_svyaz)).fetchone()
+                                             (pervaya_online_svyaz, )).fetchone()
     print(f'Нашли id_finish: {id_tochki_online_svyazi} от первой в списке онлайн связей')
     # c. Проверяется находится ли эта точка в списке отрицательных действий
     if id_tochki_online_svyazi[0] in spisok_otricatelnih_deystvii:
@@ -187,9 +189,10 @@ def proshivka():
 
     #   e. Ищется следующая точка от этой добавленной, при этом ID связи увеличивается на 1 от только что добавленной
     next_id = pervaya_online_svyaz + 1
+    print(f'next_id стал: {next_id}')
     while True:
         # Т.е. id связи стал равен +1 от первоначальной. Найдём id_finish этой связи
-        next_point = cursor.execute("SELECT id_finish FROM svyazi WHERE ID = ?", next_id).fetchone()
+        next_point = cursor.execute("SELECT id_finish FROM svyazi WHERE ID = ?", (next_id, )).fetchone()
         print(f'Нашли id точки {next_point[0]} от +1 к первой онлайн связи: {next_id}')
         if next_point is None:
             # Если не нашли такую точку (значит закончились связи) - то выходим из цикла
@@ -197,10 +200,10 @@ def proshivka():
 
         # Проверка на тип точки - является ли реакцией REAC при этом сразу проверяем является ли положительной "poz"
         # или отрицательной "neg" или нейтральной "ney"
-        type_tochki = cursor.execute("SELECT name FROM tochki WHERE ID = ?", next_point[0]).fetchone()
-        print(f'Нашли следующий тип точки: {type_tochki[0]} у id = {next_point[0]}')
+        type_tochki = cursor.execute("SELECT type FROM points WHERE ID = ?", next_point).fetchone()
+        print(f'Нашли следующий тип точки: {type_tochki[0]} у id = {next_point}')
         if type_tochki[0] in (('ney', ), ('poz', )):
-            print('Совершается действие при следующей положительной или отрицательной реакцией')
+            print("Следующая точка нейтральная или положительная реакция")
             # Если следующая точка нейтральная или положительная реакция - то выходим из цикла
             break
         elif type_tochki[0] == ('neg',):
@@ -211,12 +214,106 @@ def proshivka():
             online_svyaz_list.pop()   # Удаляем первый пункт из списка онлайн связей
 
 
-        pyt.append((next_point, next_id))   # В путь добавляется найденная точка и ID связи
+        pyt.append((next_point[0], next_id))   # В путь добавляется найденная точка и ID связи
+
+        next_id = next_id + 1
 
         # совершается действие из первого пункта списка путь
-        print(f'Здесь должно совершиться действие из первого пункта списка путь')
+        print(f'Путь стал таким: {pyt}')
+        if pyt:
+            print(f'Совершается действие из первого пункта списка путь: {pyt}')
+            out_red(pyt[0][0])
+            break
+        # TODO здесь может собираться несколько путей, а затем выбираться лучший из них
 
 
+def out_red(id):
+    print("\033[31m {}".format(' '))
+    print("\033[0m {}".format("**********************************"))
+
+    # Воспроизведение событий клавиатуры и мыши.
+    # Данные в 1 списке, подряд для всех событий:
+    # Для клавиатуры 2 элемента: 'Key.down'/'Key.up', Клавиша (символ или название)
+    # Для сочетаний клавиш, 'Key.hotkey', Название или id сочетания
+    # Для мыши 4 элемента: 'Button.down'/'Button.up', 'left'/'right', 'x.y',  'image' (имя изображения элемента)
+    # Пример: ['Button.down', 'left', 'elem_230307_144451.png', 'Button.up', 'left', 'Button.down',
+    # 'left', 'elem_230228_163525.png', 'Button.up', 'left']
+    # Для клика мыши сейчас только: 'click.image' (image - хэш элемента)
+
+    print(f'Для ответа используется следующая точка: {id}')
+    text = (cursor.execute("SELECT name FROM points WHERE id = (?)", (id, ))).fetchone()
+    print("\033[31m {}".format(text[0]))   # Ответ
+
+    i = 0
+    while i < len(text):
+        print(f"Такой приходит текст для ответа: {text}")
+
+        if '.' in text[i]:
+            item = text[i].split('.')
+            # print(f'Преобразовали текст в item: {item}')
+            if item[0] == 'Key':
+                # Читаем и готовим событие для клавиатуры
+                event = {'type': 'kb'}
+                event['event'] = item[1]
+                event['key'] = text[i+1]
+                i += 2
+
+            elif item[0] == 'Button':
+                # Читаем и готовим событие для мыши
+                event = {'type': 'mouse'}
+                event['event'] = item[1]
+                # print(f'event такой 1: {event}')
+                print(f'i сейчас такой = {i}')
+                event['key'] = 'Button.' + item[1]
+                print(f'event такой 2: {event}')
+
+            elif item[0] == 'click':
+                event = {'type': 'mouse', 'event': 'click', 'image': item[1]}
+
+                # Закомментировал - т.к. дальше происходит добавление в команду координат x и y
+
+                # print(f"В х и у передаётся следующее: {text[i+2]}")
+                # x, y = text[i+2].split('.')
+                # if event['event'] == 'down':
+                #     event['image'] = text[i + 3]
+                #     i += 1
+                # i += 3  # У событий вверх и вниз разная длина, поэтому счетчик увеличиваем соответственно
+                # event['x'] = int(x)
+                # event['y'] = int(y)
+
+            elif item[0] == 'position':
+                # Данные для перемещения мыши без кликов
+                event = {'type': 'mouse', 'event': 'move', 'x': item[1], 'y': item[2]}
+
+            else:
+                i += 1
+                continue
+            try:
+                play.play_one(event)  # Воспроизводим событие
+            except:
+                # print('Выполнение скрипта остановлено')
+                break
+
+            continue
+
+        elif text[i] == 'click':
+            event = {'type': 'mouse', 'event': 'click', 'image': text[i+1]}
+
+            # -------------------------------
+            # Сохранение изображений в отчете
+            report.set_folder('out_red')  # Инициализация папки для сохранения изображений
+            # -------------------------------
+
+            i += 1
+            try:
+                play.play_one(event)  # Воспроизводим событие
+            except:
+                print('Выполнение скрипта остановлено')
+                break
+
+            continue
+
+        i += 1
 
 
 
@@ -322,11 +419,10 @@ if __name__ == '__main__':
             A = False
             in_pamyat = []
             # cursor.execute("UPDATE points SET puls = 0 AND signal = 0 AND work = 0")
-            posledniy_t = 0
-            posledniy_tp = 0
             old_ekran = 0
-            posledniy_t_0 = 0
-            # print('!!!Отработана функция 0 !!!')
+            online_svyaz_list = []
+            spisok_otricatelnih_deystvii = []
+            print('!!!Отработана функция 0 !!! Обнуляется онлайн связь и список отрицательных действий')
             continue
 
         elif vvedeno_luboe in [' 1', '1']:
@@ -493,20 +589,18 @@ if __name__ == '__main__':
                     # print(f'Сообщение не содержит точку или click: {vvedeno_luboe1}')
                     obrabotka_symbol(vvedeno_luboe1)
                     bil_klick = False
-                    proshivka()
             # 12.01.23 - Если введено не list (т.е. не содержит клик) - то сохранить во входящих
             # print(f'vvedeno_luboe = {vvedeno_luboe}')
             if not isinstance(vvedeno_luboe, list):
                 for vvedeno_luboe_split in vvedeno_luboe.split():
                     print(f"Добавляется в in_pamyat_name {vvedeno_luboe_split}")
                     in_pamyat_name.append(vvedeno_luboe_split)
-
             print(f'in_pamyat_name содержит следующее: {in_pamyat_name}')
             vvedeno_luboe = ''
             # print("Было введено vvedeno_luboe: ", vvedeno_luboe)
             # schetchik = 0   # 07.11.23 - добавлено обнуление, чтобы не перешло состояние к старому экрану
             source = 'input'
-
+            proshivka()
         else:
             if schetchik == 1:
                 # print(f'in_pamyat сейчас такая: {in_pamyat}')
