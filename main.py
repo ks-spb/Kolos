@@ -174,59 +174,67 @@ def proshivka():
         return
     # 3. Иначе:
     #   a. Берётся онлайн связь первая в списке
-    pervaya_online_svyaz = online_svyaz_list[0]
-    print(f'Первая точка в списке онлайн связей: {pervaya_online_svyaz}')
-    #   b. Найти ID точки по связи, указанной в списке Online_svyaz
-    id_tochki_online_svyazi = cursor.execute("SELECT id_finish FROM svyazi WHERE ID = ?",
-                                             (pervaya_online_svyaz, )).fetchone()
-    print(f'Нашли id_finish: {id_tochki_online_svyazi} от первой в списке онлайн связей')
-    # c. Проверяется находится ли эта точка в списке отрицательных действий
-    if id_tochki_online_svyazi[0] in spisok_otricatelnih_deystvii:
-        if pyt[0][0] ==  id_tochki_online_svyazi[0]:   # Если точка первая в пути
-            online_svyaz_list.pop(0)   # удаляется первое значение в списке онлайн путь
-            proshivka()   # снова проверяем следующую точку (переходим к пункту 3.а)
+    if online_svyaz_list:
+        pervaya_online_svyaz = online_svyaz_list[0]
+        print(f'Первая точка в списке онлайн связей: {pervaya_online_svyaz}')
+        #   b. Найти ID точки по связи, указанной в списке Online_svyaz
+        id_tochki_online_svyazi = cursor.execute("SELECT id_finish FROM svyazi WHERE ID = ?",
+                                                 (pervaya_online_svyaz, )).fetchone()
+        print(f'Нашли id_finish: {id_tochki_online_svyazi} от первой в списке онлайн связей')
+        # c. Проверяется находится ли эта точка в списке отрицательных действий
+        if id_tochki_online_svyazi[0] in spisok_otricatelnih_deystvii:
+            if pyt[0][0] ==  id_tochki_online_svyazi[0]:   # Если точка первая в пути
+                online_svyaz_list.pop(0)   # удаляется первое значение в списке онлайн путь
+                proshivka()   # снова проверяем следующую точку (переходим к пункту 3.а)
+        # Проверка является ли найденная точка реакцией
+        elif id_tochki_online_svyazi[0] in (1, 2, 3):
+            print('Найденная точка является реакцией - поэтому вышли из функции')
+            in_pamyat_name = []   # Обнулить список памяти - т.к. цепочка дошла до нужного результата
+            print("\033[0m {}".format("**********************************"))
+            print("\033[31m {}".format("Был пройден весь путь и цепочка действий закончилась"))  # Ответ
+            print("\033[0m {}".format("**********************************"))
+            return
+        #   d. Если не находится в списке отрицательных действий - записать в список “путь”, эту точку и ID связи
+        pyt.append((id_tochki_online_svyazi[0], pervaya_online_svyaz))
 
-    #   d. Если не находится в списке отрицательных действий - записать в список “путь”, эту точку и ID связи
-    pyt.append((id_tochki_online_svyazi[0], pervaya_online_svyaz))
+        #   e. Ищется следующая точка от этой добавленной, при этом ID связи увеличивается на 1 от только что добавленной
+        next_id = pervaya_online_svyaz + 1
+        print(f'next_id стал: {next_id}')
+        while True:
+            # Т.е. id связи стал равен +1 от первоначальной. Найдём id_finish этой связи
+            next_point = cursor.execute("SELECT id_finish FROM svyazi WHERE ID = ?", (next_id, )).fetchone()
+            print(f'Нашли id точки {next_point} от +1 к первой онлайн связи: {next_id}')
+            if next_point is None:
+                # Если не нашли такую точку (значит закончились связи) - то выходим из цикла
+                break
 
-    #   e. Ищется следующая точка от этой добавленной, при этом ID связи увеличивается на 1 от только что добавленной
-    next_id = pervaya_online_svyaz + 1
-    print(f'next_id стал: {next_id}')
-    while True:
-        # Т.е. id связи стал равен +1 от первоначальной. Найдём id_finish этой связи
-        next_point = cursor.execute("SELECT id_finish FROM svyazi WHERE ID = ?", (next_id, )).fetchone()
-        print(f'Нашли id точки {next_point[0]} от +1 к первой онлайн связи: {next_id}')
-        if next_point is None:
-            # Если не нашли такую точку (значит закончились связи) - то выходим из цикла
-            break
-
-        # Проверка на тип точки - является ли реакцией REAC при этом сразу проверяем является ли положительной "poz"
-        # или отрицательной "neg" или нейтральной "ney"
-        type_tochki = cursor.execute("SELECT name FROM points WHERE ID = ?", next_point).fetchone()
-        print(f'Нашли следующий name точки: {type_tochki[0]} у id = {next_point}')
-        if type_tochki[0] in ('ney', 'poz'):
-            print("Следующая точка нейтральная или положительная реакция")
-            # Если следующая точка нейтральная или положительная реакция - то выходим из цикла
-            break
-        elif type_tochki[0] == 'neg':
-            print(f'В список отрицательных действий добавлена предыдущая точка - т.е. которая первая в списке онлайн'
-                  f'связей: {pervaya_online_svyaz}')
-            spisok_otricatelnih_deystvii.append(pervaya_online_svyaz)
-            pyt.clear()   #Удаляется путь
-            online_svyaz_list.pop()   # Удаляем первый пункт из списка онлайн связей
+            # Проверка на тип точки - является ли реакцией REAC при этом сразу проверяем является ли положительной "poz"
+            # или отрицательной "neg" или нейтральной "ney"
+            type_tochki = cursor.execute("SELECT name FROM points WHERE ID = ?", next_point).fetchone()
+            print(f'Нашли следующий name точки: {type_tochki[0]} у id = {next_point}')
+            if type_tochki[0] in ('ney', 'poz'):
+                print("Следующая точка нейтральная или положительная реакция")
+                # Если следующая точка нейтральная или положительная реакция - то выходим из цикла
+                break
+            elif type_tochki[0] == 'neg':
+                print(f'В список отрицательных действий добавлена предыдущая точка - т.е. которая первая в списке онлайн'
+                      f'связей: {pervaya_online_svyaz}')
+                spisok_otricatelnih_deystvii.append(pervaya_online_svyaz)
+                pyt.clear()   #Удаляется путь
+                online_svyaz_list.pop()   # Удаляем первый пункт из списка онлайн связей
 
 
-        pyt.append((next_point[0], next_id))   # В путь добавляется найденная точка и ID связи
+            pyt.append((next_point[0], next_id))   # В путь добавляется найденная точка и ID связи
 
-        next_id = next_id + 1
+            next_id = next_id + 1
 
-        # совершается действие из первого пункта списка путь
-        print(f'Путь стал таким: {pyt}')
-    if pyt:
-        print(f'Совершается действие из первого пункта списка путь: {pyt}')
-        out_red(pyt[0][0])
-        pyt.pop(0)   # Удаляется первая часть пути (первый индекс)
-    # здесь может собираться несколько путей, а затем выбираться лучший из них
+            # совершается действие из первого пункта списка путь
+            print(f'Путь стал таким: {pyt}')
+        if pyt:
+            print(f'Совершается действие из первого пункта списка путь: {pyt}')
+            out_red(pyt[0][0])
+            pyt.pop(0)   # Удаляется первая часть пути (первый индекс)
+        # здесь может собираться несколько путей, а затем выбираться лучший из них
 
 
 def out_red(id):
@@ -244,10 +252,11 @@ def out_red(id):
         # Создать связь от точки с max сигналом к нейтральной точке
         # Поменять сигнал нейтральной точки на max+1
         # Удалить список pamyat
-    type_tochki = cursor.execute("SELECT type FROM points WHERE id = ?", id).fetchone()
+    print(f'в out_red передалась следующее id: {id}')
+    type_tochki = cursor.execute("SELECT type FROM points WHERE id = ?", (id, )).fetchone()
     print(f'out_red. Нашли следующий тип точки: {type_tochki[0]} у id = {id}')
     if type_tochki[0] == 'REAC':
-        sozdat_svyaz(id, 3)
+        sozdat_svyaz(id, (3, ))
         # Поиск максимального сигнала в таблице points
         max_signal = cursor.execute("SELECT MAX(signal) FROM points").fetchone()
         cursor.execute("UPDATE points SET signal = ? WHERE id = 3", max_signal + 1)
@@ -257,13 +266,13 @@ def out_red(id):
     else:
         print(f'Для ответа используется следующая точка: {id}')
         text = (cursor.execute("SELECT name FROM points WHERE id = (?)", (id, ))).fetchone()
+        print(f"Такой приходит текст для ответа: {text}")
         print("\033[0m {}".format("**********************************"))
         print("\033[31m {}".format("Ответ программы:"))  # Ответ
         print("\033[31m {}".format(text[0]))   # Ответ
         print("\033[0m {}".format("**********************************"))
         i = 0
         while i < len(text):
-            print(f"Такой приходит текст для ответа: {text}")
 
             if '.' in text[i]:
                 item = text[i].split('.')
@@ -336,12 +345,18 @@ def out_red(id):
         # Создать связь от предыдущей точки с max-1 к этой точке
         # Запустить функцию online_svyaz
         max_signal = cursor.execute("SELECT MAX(signal) FROM points").fetchone()
-        cursor.execute("UPDATE points SET signal = ? WHERE id = ?", (max_signal + 1, id))
-        poisk_predidushego_max_signal = cursor.execute("SELECT id FROM points WHERE signal = ?" , max_signal).fetchone()
+        # print(f'Максимальный сигнал сейчас такой: {max_signal}')
+        poisk_predidushego_max_signal = poisk_id_s_max_signal_points()
+        cursor.execute("UPDATE points SET signal = ? WHERE id = ?", (max_signal[0] + 1, id))
+        print(f'Создаётся связь от {poisk_predidushego_max_signal} к {id}')
         sozdat_svyaz(poisk_predidushego_max_signal, id)
-        print(f'Создалась связь от {poisk_predidushego_max_signal} к {id}')
         online_svyaz(id)
 
+
+def poisk_id_s_max_signal_points():
+    max_signal = cursor.execute("SELECT MAX(signal) FROM points").fetchone()
+    poisk_id_max_signal = cursor.execute("SELECT id FROM points WHERE signal = ?", max_signal).fetchone()
+    return poisk_id_max_signal[0]
 
 
 if __name__ == '__main__':
@@ -453,97 +468,69 @@ if __name__ == '__main__':
             continue
 
         elif vvedeno_luboe in [' 1', '1']:
-            """Создаётся связь м/у положительной реакцией и текущим состоянием. При вводе - стирается первый введённый 
-             элемент задания (памяти) и состояние переводится на текущий экран."""
-            # Нужно проверить имеется ли уже связь м/у t0 и tp
-            # 06.02.24 - Не должна создаваться связь между экраном и положительной реакцией. Нужно проверить - если у
-            # posl_t0 нет связи с tp - то найти предыдущий t0 и проверить у него.
-            # Предыдущая t0 записана в rod1, а вот наличие связи с tp придётся проверить вручную.
-            C = True
-            t0_dlya_poiska_tp = posledniy_t_0
-            while C:
-                poisk_svyazi_s_tp = cursor.execute("SELECT svyazi.id_finish FROM svyazi JOIN points "
-                                                   "ON svyazi.id_finish = points.id "
-                                                   "WHERE svyazi.id_start = ? AND name = 'time_p' ",
-                                                   (t0_dlya_poiska_tp,)).fetchone()
-                if poisk_svyazi_s_tp:
-                    for poisk_svyazi_s_tp1 in poisk_svyazi_s_tp:
-                        # Связь с tp имеется - значит создаётся связь с этим t0 и выход из цикла
-                        sozdat_svyaz(t0_dlya_poiska_tp, 1, 1)
-                        print("Состояние перед (+) реакцией было такое: ", t0_dlya_poiska_tp,
-                              ". С ней и создаётся связь")
-                        C = False
-                else:
-                    # Связь с tp не имеется - значит ищется предыдущий t0 и проверяется связь с tp у него.
-                    poisk_predidushego_t0_dlya_perehoda = cursor.execute("SELECT rod1 FROM points WHERE id = ?",
-                                                                         (t0_dlya_poiska_tp,)).fetchone()
-                    for poisk_predidushego_t0_dlya_perehoda1 in poisk_predidushego_t0_dlya_perehoda:
-                        t0_dlya_poiska_tp = poisk_predidushego_t0_dlya_perehoda1
-            # source = None
+            """ Создаётся связь м/у положительной реакцией и текущим состоянием (точкой с наибольшим сигналом). 
+                При вводе - стирается первый введённый элемент задания (памяти) и состояние переводится 
+                на текущий экран."""
+
+            tekushiy_id = poisk_id_s_max_signal_points()
+            sozdat_svyaz(tekushiy_id, 1)
+
+            source = 'input'   # Было None и включался автопереход по циклам
             vvedeno_luboe = ''
 
             schetchik = 0  # 12.09.23 Добавил переход к началу цикла, если была применена реакция
 
-            print(f'in_pamyat перед удалением первого элемента: {in_pamyat}')
-            if in_pamyat:
-                in_pamyat.pop(0)
-                print(f'Удалён первый элемент из in_pamyat, теперь список такой: {in_pamyat}')
-            if in_pamyat_name:
-                in_pamyat_name.pop(0)
-                print(f'Удалён первый элемент из in_pamyat_name, теперь список такой: {in_pamyat_name}')
+            # print(f'in_pamyat перед удалением первого элемента: {in_pamyat}')
+            in_pamyat_name = []
+            in_pamyat = []
+            # if in_pamyat:
+            #     in_pamyat.pop(0)
+            #     print(f'Удалён первый элемент из in_pamyat, теперь список такой: {in_pamyat}')
+            # if in_pamyat_name:
+            #     in_pamyat_name.pop(0)
+            #     print(f'Удалён первый элемент из in_pamyat_name, теперь список такой: {in_pamyat_name}')
 
         elif vvedeno_luboe in [' 2', '2']:
-            # нужно проверить имеется ли уже связь м/у t0 и tp
-            # 06.02.24 - Не должна создаваться связь между экраном и отрицательной реакцией. Нужно проверить - если у
-            # posl_t0 нет связи с tp - то найти предыдущий t0 и проверить у него.
-            C = True
-            t0_dlya_poiska_tp = posledniy_t_0
-            while C:
-                poisk_svyazi_s_tp = cursor.execute("SELECT svyazi.id_finish FROM svyazi JOIN points "
-                                                   "ON svyazi.id_finish = points.id "
-                                                   "WHERE svyazi.id_start = ? AND name = 'time_p' ",
-                                                   (t0_dlya_poiska_tp,)).fetchone()
-                for poisk_svyazi_s_tp1 in poisk_svyazi_s_tp:
-                    if poisk_svyazi_s_tp1:
-                        # Связь с tp имеется - значит создаётся связь с этим t0 и выход из цикла
-                        sozdat_svyaz(t0_dlya_poiska_tp, 2, 1)
-                        print("Состояние перед (-) реакцией было такое: ", t0_dlya_poiska_tp,
-                              ". С ней и создаётся связь")
-                        C = False
-                    else:
-                        # Связь с tp не имеется - значит ищется предыдущий t0 и проверяется связь с tp у него.
-                        poisk_predidushego_t0_dlya_perehoda = cursor.execute("SELECT rod1 FROM points WHERE id = ?",
-                                                                             (t0_dlya_poiska_tp,)).fetchone()
-                        for poisk_predidushego_t0_dlya_perehoda1 in poisk_predidushego_t0_dlya_perehoda:
-                            t0_dlya_poiska_tp = poisk_predidushego_t0_dlya_perehoda1[0]
-            source = None
+            # Введена отрицательная реакция - создать с ней связь
+
+            source = 'input'
             vvedeno_luboe = ''
-            # schetchik = 0    # 12.09.23 Добавил переход к началу цикла, если была применена реакция
-            posledniy_tp = 0
-            posledniy_t = 0
-            if in_pamyat != 0:
-                # После отрицательной реакции - состояние переносится к предыдущей t0, которая не является кликом
-                # (т.е. name2 менее 16 знаков)
-                poisk_t0_dlya_otkata = True
-                posl_t0_dlya_cicla = posledniy_t_0
-                # Удаление связи моста и этой t0 - т.к. она не ведёт к (+)
-                while poisk_t0_dlya_otkata:
-                    # предыдущий t0 прописан в rod1 - найти эту точку
-                    poisk_predidushego_t0 = cursor.execute("SELECT rod1 FROM points WHERE id = ?",
-                                                           (posl_t0_dlya_cicla,)).fetchall()
-                    # проверить какой длины name2 - если 16 знаков - то это клик и искать следующую t0
-                    for poisk_predidushego_t01 in poisk_predidushego_t0:
-                        proverka_name2 = cursor.execute("SELECT name2 FROM points WHERE id = ? "
-                                                        "AND LENGTH(name2) < 16", poisk_predidushego_t01).fetchall()
-                        # Если такая точка найдена - то это искомый t0 к нему и переходим
-                        if proverka_name2:
-                            posledniy_t_0 = poisk_predidushego_t01[0]
-                            poisk_t0_dlya_otkata = False
-                            print(f'Состояние после получения (-) реакции было перенесено в t0: {posledniy_t_0}. '
-                                  f'До этого был posl_t0: {posl_t0_dlya_cicla}')
-                        else:
-                            # Если name2 у этой t0 = 16 - то это клик - значит ищем следующую
-                            posl_t0_dlya_cicla = poisk_predidushego_t01[0]
+
+            # Ищется точка с максимальным сигналом, которая была введена последней
+            tekushiy_id = poisk_id_s_max_signal_points()
+            # Создаётся связь с отрицательной реакцией
+            sozdat_svyaz(tekushiy_id, 1)
+            # Действие добавляется в список отрицательных действий
+            spisok_otricatelnih_deystvii.append(tekushiy_id)
+            # сигнал текущей точки обнуляется, чтобы её не повторять - т.е. система откатится на шаг назад
+            cursor.execute("UPDATE points SET signal = 0 WHERE id = ?", (tekushiy_id, ))
+            # путь обнулится
+            pyt = []
+
+
+            # if in_pamyat != 0:
+            #     # После отрицательной реакции - состояние переносится к предыдущей t0, которая не является кликом
+            #     # (т.е. name2 менее 16 знаков)
+            #     poisk_t0_dlya_otkata = True
+            #     posl_t0_dlya_cicla = posledniy_t_0
+            #     # Удаление связи моста и этой t0 - т.к. она не ведёт к (+)
+            #     while poisk_t0_dlya_otkata:
+            #         # предыдущий t0 прописан в rod1 - найти эту точку
+            #         poisk_predidushego_t0 = cursor.execute("SELECT rod1 FROM points WHERE id = ?",
+            #                                                (posl_t0_dlya_cicla,)).fetchall()
+            #         # проверить какой длины name2 - если 16 знаков - то это клик и искать следующую t0
+            #         for poisk_predidushego_t01 in poisk_predidushego_t0:
+            #             proverka_name2 = cursor.execute("SELECT name2 FROM points WHERE id = ? "
+            #                                             "AND LENGTH(name2) < 16", poisk_predidushego_t01).fetchall()
+            #             # Если такая точка найдена - то это искомый t0 к нему и переходим
+            #             if proverka_name2:
+            #                 posledniy_t_0 = poisk_predidushego_t01[0]
+            #                 poisk_t0_dlya_otkata = False
+            #                 print(f'Состояние после получения (-) реакции было перенесено в t0: {posledniy_t_0}. '
+            #                       f'До этого был posl_t0: {posl_t0_dlya_cicla}')
+            #             else:
+            #                 # Если name2 у этой t0 = 16 - то это клик - значит ищем следующую
+            #                 posl_t0_dlya_cicla = poisk_predidushego_t01[0]
 
         elif vvedeno_luboe in [' 3', '3']:
             # Включение записи
@@ -591,13 +578,15 @@ if __name__ == '__main__':
 
         elif vvedeno_luboe in [' 8', '8']:
             # запуск автоматического срабатывания счётчика без нажатия enter
-            source = None
+            source = None   # Если поставить 'input' - то будет ручной переход по циклам
 
         elif vvedeno_luboe in [' 9', '9']:
             stiranie_pamyati()
             # source = None
             vvedeno_luboe = ''
             schetchik = 0
+            in_pamyat = []
+            in_pamyat_name = []
 
         elif vvedeno_luboe != "":
             bil_klick = False
