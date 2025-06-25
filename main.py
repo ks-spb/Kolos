@@ -165,6 +165,8 @@ def proshivka():
     # 1. Если есть уже собранный ранее путь - пропустить эту функцию
     print(f'Передаётся следующий путь: {pyt}')
     if pyt:
+        out_red(pyt[0][0])   # Первое действие в пути
+        pyt.pop(0)
         return
     # 2. Если список pamyat пустой - пропустить эту функцию
     print(f'Передаётся следующий in_pamyat_name: {in_pamyat_name}')
@@ -200,13 +202,13 @@ def proshivka():
 
         # Проверка на тип точки - является ли реакцией REAC при этом сразу проверяем является ли положительной "poz"
         # или отрицательной "neg" или нейтральной "ney"
-        type_tochki = cursor.execute("SELECT type FROM points WHERE ID = ?", next_point).fetchone()
-        print(f'Нашли следующий тип точки: {type_tochki[0]} у id = {next_point}')
-        if type_tochki[0] in (('ney', ), ('poz', )):
+        type_tochki = cursor.execute("SELECT name FROM points WHERE ID = ?", next_point).fetchone()
+        print(f'Нашли следующий name точки: {type_tochki[0]} у id = {next_point}')
+        if type_tochki[0] in ('ney', 'poz'):
             print("Следующая точка нейтральная или положительная реакция")
             # Если следующая точка нейтральная или положительная реакция - то выходим из цикла
             break
-        elif type_tochki[0] == ('neg',):
+        elif type_tochki[0] == 'neg':
             print(f'В список отрицательных действий добавлена предыдущая точка - т.е. которая первая в списке онлайн'
                   f'связей: {pervaya_online_svyaz}')
             spisok_otricatelnih_deystvii.append(pervaya_online_svyaz)
@@ -220,17 +222,14 @@ def proshivka():
 
         # совершается действие из первого пункта списка путь
         print(f'Путь стал таким: {pyt}')
-        if pyt:
-            print(f'Совершается действие из первого пункта списка путь: {pyt}')
-            out_red(pyt[0][0])
-            break
-        # TODO здесь может собираться несколько путей, а затем выбираться лучший из них
+    if pyt:
+        print(f'Совершается действие из первого пункта списка путь: {pyt}')
+        out_red(pyt[0][0])
+        pyt.pop(0)   # Удаляется первая часть пути (первый индекс)
+    # здесь может собираться несколько путей, а затем выбираться лучший из них
 
 
 def out_red(id):
-    print("\033[31m {}".format(' '))
-    print("\033[0m {}".format("**********************************"))
-
     # Воспроизведение событий клавиатуры и мыши.
     # Данные в 1 списке, подряд для всех событий:
     # Для клавиатуры 2 элемента: 'Key.down'/'Key.up', Клавиша (символ или название)
@@ -239,81 +238,109 @@ def out_red(id):
     # Пример: ['Button.down', 'left', 'elem_230307_144451.png', 'Button.up', 'left', 'Button.down',
     # 'left', 'elem_230228_163525.png', 'Button.up', 'left']
     # Для клика мыши сейчас только: 'click.image' (image - хэш элемента)
+    global pyt
+    global in_pamyat_name
+    # Если первая точка в списке - реакция:
+        # Создать связь от точки с max сигналом к нейтральной точке
+        # Поменять сигнал нейтральной точки на max+1
+        # Удалить список pamyat
+    type_tochki = cursor.execute("SELECT type FROM points WHERE id = ?", id).fetchone()
+    print(f'out_red. Нашли следующий тип точки: {type_tochki[0]} у id = {id}')
+    if type_tochki[0] == 'REAC':
+        sozdat_svyaz(id, 3)
+        # Поиск максимального сигнала в таблице points
+        max_signal = cursor.execute("SELECT MAX(signal) FROM points").fetchone()
+        cursor.execute("UPDATE points SET signal = ? WHERE id = 3", max_signal + 1)
+        pyt = []
+        in_pamyat_name = []
 
-    print(f'Для ответа используется следующая точка: {id}')
-    text = (cursor.execute("SELECT name FROM points WHERE id = (?)", (id, ))).fetchone()
-    print("\033[31m {}".format(text[0]))   # Ответ
+    else:
+        print(f'Для ответа используется следующая точка: {id}')
+        text = (cursor.execute("SELECT name FROM points WHERE id = (?)", (id, ))).fetchone()
+        print("\033[0m {}".format("**********************************"))
+        print("\033[31m {}".format("Ответ программы:"))  # Ответ
+        print("\033[31m {}".format(text[0]))   # Ответ
+        print("\033[0m {}".format("**********************************"))
+        i = 0
+        while i < len(text):
+            print(f"Такой приходит текст для ответа: {text}")
 
-    i = 0
-    while i < len(text):
-        print(f"Такой приходит текст для ответа: {text}")
+            if '.' in text[i]:
+                item = text[i].split('.')
+                # print(f'Преобразовали текст в item: {item}')
+                if item[0] == 'Key':
+                    # Читаем и готовим событие для клавиатуры
+                    event = {'type': 'kb'}
+                    event['event'] = item[1]
+                    event['key'] = text[i+1]
+                    i += 2
 
-        if '.' in text[i]:
-            item = text[i].split('.')
-            # print(f'Преобразовали текст в item: {item}')
-            if item[0] == 'Key':
-                # Читаем и готовим событие для клавиатуры
-                event = {'type': 'kb'}
-                event['event'] = item[1]
-                event['key'] = text[i+1]
-                i += 2
+                elif item[0] == 'Button':
+                    # Читаем и готовим событие для мыши
+                    event = {'type': 'mouse'}
+                    event['event'] = item[1]
+                    # print(f'event такой 1: {event}')
+                    print(f'i сейчас такой = {i}')
+                    event['key'] = 'Button.' + item[1]
+                    print(f'event такой 2: {event}')
 
-            elif item[0] == 'Button':
-                # Читаем и готовим событие для мыши
-                event = {'type': 'mouse'}
-                event['event'] = item[1]
-                # print(f'event такой 1: {event}')
-                print(f'i сейчас такой = {i}')
-                event['key'] = 'Button.' + item[1]
-                print(f'event такой 2: {event}')
+                elif item[0] == 'click':
+                    event = {'type': 'mouse', 'event': 'click', 'image': item[1]}
 
-            elif item[0] == 'click':
-                event = {'type': 'mouse', 'event': 'click', 'image': item[1]}
+                    # Закомментировал - т.к. дальше происходит добавление в команду координат x и y
 
-                # Закомментировал - т.к. дальше происходит добавление в команду координат x и y
+                    # print(f"В х и у передаётся следующее: {text[i+2]}")
+                    # x, y = text[i+2].split('.')
+                    # if event['event'] == 'down':
+                    #     event['image'] = text[i + 3]
+                    #     i += 1
+                    # i += 3  # У событий вверх и вниз разная длина, поэтому счетчик увеличиваем соответственно
+                    # event['x'] = int(x)
+                    # event['y'] = int(y)
 
-                # print(f"В х и у передаётся следующее: {text[i+2]}")
-                # x, y = text[i+2].split('.')
-                # if event['event'] == 'down':
-                #     event['image'] = text[i + 3]
-                #     i += 1
-                # i += 3  # У событий вверх и вниз разная длина, поэтому счетчик увеличиваем соответственно
-                # event['x'] = int(x)
-                # event['y'] = int(y)
+                elif item[0] == 'position':
+                    # Данные для перемещения мыши без кликов
+                    event = {'type': 'mouse', 'event': 'move', 'x': item[1], 'y': item[2]}
 
-            elif item[0] == 'position':
-                # Данные для перемещения мыши без кликов
-                event = {'type': 'mouse', 'event': 'move', 'x': item[1], 'y': item[2]}
+                else:
+                    i += 1
+                    continue
+                try:
+                    play.play_one(event)  # Воспроизводим событие
+                except:
+                    # print('Выполнение скрипта остановлено')
+                    break
 
-            else:
-                i += 1
                 continue
-            try:
-                play.play_one(event)  # Воспроизводим событие
-            except:
-                # print('Выполнение скрипта остановлено')
-                break
 
-            continue
+            elif text[i] == 'click':
+                event = {'type': 'mouse', 'event': 'click', 'image': text[i+1]}
 
-        elif text[i] == 'click':
-            event = {'type': 'mouse', 'event': 'click', 'image': text[i+1]}
+                # -------------------------------
+                # Сохранение изображений в отчете
+                report.set_folder('out_red')  # Инициализация папки для сохранения изображений
+                # -------------------------------
 
-            # -------------------------------
-            # Сохранение изображений в отчете
-            report.set_folder('out_red')  # Инициализация папки для сохранения изображений
-            # -------------------------------
+                i += 1
+                try:
+                    play.play_one(event)  # Воспроизводим событие
+                except:
+                    print('Выполнение скрипта остановлено')
+                    break
+
+                continue
 
             i += 1
-            try:
-                play.play_one(event)  # Воспроизводим событие
-            except:
-                print('Выполнение скрипта остановлено')
-                break
 
-            continue
-
-        i += 1
+        # Обновить сигнал у 1й точки в пути = max+1
+        # Создать связь от предыдущей точки с max-1 к этой точке
+        # Запустить функцию online_svyaz
+        max_signal = cursor.execute("SELECT MAX(signal) FROM points").fetchone()
+        cursor.execute("UPDATE points SET signal = ? WHERE id = ?", (max_signal + 1, id))
+        poisk_predidushego_max_signal = cursor.execute("SELECT id FROM points WHERE signal = ?" , max_signal).fetchone()
+        sozdat_svyaz(poisk_predidushego_max_signal, id)
+        print(f'Создалась связь от {poisk_predidushego_max_signal} к {id}')
+        online_svyaz(id)
 
 
 
@@ -603,57 +630,12 @@ if __name__ == '__main__':
             proshivka()
         else:
             if schetchik == 1:
-                # print(f'in_pamyat сейчас такая: {in_pamyat}')
-                if in_pamyat != []:
-                    # Вместо моста - зажечь повторно posl_t от первой (in)
-                    # print(f'Зажигается повторно posl_t, первый в списке: {in_pamyat}')
-                    # cursor.execute("UPDATE 'points' SET work = 1 WHERE id = ?", (in_pamyat[0],))
-                    # 21.12.23 - за основу формирования дерева взята точка time, а не time_0
-                    # Найти t от posl_t0
-                    """Если программа сюда перешла - значит не было ничего введено и происходит поиск возможных действий.
-                    Для поиска берётся точка t от последней t0"""
-                    poisk_svyazi_t_i_t0 = tuple(cursor.execute("SELECT svyazi.id_start "
-                                                               "FROM svyazi JOIN points "
-                                                               "ON svyazi.id_start = points.id "
-                                                               "WHERE svyazi.id_finish = ? AND points.name = 'time'",
-                                                               (posledniy_t_0,)))
-                    print(
-                        f'Для последующей прошивки найдена следующая time: {poisk_svyazi_t_i_t0}, где posl_t0 = {posledniy_t_0}')
-
+                print(f'Счетчик = 1 и in_pamyat сейчас такая: {in_pamyat_name}')
+                if in_pamyat_name != []:
+                    # TODO Добавить очищение памяти in_pamyat, если выполнено
+                    # Если программа сюда перешла - значит не было ничего введено и происходит поиск возможных действий.
+                    proshivka()
             elif schetchik >= 10:
-
                 schetchik = 0
-
-
-                # 28.11.23 - Если за 10 счётчиков не произошло никаких реакций, действий - то posl_t0 становится
-                # old_ekran, а если произошло - продолжаются действия и posl_t0 не изменяется
-                t0_10_proverka = posledniy_t_0
-                print(f"Изменился ли t0? Текущий posl_t0 = {posledniy_t_0}, t0_proverka = posl_t0 = {t0_10_proverka}, "
-                      f"старый t0 (в предыдущем 10м цикле) был = {t0_10}")
-                if t0_10_proverka == t0_10:
-                    if len(in_pamyat) == 0:
-                        posledniy_t_0 = 0
-                        posledniy_t = old_ekran
-                        posledniy_t = 0
-                        # posledniy_otvet = 0  # 07.11.23 - раньше последний ответ становился = 0, когда счётчик был = 1.
-                        print("")
-                        print(
-                            ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
-                        print("")
-                        print(
-                            f">>>>>>>>>>>>>>>>>>>>  Переход в posl_t0 = {posledniy_t_0}  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
-                        print("")
-                        print(
-                            f">>>>>>>>>>>>>>>>>>>  Закончилась цепочка действий, началась новая  <<<<<<<<<<<<<<<<<<<<<<<")
-                        print('')
-                        print(
-                            ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
-                        print("")
-                else:
-                    t0_10 = t0_10_proverka
-                    print("")
-                    print("-------------------Состояние posl_to поменялось-------------------------------")
-                    print("-------------------Цепочка действий продолжается---------------------------------")
-                    print("")
 
     p1.terminate()
