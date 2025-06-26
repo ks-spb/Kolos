@@ -95,7 +95,7 @@ def online_svyaz(tochka):
     # * Добавить новые ID связей в конец списка по убыванию значения
     global online_svyaz_list
     print(f"online_svyaz. Изначально имеется следующий список online_svyaz_list: {online_svyaz_list} и передаётся точка :"
-          f"{tochka}")
+          f"{tochka} ************************")
     poisk_svyazi = cursor.execute("SELECT ID FROM svyazi WHERE id_start = ?", (tochka,)).fetchall()
     print(f'online_svyaz. С точкой: {tochka} найдены ID связей: {poisk_svyazi}')
     spisok = [row[0] for row in poisk_svyazi]
@@ -129,7 +129,7 @@ def online_svyaz(tochka):
     # Добавляем оставшиеся значения из spisok в конец online_svyaz
     online_svyaz_list.extend(spisok)
 
-    print(f'В итоге получился следующий список онлайн связей: {online_svyaz_list}')
+    print(f'В итоге получился следующий список онлайн связей: {online_svyaz_list} ***********************')
 
 
 
@@ -157,7 +157,7 @@ def proshivka():
     #               c. Удалить первый пункт из списка онлайн связей
     #               d. Запустить функцию прошивку заново с пункта 3a
 
-    print("Работа функции proshivka")
+    print("Работа функции proshivka********************************************")
     global in_pamyat_name
     global pyt
     global online_svyaz_list
@@ -185,7 +185,6 @@ def proshivka():
         if id_tochki_online_svyazi[0] in spisok_otricatelnih_deystvii:
             if pyt[0][0] ==  id_tochki_online_svyazi[0]:   # Если точка первая в пути
                 online_svyaz_list.pop(0)   # удаляется первое значение в списке онлайн путь
-                proshivka()   # снова проверяем следующую точку (переходим к пункту 3.а)
         # Проверка является ли найденная точка реакцией
         elif id_tochki_online_svyazi[0] in (1, 2, 3):
             print('Найденная точка является реакцией - поэтому вышли из функции')
@@ -395,7 +394,7 @@ if __name__ == '__main__':
     izmenilos_li_sostyanie = 0
 
     while A:
-        schetchik += 1
+        schetchik += 2
         print('************************************************************************')
         # print("schetchik = ", schetchik, "     Экран", screen.screenshot_hash)
         print("schetchik = ", schetchik)
@@ -432,8 +431,7 @@ if __name__ == '__main__':
                         if event['image'] is not None:
                             vvedeno_luboe.append('click.' + event['image'])
                         else:
-                            vvedeno_luboe.append(
-                                'click.')  # todo внедрить отличие в клике по пустым объектам (добавить дополнительные поля в определение изображения)
+                            vvedeno_luboe.append('click.')
                     #     vvedeno_luboe.append('image.' + str(event['image']))
                     # vvedeno_luboe.append('Button.' + event['event'] + '.' + event['key'].split('.')[1])
 
@@ -616,12 +614,10 @@ if __name__ == '__main__':
             # print("Было введено vvedeno_luboe: ", vvedeno_luboe)
             # schetchik = 0   # 07.11.23 - добавлено обнуление, чтобы не перешло состояние к старому экрану
             source = 'input'
-            proshivka()
         else:
             if schetchik == 1:
                 print(f'Счетчик = 1 и in_pamyat сейчас такая: {in_pamyat_name}')
                 if in_pamyat_name != []:
-                    # TODO Добавить очищение памяти in_pamyat, если выполнено
                     # Если программа сюда перешла - значит не было ничего введено и происходит поиск возможных действий.
                     proshivka()
             elif schetchik >= 10:
