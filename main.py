@@ -11,6 +11,7 @@ from multiprocessing import Process, Queue, Manager
 
 from PIL.ImageStat import Global
 
+import screen_monitoring
 from db import Database
 from mous_kb_record import rec, play
 from screen_monitoring import process_changes
@@ -29,8 +30,7 @@ def stiranie_pamyati():
 
 
 def obrabotka_symbol(symbol):
-    """Функция вводится в версии 4. Вместо obrabotka_symbol.
-
+    """Функция вводится в версии 4.
     Пришла буква:
     Находим наибольший сигнал из всех точек, пусть это Max.
     Создаем точку с именем 'n' и типом ‘in’ или обновляем ее сигнал n.signal = Max + 1.
@@ -358,6 +358,35 @@ def poisk_id_s_max_signal_points():
     return poisk_id_max_signal[0]
 
 
+def tekyshiy_ekran():
+    # Находится id текущего экрана.
+    id_ekran = screen.screenshot_hash
+    new_name_id_ekran = "id_ekran_" + str(id_ekran)
+    # print(f'Новый нейм экрана: {new_name_id_ekran}')
+    poisk_id_ekrana = cursor.execute("SELECT id FROM points WHERE name = ?", (new_name_id_ekran,)).fetchone()
+    if poisk_id_ekrana:
+        for poisk_id_ekrana1 in poisk_id_ekrana:
+            id_tekushiy_ekran = poisk_id_ekrana1
+            # print(f'Текущий экран: {id_tekushiy_ekran}')
+        return id_tekushiy_ekran
+
+
+def perenos_sostoyaniya():
+    # Функция определяет какой сейчас экран, отличается ли от старого. Если отличается - перенос posl_t0 в этот экран
+    global old_ekran
+    id_screen, hash_string = queue_hashes.get()  # Получаем id_screen и хэш из очереди
+    # print(f'id_screen2 = {id_screen[1]}')
+    new_name_id_ekran = "id_ekran_" + str(id_screen[1])
+    print(f'Новый нейм экрана в перенос состояния: {new_name_id_ekran}')
+    obrabotka_symbol(new_name_id_ekran)
+    print(f"Сейчас такой экран id: {new_name_id_ekran}, старый экран такой: {old_ekran}")
+    if old_ekran != new_name_id_ekran:
+        old_ekran = new_name_id_ekran
+        print(f'Теперь старый и новый экраны одинаковые')
+    # else:
+        # print('!!!!!!!!!!!!!ВНИМАНИЕ!!!!!!ЭКРАН НЕ ИЗМЕНИЛСЯ!!!!!!!!!!!')
+
+
 if __name__ == '__main__':
     old_ekran = 0
     # Запуск процесса наблюдения за экраном
@@ -369,8 +398,8 @@ if __name__ == '__main__':
     p1.start()
 
     screen.queue_hashes = queue_hashes  # Передаем источник экранов в их приемник в основном потоке
-    # -----------------------------------------------------------
 
+    # -----------------------------------------------------------
     cursor = Database('Li_db_v1_4.db')
     A = True
 
@@ -393,11 +422,17 @@ if __name__ == '__main__':
     zolotoy_pyt = []  # 19.01.24 - Путь, являющийся самым коротким для достижения положительного результата
     izmenilos_li_sostyanie = 0
 
+    perenos_sostoyaniya()
+
     while A:
-        schetchik += 2
+        schetchik += 1
         print('************************************************************************')
-        # print("schetchik = ", schetchik, "     Экран", screen.screenshot_hash)
         print("schetchik = ", schetchik)
+
+
+        if not queue_hashes.empty():
+            print("Изменился экран - поэтому запускается функция переноса состояния")
+            perenos_sostoyaniya()
 
         if source == 'input':
             # Ввод строки с клавиатуры, запись по-буквенно
@@ -471,7 +506,8 @@ if __name__ == '__main__':
                 на текущий экран."""
 
             tekushiy_id = poisk_id_s_max_signal_points()
-            sozdat_svyaz(tekushiy_id, 1)
+            obrabotka_symbol(1)   # Положительная реакция будет отработана как символ
+            # sozdat_svyaz(tekushiy_id, 1)
 
             source = 'input'   # Было None и включался автопереход по циклам
             vvedeno_luboe = ''
@@ -487,6 +523,7 @@ if __name__ == '__main__':
             # if in_pamyat_name:
             #     in_pamyat_name.pop(0)
             #     print(f'Удалён первый элемент из in_pamyat_name, теперь список такой: {in_pamyat_name}')
+            perenos_sostoyaniya()   #Переносится состояние на текущий экран
 
         elif vvedeno_luboe in [' 2', '2']:
             # Введена отрицательная реакция - создать с ней связь
