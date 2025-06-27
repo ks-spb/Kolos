@@ -4,6 +4,8 @@ from pynput.keyboard import Key, Controller as kb_Controller, Listener as Keyboa
 from pynput.mouse import Button, Controller
 import pyautogui
 import json
+import cv2
+import numpy as np
 
 import report
 from exceptions import *
@@ -20,7 +22,7 @@ mo = Controller()
     Нажата клавиша 'A': {'type': 'kb', 'event': 'down', 'key': 'A'}
     Отпущена клавиша 'A': {'type': 'kb', 'event': 'up', 'key': 'A'}
 
-    xxxНажата левая клавиша мыши: {'type': 'mouse', 'event': 'down', 'key': 'Button.left', 'x': 671, 'y': 591, 
+    Нажата левая клавиша мыши: {'type': 'mouse', 'event': 'down', 'key': 'Button.left', 'x': 671, 'y': 591, 
     'image': id}
     Нажата правая клавиша мыши: {'type': 'mouse', 'event': 'down', 'key': 'Button.right', 'x': 671, 'y': 591, 
     'image': id}
@@ -159,6 +161,26 @@ class Hotkey:
 hotkey = Hotkey()  # Создание объекта обработки сочетаний клавиш
 
 
+def screenshot(x_reg: int = 0, y_reg: int = 0, region: int = 0):
+    """ Скриншот заданного квадрата или всего экрана
+
+    В качестве аргументов принимает координаты верхней левой точки квадрата и его стороны.
+    Если сторона на задана (равна 0) - то делает скриншот всего экрана
+
+    """
+    if region:
+        # print(f'screenshot. Если есть регион: {region}')
+        image = pyautogui.screenshot(
+            region=(x_reg, y_reg, region, region))  # x, y, x+n, y+n (с верхнего левого угла)
+        # print(f'screenshot. Получается скриншот: {image}')
+    else:
+        image = pyautogui.screenshot()
+        # print(f'screenshot. Region отсутствует - поэтому скриншот: {image}')
+        # print(
+        #     f'screenshot. cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR): {cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)}')
+    return cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
+
+
 class Recorder:
     """ Прослушивание мыши и клавиатуры и запись событий с них """
 
@@ -227,6 +249,8 @@ class Recorder:
             # Добавляем отпускание кнопки или выполнение последовательности
             self.record.append(event)
 
+
+
     def on_click(self, x, y, button, is_pressed):
         """ Запись нажатия и отпускания кнопки мыши происходит,
         если определен объект на котором был клик """
@@ -239,7 +263,7 @@ class Recorder:
 
         # -------------------------------
         # Сохранение изображений в отчете
-        scr = report.circle_an_object(screen.screenshot, screen.hashes_elements.values())  # Обводим элементы
+        scr = report.circle_an_object(screenshot(), screen.hashes_elements.values())  # Обводим элементы
         report.save(scr, screen.get_element(hash_element))  # Сохранение скриншота и элемента
         # -------------------------------
 

@@ -22,9 +22,13 @@ def screenshot(x_reg: int = 0, y_reg: int = 0, region: int = 0):
 
     """
     if region:
+        # print(f'screenshot. Если есть регион: {region}')
         image = pyautogui.screenshot(region=(x_reg, y_reg, region, region))  # x, y, x+n, y+n (с верхнего левого угла)
+        # print(f'screenshot. Получается скриншот: {image}')
     else:
         image = pyautogui.screenshot()
+        # print(f'screenshot. Region отсутствует - поэтому скриншот: {image}')
+        # print(f'screenshot. cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR): {cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)}')
     return cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
 
@@ -151,9 +155,12 @@ class Screen:
             # Запоминаем координаты мыши на вырезанном участке
             cur_x, cur_y = x - x1, y - y1
 
+
             scr = screenshot()  # Получаем снимок экрана
+            # print(f'element_under_cursor. Получаем снимок экрана: {scr}')   #Снимок получается
             # Вырезаем прямоугольник, в котором будем искать элемент
             region = scr[y1:y2, x1:x2]
+            # print(f'element_under_cursor. region:  {region} из y1: {y1} и x1: {x1}')
 
             # Применяем Canny алгоритм для поиска границ
             edges = cv2.Canny(region, 100, 200)
