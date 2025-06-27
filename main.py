@@ -406,7 +406,7 @@ if __name__ == '__main__':
     t0_10 = 0  # для проверки на изменение to за 10 циклов
 
     source = 'input'  # Получает значение источника ввода None - клавиатура (None запустит автоматический переход по
-    # циклам, 'rec' -  запись клавиатуры и мыши
+    # циклам, 'rec' -  запись клавиатуры и мыши, 'input' - ручное переключение
     last_update_screen = 0  # Время последнего обновления экрана
     schetchik = 0
     most_new = 0
@@ -425,6 +425,27 @@ if __name__ == '__main__':
     perenos_sostoyaniya()
 
     while A:
+        if rec.status:
+            # Блокируем основную программу, пока идет запись
+            sleep(0.001)
+            continue
+
+        # -------------------------------------------------------
+        # Активация и деактивация точек в соответствии с экраном
+        # -------------------------------------------------------
+        # if screen.last_update != last_update_screen:
+        screen.get_screen()
+        scrsh = screen.screenshot
+        # if scrsh is not None:
+        #     # -------------------------------
+        #     # Сохранение изображений в отчете
+        #     report.set_folder('update_points')  # Инициализация папки для сохранения изображений
+        #     scr = report.circle_an_object(scrsh, screen.hashes_elements.values())  # Обводим элементы
+        #     report.save(scr)  # Сохранение скриншота и элемента
+            # -------------------------------
+
+        # zazhiganie_obiektov_na_ekrane()   # TODO вернуть в работу это зажигаение?
+
         schetchik += 1
         print('************************************************************************')
         print("schetchik = ", schetchik)
