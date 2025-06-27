@@ -422,6 +422,7 @@ if __name__ == '__main__':
     zolotoy_pyt = []  # 19.01.24 - Путь, являющийся самым коротким для достижения положительного результата
     izmenilos_li_sostyanie = 0
 
+
     perenos_sostoyaniya()
 
     while A:
