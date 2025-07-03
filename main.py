@@ -279,8 +279,12 @@ def out_red(id):
                 if item[0] == 'Key':
                     # Читаем и готовим событие для клавиатуры
                     event = {'type': 'kb'}
-                    event['event'] = item[1]
-                    event['key'] = text[i+1]
+                    event['event'] = 'tap'
+                    event['key'] = text[0]
+                    # приходит ('Key.enter',)  а нужно оставить только enter. Поэтому:
+                    # Извлекаем первый элемент кортежа и разбиваем его по точке
+                    # result = text[0].split('.')[-1]
+
                     i += 2
 
                 elif item[0] == 'Button':
@@ -308,33 +312,35 @@ def out_red(id):
 
                 elif item[0] == 'position':
                     # Данные для перемещения мыши без кликов
-                    event = {'type': 'mouse', 'event': 'move', 'x': item[1], 'y': item[2]}
+                    event = {'type': 'mouse', 'event': 'move', 'x': item[1], 'y': item[2], 'key': 'position'}
 
                 else:
                     i += 1
                     continue
-                try:
-                    play.play_one(event)  # Воспроизводим событие
-                except:
-                    # print('Выполнение скрипта остановлено')
-                    break
+                # try:
+                print(f'Попытка воспроизвести действие: {event}')
+                play.play_one(event)  # Воспроизводим событие
+                # except:
+                print('Выполнение скрипта остановлено')
+                break
 
                 continue
 
             elif text[i] == 'click':
-                event = {'type': 'mouse', 'event': 'click', 'image': text[i+1]}
+                event = {'type': 'mouse', 'event': 'click'}
 
                 # -------------------------------
                 # Сохранение изображений в отчете
-                report.set_folder('out_red')  # Инициализация папки для сохранения изображений
+                # report.set_folder('out_red')  # Инициализация папки для сохранения изображений
                 # -------------------------------
 
                 i += 1
-                try:
-                    play.play_one(event)  # Воспроизводим событие
-                except:
-                    print('Выполнение скрипта остановлено')
-                    break
+                # try:
+                print('Выполняется действие без присутствия точки в тексте')
+                play.play_one(event)  # Воспроизводим событие
+                # except:
+                print('Выполнение скрипта остановлено')
+                break
 
                 continue
 
@@ -405,7 +411,8 @@ if __name__ == '__main__':
 
     t0_10 = 0  # для проверки на изменение to за 10 циклов
 
-    source = 'input'  # Получает значение источника ввода None - клавиатура (None запустит автоматический переход по
+    source = None
+    # source = 'input'  # Получает значение источника ввода None - клавиатура (None запустит автоматический переход по
     # циклам, 'rec' -  запись клавиатуры и мыши, 'input' - ручное переключение
     last_update_screen = 0  # Время последнего обновления экрана
     schetchik = 0
@@ -445,7 +452,7 @@ if __name__ == '__main__':
         #     report.save(scr)  # Сохранение скриншота и элемента
             # -------------------------------
 
-        # zazhiganie_obiektov_na_ekrane()   # TODO вернуть в работу это зажигаение?
+        # zazhiganie_obiektov_na_ekrane()   # TODO вернуть в работу это зажигание?
 
         schetchik += 1
         print('************************************************************************')
@@ -476,8 +483,8 @@ if __name__ == '__main__':
 
                 if event['type'] == 'kb':
                     # Запись события клавиатуры
-                    vvedeno_luboe.append('Key.' + event['event'])
                     vvedeno_luboe.append(event['key'])
+                    # vvedeno_luboe.append(event['key'])
 
                 else:
                     # Запись события мыши
@@ -531,7 +538,7 @@ if __name__ == '__main__':
             obrabotka_symbol(1)   # Положительная реакция будет отработана как символ
             # sozdat_svyaz(tekushiy_id, 1)
 
-            source = 'input'   # Было None и включался автопереход по циклам
+            source = None   # Было None и включался автопереход по циклам
             vvedeno_luboe = ''
 
             schetchik = 0  # 12.09.23 Добавил переход к началу цикла, если была применена реакция
@@ -609,6 +616,7 @@ if __name__ == '__main__':
             for i in rec.record:
                 print(i)
                 try:
+                    print(f"Выполняется действие вот здесь после нажатия 4")
                     play.play_one(i)
                 except:
                     print('Выполнение скрипта остановлено')

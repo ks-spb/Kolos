@@ -126,6 +126,7 @@ class Hotkey:
 
         Принимает имя последовательности.
         Возвращает последовательность событий готовых для воспроизведения."""
+        print(f'Работа функции get_order в mouse_kb_record. name = {name}')
         order = []
         for event in self.all_orders[name]:
             if 'up' in event:
@@ -334,25 +335,38 @@ class Play:
     def play_one(self, action):
         """ Воспроизведение одного действия """
 
+        print(f'Работа функции play_one в файле mouse_kb_record self = {self}, action = {action}')
+
         if action['type'] == 'kb' and action['event'] == 'hotkey':
             # Воспроизведение последовательности клавиш
+            print('Это ведь игнорируется?')
             self.play_list(hotkey.get_order(action['key']))
             return
+
+        print(f"Дошли сюда? action[event] = {action['event']}")
 
         if action['event'] == 'click':
             # Перемещение мыши к заданной позиции
             # Позиция определяется по центру элемента хэш которого указан в action['image']
-            res = screen.get_hash_element(action['image'])
+            print(f'Выполнение клика мыши. action[image]: = ')
 
-            # -------------------------------
-            # Сохранение изображений в отчете
-            scr = report.circle_an_object(screen.screenshot, screen.hashes_elements.values())  # Обводим элементы
-            report.save(scr, screen.get_element(action['image']))  # Сохранение скриншота и элемента
-            # -------------------------------
+            # 02.07.25 - заккоментировал т.к. не происходил клик
+            # if action['image']:
+            #     res = screen.get_hash_element(action['image'])
+            #     print(f'res = {res}')
+            #     # -------------------------------
+            #     # Сохранение изображений в отчете
+            #     scr = report.circle_an_object(screen.screenshot, screen.hashes_elements.values())  # Обводим элементы
+            #     report.save(scr, screen.get_element(action['image']))  # Сохранение скриншота и элемента
+            #     # -------------------------------
+            # print(f'res 2 = {res}')
 
-            if res:
-                # pyautogui.moveTo(*res, 0.3)
-                pyautogui.click(*res, button='left')
+            # if res:
+            #     # pyautogui.moveTo(*res, 0.3)
+            #     pyautogui.click(*res, button='left')
+            # else:
+            print('Нужно просто кликнуть мышкой и всё...')
+            pyautogui.click(button='left')
 
             return
 
@@ -371,6 +385,8 @@ class Play:
         if action['type'] == 'kb':
             # Работа с клавиатурой
 
+            print(f'Работаем с клавиатурой в play_one')
+
             if action['event'] == 'down':
                 # Нажатие клавиши
                 exec(f"kb.press({insert})")
@@ -381,11 +397,14 @@ class Play:
                 sleep(self.gap)  # Пауза между нажатиями и/или кликами
             else:
                 # Нажатие и отпускание клавиши
+                insert = "Key.enter"
+                print(f"Должно произойти нажатие и отпускание клавиши. insert = {insert}")
                 exec(f"kb.tap({insert})")
 
                 sleep(self.gap)  # Пауза между нажатиями и/или кликами
 
         else:
+            print('Дошли до иначе...')
             # Ставим указатель мыши в нужную позицию
             mo.position = (action['x'], action['y'])
 
@@ -421,15 +440,16 @@ class Play:
                             raise
             else:
                 # Отпускание клавиши
-                sleep(self.duration)  # Удержание клавиши нажатой
+                if action['event'] != 'move':
+                    sleep(self.duration)  # Удержание клавиши нажатой
 
-                if self.button_up[action['key']]:
-                    # Координаты в которых должна быть отпущена клавиша мыши, запомнены, при ее нажатии
-                    mo.position = self.button_up[action['key']]
+                    if self.button_up[action['key']]:
+                        # Координаты в которых должна быть отпущена клавиша мыши, запомнены, при ее нажатии
+                        mo.position = self.button_up[action['key']]
 
-                exec(f"mo.release({insert})")
+                    exec(f"mo.release({insert})")
 
-                sleep(self.gap)  # Пауза между нажатиями и/или кликами
+                    sleep(self.gap)  # Пауза между нажатиями и/или кликами
 
     def play_list(self, order):
         """ Воспроизведение событий из списка """
