@@ -166,7 +166,8 @@ def proshivka():
     print(f'Передаётся следующий путь: {pyt}')
     if pyt:
         out_red(pyt[0][0])   # Первое действие в пути
-        pyt.pop(0)
+        if pyt:   # Путь может быть удалён, если под курсором мыши не то изображение
+            pyt.pop(0)
         return
     # 2. Если список pamyat пустой - пропустить эту функцию
     print(f'Передаётся следующий in_pamyat_name: {in_pamyat_name}')
@@ -232,7 +233,8 @@ def proshivka():
         if pyt:
             print(f'Совершается действие из первого пункта списка путь: {pyt}')
             out_red(pyt[0][0])
-            pyt.pop(0)   # Удаляется первая часть пути (первый индекс)
+            if pyt:  # Путь может быть удалён, если под курсором мыши не то изображение
+                pyt.pop(0)    # Удаляется первая часть пути (первый индекс)
         # здесь может собираться несколько путей, а затем выбираться лучший из них
 
 
@@ -261,10 +263,43 @@ def out_red(id):
         cursor.execute("UPDATE points SET signal = ? WHERE id = 3", max_signal + 1)
         pyt = []
         in_pamyat_name = []
+    text = (cursor.execute("SELECT name FROM points WHERE id = (?)", (id,))).fetchone()
+    if len(text[0]) == 16:
+        list_goryashih_in = []
+        # Если длина текста = 16 - то это изображение. Нужно проверить имеется ли оно на экране или нет. Если нет -
+        # выход из этого действия
+        for h in screen.get_all_hashes():
+            # cursor.execute("UPDATE 'tochki' SET work = 1 WHERE type = 'mozg' AND name = ?", (h,))
+            goryashie_in = cursor.execute("SELECT id FROM points WHERE type = 'in' "
+                                          "AND name = ?", (h,)).fetchall()
+            if goryashie_in:
+                list_goryashih_in.append(goryashie_in)
+        print(f'Найдены все хэши на экране: {screen.get_all_hashes()}')
+        # поиск объекта под курсором мыши
+        obiekt_pod_kursorom = screen.element_under_cursor()
+
+        print(f'Имеются следующие объекты на экране записанные в БД: {list_goryashih_in}')
+        # print(f'На экране всего найдены следующие объекты: {screen.get_all_hashes()}')
+        print(f'Объект под курсором мыши: {obiekt_pod_kursorom}')
+
+        # Если объект под курсором мыши соответствует нужному изображению - то просто дать ответ этого изображения
+        # Иначе - дать ответ и найти объект в другом месте либо откатить состояние к экрану и искать другой способ
+        if obiekt_pod_kursorom == text[0]:
+            print("\033[0m {}".format("**********************************"))
+            print("\033[31m {}".format("Ответ программы:"))  # Ответ
+            print("\033[31m {}".format(text[0]))  # Ответ
+            print("\033[0m {}".format("**********************************"))
+        else:
+            print("\033[0m {}".format("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"))
+            print("\033[31m {}".format(f"Объект под курсором: {obiekt_pod_kursorom}, а должен быть: {text[0]}"))
+            print("\033[0m {}".format("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"))
+            # удалить путь, чтобы не произошло лишних действий
+            print('Удаляется путь')
+            pyt = []
+        # todo добавить ответ, что было найдено изображение или не найдено
 
     else:
         print(f'Для ответа используется следующая точка: {id}')
-        text = (cursor.execute("SELECT name FROM points WHERE id = (?)", (id, ))).fetchone()
         print(f"Такой приходит текст для ответа: {text}")
         print("\033[0m {}".format("**********************************"))
         print("\033[31m {}".format("Ответ программы:"))  # Ответ
@@ -393,6 +428,30 @@ def perenos_sostoyaniya():
         # print('!!!!!!!!!!!!!ВНИМАНИЕ!!!!!!ЭКРАН НЕ ИЗМЕНИЛСЯ!!!!!!!!!!!')
 
 
+def zazhiganie_obiektov_na_ekrane():
+    # Если экран обновился (определяется по времени), то обновляем точки
+    # last_update_screen = screen.last_update
+    # Деактивация точек относящихся к элементам экрана
+    # cursor.execute("UPDATE 'tochki' SET work = 0 WHERE type = 'mozg' AND length(name) = 16")
+    # Активация точек относящихся к элементам экрана, которые есть на текущем экране
+    list_goryashih_in = []
+    for h in screen.get_all_hashes():
+        # cursor.execute("UPDATE 'tochki' SET work = 1 WHERE type = 'mozg' AND name = ?", (h,))
+        goryashie_in = cursor.execute("SELECT id FROM points WHERE type = 'in' "
+                                      "AND name = ?", (h,)).fetchall()
+        if goryashie_in:
+            list_goryashih_in.append(goryashie_in)
+
+    # поиск объекта под курсором мыши
+    obiekt_pod_kursorom = screen.element_under_cursor()
+
+    print(f'Имеются следующие объекты на экране записанные в БД: {list_goryashih_in}')
+    # print(f'На экране всего найдены следующие объекты: {screen.get_all_hashes()}')
+    print(f'Объект под курсором мыши: {obiekt_pod_kursorom}')
+    print(f'in_pamyat сейчас такая: {in_pamyat}, а in_pamyat_name: {in_pamyat_name}')
+
+
+
 if __name__ == '__main__':
     old_ekran = 0
     # Запуск процесса наблюдения за экраном
@@ -492,8 +551,8 @@ if __name__ == '__main__':
                     print(f'Передаются на запись следующие event: {event}')
                     if event['event'] == 'click':
                         vvedeno_luboe.append('position.' + str(event['x']) + '.' + str(event['y']))
-                        if event['image'] is not None:
-                            vvedeno_luboe.append('click.' + event['image'])
+                        if event['image']:
+                            vvedeno_luboe.append(event['image']+'.'+'click')
                         else:
                             vvedeno_luboe.append('click.')
                     #     vvedeno_luboe.append('image.' + str(event['image']))
@@ -535,7 +594,7 @@ if __name__ == '__main__':
                 на текущий экран."""
 
             tekushiy_id = poisk_id_s_max_signal_points()
-            obrabotka_symbol(1)   # Положительная реакция будет отработана как символ
+            obrabotka_symbol('poz')   # Положительная реакция будет отработана как символ
             # sozdat_svyaz(tekushiy_id, 1)
 
             source = None   # Было None и включался автопереход по циклам
@@ -563,7 +622,7 @@ if __name__ == '__main__':
             # Ищется точка с максимальным сигналом, которая была введена последней
             tekushiy_id = poisk_id_s_max_signal_points()
             # Создаётся связь с отрицательной реакцией
-            sozdat_svyaz(tekushiy_id, 1)
+            sozdat_svyaz(tekushiy_id, 2)
             # Действие добавляется в список отрицательных действий
             spisok_otricatelnih_deystvii.append(tekushiy_id)
             # сигнал текущей точки обнуляется, чтобы её не повторять - т.е. система откатится на шаг назад
@@ -652,6 +711,7 @@ if __name__ == '__main__':
             schetchik = 0
             in_pamyat = []
             in_pamyat_name = []
+            perenos_sostoyaniya()
 
         elif vvedeno_luboe != "":
             bil_klick = False
@@ -660,7 +720,7 @@ if __name__ == '__main__':
                 # 16.06.23 - связываем сущность одной команды с t0, обнуляем tp и t
                 # print(f"Рассматривается следующее введённое сообщение: {vvedeno_luboe1}")
                 if '.' and 'click' in vvedeno_luboe1:
-                    # print(f"Сообщение содержит и точку и click: {vvedeno_luboe1}")
+                    print(f"Сообщение содержит и точку и click: {vvedeno_luboe1}")
                     # для разрыва сущности, если происходит нажатие кнопок, а затем клик мышкой
                     # Если клик не находится в начале списка - нужно принудительно отделить его от предыдущих сущностей
                     for vvedeno_luboe2 in vvedeno_luboe1.split('.'):
@@ -691,3 +751,10 @@ if __name__ == '__main__':
                 schetchik = 0
 
     p1.terminate()
+
+
+# TODO во время записи действий открываются экраны. Либо нужно автоматически записывать их в цепочку, либо действия выполнять до появления нового экрана, затем снова записывать часть
+# TODO сделать так, чтобы не происходил click если нет под курсором мыши нужного img
+# TODO Если нельзя выполнить задание с текущего экрана - то необходимо запустить обратную прошивку от задания, которое
+#  выполнялось в последний раз и от того экрана - дойти до текущего экрана. Затем применить действия для перехода, а
+#  затем уже выполнить задание
