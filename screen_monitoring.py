@@ -66,7 +66,8 @@ def process_changes(queue_hashes, queue_img):
             # Получен новый скриншот, выберем из него элементы
             screenshot, screenshot_hash = queue_img.get()  # Получаем скриншот и его хэш из очереди
             print('\n------------------------------------------------------------------------------')
-            print(f'Экран изменился {datetime.datetime.now()}')
+            print(f'screen_monitoring. Экран изменился {datetime.datetime.now()}')
+            print(f'screen_monitoring. ID изображений: {screenshot_hash}')
             # Принимает изображение типа Image
             # возвращает итератор координат и размеров всех элементов на изображении
             # в виде: [[x, y, w, h], ...] (x, y - верхняя левая точка, w, h - нижняя правая точка)
@@ -216,5 +217,6 @@ def process_changes(queue_hashes, queue_img):
                 # print(f'Количество элементов последнего экрана: {len(hashes_elements)}')
                 # Выводим время выполнения
                 print(f'Время выполнения: {time.time() - start_time + 0.05} сек.')
+                print(f'screen.monitoring. queue_hashes.put(((screenshot, str(id_screen)), hashes_elements)) = {queue_hashes.put(((screenshot, str(id_screen)), hashes_elements))}')
                 print('------------------------------------------------------------------------------\n')
 

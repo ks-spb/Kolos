@@ -15,7 +15,7 @@ import screen_monitoring
 from db import Database
 from mous_kb_record import rec, play
 from screen_monitoring import process_changes
-from screen import screen
+from screen import screen, Screen
 from report import report
 
 
@@ -293,10 +293,26 @@ def out_red(id):
             print("\033[0m {}".format("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"))
             print("\033[31m {}".format(f"Объект под курсором: {obiekt_pod_kursorom}, а должен быть: {text[0]}"))
             print("\033[0m {}".format("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"))
+            # 04.07.25 Поиск изображения на экране и перевод туда курсора.
+            event = {'type': 'mouse', 'event': 'down', 'image': text[0]}
+            print(f'Выполняется действие поиск изображения на экране и перевод туда мыши по event = {event}')
+            play.play_one(event)  # Воспроизводим событие
+
             # удалить путь, чтобы не произошло лишних действий
             print('Удаляется путь')
             pyt = []
-        # todo добавить ответ, что было найдено изображение или не найдено
+            ekran = tekyshiy_ekran()   #Ищется id текущего экрана
+            max_id = poisk_id_s_max_signal_points()   # Поиск id точки с максимальным сигналом
+            # print(f'Создаётся связь между max_id = {max_id} и ekran текущий = {ekran}')
+            sozdat_svyaz(max_id, ekran)  # Связь от макс id к экрану
+            max_signal = cursor.execute("SELECT MAX(signal) FROM points").fetchone()   # Поиск макс сигнала
+            # print(f'Обновление id экрана = {ekran}, новым сигналом = {max_signal[0] + 1}')
+            cursor.execute("UPDATE points SET signal = ? WHERE id = ?", (max_signal[0] + 1, ekran))
+            online_svyaz(ekran)
+
+# todo Добавил поиск изображения на экране (возможно оно сместилось)
+# todo Добавить отрицательную реакцию, чтобы не повторять действия
+# todo Добавить в прошивку поиск путей, которые приведут к положительной реакции (например, имеется id связи от текущего состояния и имеется id связи к положительной реакции - попробовать их соединить в обратном направлении)
 
     else:
         print(f'Для ответа используется следующая точка: {id}')
@@ -413,7 +429,7 @@ def tekyshiy_ekran():
 
 
 def perenos_sostoyaniya():
-    # Функция определяет какой сейчас экран, отличается ли от старого. Если отличается - перенос posl_t0 в этот экран
+    # Функция определяет какой сейчас экран, отличается ли от старого. Если отличается - перенос состояния в этот экран
     global old_ekran
     id_screen, hash_string = queue_hashes.get()  # Получаем id_screen и хэш из очереди
     # print(f'id_screen2 = {id_screen[1]}')
@@ -470,7 +486,7 @@ if __name__ == '__main__':
 
     t0_10 = 0  # для проверки на изменение to за 10 циклов
 
-    source = None
+    source = 'input'
     # source = 'input'  # Получает значение источника ввода None - клавиатура (None запустит автоматический переход по
     # циклам, 'rec' -  запись клавиатуры и мыши, 'input' - ручное переключение
     last_update_screen = 0  # Время последнего обновления экрана
@@ -517,6 +533,9 @@ if __name__ == '__main__':
         print('************************************************************************')
         print("schetchik = ", schetchik)
 
+        # Пытаюсь вытащить текущие хэши из экрана
+        screen_instance = Screen()
+        print(f'main. Screen.tekysie_hash 2: {screen_instance.tekysie_hash()}')  # main. Screen.tekysie_hash: <function Screen.tekysie_hash at 0x0000029AD2CD9440>
 
         if not queue_hashes.empty():
             print("Изменился экран - поэтому запускается функция переноса состояния")
@@ -597,7 +616,7 @@ if __name__ == '__main__':
             obrabotka_symbol('poz')   # Положительная реакция будет отработана как символ
             # sozdat_svyaz(tekushiy_id, 1)
 
-            source = None   # Было None и включался автопереход по циклам
+            source = 'input'   # Было None и включался автопереход по циклам
             vvedeno_luboe = ''
 
             schetchik = 0  # 12.09.23 Добавил переход к началу цикла, если была применена реакция
@@ -611,7 +630,10 @@ if __name__ == '__main__':
             # if in_pamyat_name:
             #     in_pamyat_name.pop(0)
             #     print(f'Удалён первый элемент из in_pamyat_name, теперь список такой: {in_pamyat_name}')
-            perenos_sostoyaniya()   #Переносится состояние на текущий экран
+
+            # чтобы не зависало при нажатии на 1 - добавил вместо функции переноса состояния сюда вручную перенос,
+            # используя сохранённый старый экран
+            obrabotka_symbol(old_ekran)
 
         elif vvedeno_luboe in [' 2', '2']:
             # Введена отрицательная реакция - создать с ней связь
@@ -705,13 +727,17 @@ if __name__ == '__main__':
             source = None   # Если поставить 'input' - то будет ручной переход по циклам
 
         elif vvedeno_luboe in [' 9', '9']:
+            tekyshiy_ekran_ = old_ekran
             stiranie_pamyati()
-            # source = None
+            source = 'input'
             vvedeno_luboe = ''
             schetchik = 0
             in_pamyat = []
             in_pamyat_name = []
-            perenos_sostoyaniya()
+            # чтобы не зависало при нажатии на 9 - добавил вместо функции переноса состояния сюда вручную перенос,
+            # используя сохранённый старый экран до стирания памяти
+            obrabotka_symbol(tekyshiy_ekran_)
+
 
         elif vvedeno_luboe != "":
             bil_klick = False
@@ -754,7 +780,6 @@ if __name__ == '__main__':
 
 
 # TODO во время записи действий открываются экраны. Либо нужно автоматически записывать их в цепочку, либо действия выполнять до появления нового экрана, затем снова записывать часть
-# TODO сделать так, чтобы не происходил click если нет под курсором мыши нужного img
 # TODO Если нельзя выполнить задание с текущего экрана - то необходимо запустить обратную прошивку от задания, которое
 #  выполнялось в последний раз и от того экрана - дойти до текущего экрана. Затем применить действия для перехода, а
 #  затем уже выполнить задание
