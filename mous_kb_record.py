@@ -339,16 +339,16 @@ class Play:
 
         if action['type'] == 'kb' and action['event'] == 'hotkey':
             # Воспроизведение последовательности клавиш
-            print('Это ведь игнорируется?')
+            # print('Это ведь игнорируется?')
             self.play_list(hotkey.get_order(action['key']))
             return
 
-        print(f"Дошли сюда? action[event] = {action['event']}")
+        # print(f"Дошли сюда? action[event] = {action['event']}")
 
         if action['event'] == 'click':
             # Перемещение мыши к заданной позиции
             # Позиция определяется по центру элемента хэш которого указан в action['image']
-            print(f'Выполнение клика мыши. action[image]: = ')
+            # print(f'Выполнение клика мыши. action[image]: = ')
 
             # 02.07.25 - заккоментировал т.к. не происходил клик
             # if action['image']:
@@ -376,14 +376,12 @@ class Play:
             koord_y = action['y']
             pyautogui.moveTo(int(koord_x), int(koord_y), 0.3)
 
-
-        # Подготовка к распознаванию как отдельных символов, так и специальных клавиш
-        insert = action['key']
-        if len(action['key']) == 1:
-            insert = f"'{insert}'"
-
         if action['type'] == 'kb':
             # Работа с клавиатурой
+            # Подготовка к распознаванию как отдельных символов, так и специальных клавиш
+            insert = action['key']
+            if len(action['key']) == 1:
+                insert = f"'{insert}'"
 
             print(f'Работаем с клавиатурой в play_one')
 
@@ -404,40 +402,61 @@ class Play:
                 sleep(self.gap)  # Пауза между нажатиями и/или кликами
 
         else:
-            print('Дошли до иначе...')
+            print('play_one. Дошли до else...')
             # Ставим указатель мыши в нужную позицию
-            mo.position = (action['x'], action['y'])
+
+            # mo.position = (action['x'], action['y'])
 
             # Нажатие и отпускание кнопки мыши
             if action['event'] == 'down':
-                # Нажатие клавиши
+                print('play_one. action[event] == down')
 
+                if action['image']:
+                    print(f'Дошли до сюда? if action[image] = {action['image']}')
+                    res = screen.get_hash_element(action['image'])
+                    print(f'Найдена следующая res = {res}')
+                    if res:
+                        print(f'Найдены координаты изображения res = {res}')
+                        # -------------------------------
+                        # Сохранение изображений в отчете
+                        scr = report.circle_an_object(screen.screenshot, screen.hashes_elements.values())  # Обводим элементы
+                        report.save(scr, screen.get_element(action['image']))  # Сохранение скриншота и элемента
+                        # -------------------------------
+                    else:
+                        print('Элемент не найден на экране')
+                print(f'res 2 = {res}')
+
+                if res:
+                    # pyautogui.moveTo(*res, 0.3)
+                    pyautogui.click(*res, button='left')
+
+                # 04.07.25 - Ниже старый вариант кода
                 # Проверяем, есть ли нужный элемент под курсором и если нет,
                 # пытаемся найти его на экране, ожидаем и повторяем попытку на случай долгого открытия приложения
-                rep = 3
-                while rep:
-
-                    try:
-                        x = action['x']
-                        y = action['y']
+                # rep = 3
+                # while rep:
+                #
+                #     try:
+                        # x = action['x']
+                        # y = action['y']
                         # x, y = pattern_search(action['image'], x, y)  # Поиск элемента на экране
-                        mo.position = (x, y)
-                        self.button_up[action['key']] = (x, y)  # Координаты отпускания для левой или правой клавиш мыши
-                        exec(f"mo.press({insert})")
-                        rep = 0
+                        # mo.position = (x, y)
+                        # self.button_up[action['key']] = (x, y)  # Координаты отпускания для левой или правой клавиш мыши
+                        # exec(f"mo.press({insert})")
+                        # rep = 0
 
                     # Ошибки при поиске элемента
-                    except TemplateNotFoundError as err:
-                        print(err)
-                        raise
-
-                    except ElementNotFound as err:
-                        print(err, 'Ожидание приложения...')
-                        sleep(1)
-                        rep -= 1
-                        if not rep:
-                            print(err)
-                            raise
+                    # except TemplateNotFoundError as err:
+                    #     print(err)
+                    #     raise
+                    #
+                    # except ElementNotFound as err:
+                    #     print(err, 'Ожидание приложения...')
+                    #     sleep(1)
+                    #     rep -= 1
+                    #     if not rep:
+                    #         print(err)
+                    #         raise
             else:
                 # Отпускание клавиши
                 if action['event'] != 'move':
@@ -447,7 +466,7 @@ class Play:
                         # Координаты в которых должна быть отпущена клавиша мыши, запомнены, при ее нажатии
                         mo.position = self.button_up[action['key']]
 
-                    exec(f"mo.release({insert})")
+                    # exec(f"mo.release({insert})")
 
                     sleep(self.gap)  # Пауза между нажатиями и/или кликами
 
