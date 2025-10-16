@@ -412,6 +412,7 @@ class Play:
                 print('play_one. action[event] == down')
 
                 if action['image']:
+                    print(f'Дошли до сюда? if action[image] = {action['image']}')
                     res = screen.get_hash_element(action['image'])
                     print(f'Найдена следующая res = {res}')
                     if res:

@@ -56,13 +56,13 @@ class Screen:
         Изменит дату последнего обновления.
         """
         global tekyshie_img_hash
-        # print('Работа функции get_screen')
+        print('Работа функции get_screen')
         if self.queue_hashes is None:
-            # print("get_screen. if self.queue_hashes is None")
+            print("get_screen. if self.queue_hashes is None")
             return False
 
         if not self.queue_hashes.empty():
-            # print('get_screen. if not self.queue_hashes.empty()')
+            print('get_screen. if not self.queue_hashes.empty()')
             # Получаем данные из очереди
             tmp = self.queue_hashes.get()
 
@@ -77,6 +77,7 @@ class Screen:
             self._last_update = time.time()
             return True
         else:
+            print('get_screen выдал else')
             return False
 
     def tekysie_hash(self):
@@ -141,9 +142,11 @@ class Screen:
     def get_hash_element(self, hash):
         """Возвращает координаты центра элемента по его хэшу
         или None, если элемента нет """
-        self.get_screen()
+        print('Работа функции get_hash_element')
+        # self.get_screen()
         print(f'Поиск всех хэшей на экране: {self.get_all_hashes()}')
         element = self.hashes_elements.get(hash)
+        print(f'screen.get_hash_element. element = {element}')
         if not element:
             print('!!!!!Элемент не найден на экране')   # 21.03.24 - Из-за уточнения
             # объектов, приходится перемещать курсор мыши на запомненные координаты. В этом случае изображение может

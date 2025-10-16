@@ -264,7 +264,7 @@ def out_red(id):
         pyt = []
         in_pamyat_name = []
     text = (cursor.execute("SELECT name FROM points WHERE id = (?)", (id,))).fetchone()
-    if len(text[0]) == 16:
+    if len(text[0]) == 16 and '.' not in text[0]:
         list_goryashih_in = []
         # Если длина текста = 16 - то это изображение. Нужно проверить имеется ли оно на экране или нет. Если нет -
         # выход из этого действия
@@ -296,7 +296,9 @@ def out_red(id):
             # 04.07.25 Поиск изображения на экране и перевод туда курсора.
             event = {'type': 'mouse', 'event': 'down', 'image': text[0]}
             print(f'Выполняется действие поиск изображения на экране и перевод туда мыши по event = {event}')
-            play.play_one(event)  # Воспроизводим событие
+            # play.play_one(event)  # Воспроизводим событие
+            koordinaty_obiekta = screen.get_hash_element(text[0])
+            print(f'Новые координаты объекта: {koordinaty_obiekta}')
 
             # удалить путь, чтобы не произошло лишних действий
             print('Удаляется путь')
