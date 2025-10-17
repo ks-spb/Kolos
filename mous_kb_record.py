@@ -369,6 +369,19 @@ class Play:
             pyautogui.click(button='left')
 
             return
+            # res = None
+            # if action.get('image'):
+            #     # ждём координаты элемента с записанным хэшем
+            #     res = self._wait_for_element_by_hash(action['image'], timeout=2.0, interval=0.1)
+            #
+            # if res:
+            #     # можно подвести курсор плавно, чтобы видеть, что нашли верно
+            #     # pyautogui.moveTo(*res, 0.2)
+            #     pyautogui.click(*res, button='left')
+            # else:
+            #     print('Элемент по хэшу не найден вовремя. Резервный клик по текущей позиции.')
+            #     pyautogui.click(button='left')
+            # return
 
         if action['event'] == 'move':
             # Просто перемещение мыши к позиции
