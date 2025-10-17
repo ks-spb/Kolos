@@ -17,6 +17,8 @@ from mous_kb_record import rec, play
 from screen_monitoring import process_changes
 from screen import screen, Screen
 from report import report
+import pyautogui
+from exceptions import ElementNotFound
 
 
 def stiranie_pamyati():
@@ -297,20 +299,42 @@ def out_red(id):
             event = {'type': 'mouse', 'event': 'down', 'image': text[0]}
             print(f'Выполняется действие поиск изображения на экране и перевод туда мыши по event = {event}')
             # play.play_one(event)  # Воспроизводим событие
-            koordinaty_obiekta = screen.get_hash_element(text[0])
-            print(f'Новые координаты объекта: {koordinaty_obiekta}')
 
-            # удалить путь, чтобы не произошло лишних действий
-            print('Удаляется путь')
-            pyt = []
-            ekran = tekyshiy_ekran()   #Ищется id текущего экрана
-            max_id = poisk_id_s_max_signal_points()   # Поиск id точки с максимальным сигналом
-            # print(f'Создаётся связь между max_id = {max_id} и ekran текущий = {ekran}')
-            sozdat_svyaz(max_id, ekran)  # Связь от макс id к экрану
-            max_signal = cursor.execute("SELECT MAX(signal) FROM points").fetchone()   # Поиск макс сигнала
-            # print(f'Обновление id экрана = {ekran}, новым сигналом = {max_signal[0] + 1}')
-            cursor.execute("UPDATE points SET signal = ? WHERE id = ?", (max_signal[0] + 1, ekran))
-            online_svyaz(ekran)
+            try:
+                koordinaty_obiekta = screen.get_hash_element(text[0])
+                # print(f'Новые координаты объекта: {koordinaty_obiekta}')
+            except ElementNotFound:
+                koordinaty_obiekta = None
+            except Exception:
+                # на всякий случай не роняем поток
+                koordinaty_obiekta = None
+
+            def _is_point_xy(p):
+                try:
+                    x, y = p
+                    return isinstance(x, (int, float)) and isinstance(y, (int, float))
+                except Exception:
+                    return False
+
+            if _is_point_xy(koordinaty_obiekta):
+                x, y = koordinaty_obiekta
+                # Переводим курсор к объекту; duration можно подстроить (0–0.2 c)
+                pyautogui.moveTo(int(x), int(y), duration=0.15)
+            else:
+                print("\033[0m {}".format("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"))
+                print("\033[31m {}".format(f"Объект на экране НЕ найден"))
+                print("\033[0m {}".format("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"))
+                # удалить путь, чтобы не произошло лишних действий
+                print('Удаляется путь')
+                pyt = []
+                ekran = tekyshiy_ekran()   #Ищется id текущего экрана
+                max_id = poisk_id_s_max_signal_points()   # Поиск id точки с максимальным сигналом
+                # print(f'Создаётся связь между max_id = {max_id} и ekran текущий = {ekran}')
+                sozdat_svyaz(max_id, ekran)  # Связь от макс id к экрану
+                max_signal = cursor.execute("SELECT MAX(signal) FROM points").fetchone()   # Поиск макс сигнала
+                # print(f'Обновление id экрана = {ekran}, новым сигналом = {max_signal[0] + 1}')
+                cursor.execute("UPDATE points SET signal = ? WHERE id = ?", (max_signal[0] + 1, ekran))
+                online_svyaz(ekran)
 
 # todo Добавил поиск изображения на экране (возможно оно сместилось)
 # todo Добавить отрицательную реакцию, чтобы не повторять действия
