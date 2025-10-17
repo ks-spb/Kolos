@@ -10,6 +10,7 @@ import cv2
 from PIL import Image
 from db import Database
 from pynput import keyboard
+import hashlib
 
 from screen import screen
 
@@ -31,6 +32,33 @@ posl_tg = 0
 
 cursor = Database('Li_db_v1_4.db')
 
+
+def _trim_to_bbox(binary_matrix: np.ndarray) -> np.ndarray:
+    ys, xs = np.where(binary_matrix == 1)
+    if ys.size == 0:
+        return binary_matrix[:0, :0]
+    return binary_matrix[min(ys):max(ys)+1, min(xs):max(xs)+1]
+
+def stable_object_hash_from_matrix(binary_matrix: np.ndarray) -> str:
+    bm = (binary_matrix > 0).astype(np.uint8)
+    bm = _trim_to_bbox(bm)
+    shape_bytes = np.array(bm.shape, dtype=np.uint16).tobytes()
+    payload = np.packbits(bm, axis=None).tobytes()
+    return hashlib.blake2b(shape_bytes + payload, digest_size=16).hexdigest()
+
+def stable_object_hash_from_offsets(offset):
+    if not offset:
+        return hashlib.blake2b(b"empty", digest_size=16).hexdigest()
+    width = max(offset, key=lambda x: x[1])[1] + 1
+    height = max(offset, key=lambda x: x[0])[0] + 1
+    matrix = np.zeros((height, width), dtype=np.uint8)
+    for r, c in offset:  # offset уже нормализован к (row, col)
+        matrix[r][c] = 1
+    return stable_object_hash_from_matrix(matrix)
+
+last_object_hash = None
+def get_last_object_hash():
+    return last_object_hash
 
 
 def stiranie_pamyati():
@@ -275,7 +303,6 @@ def encode_and_save_to_db_image(x_pos, y_pos):
     # print('\nСписок смещений отсортированный\n')
     # print(offset)
 
-
     # 8. Ширина описывающего прямоугольника — макс. горизонтальное смещение + 1, высота макс. вертикальное смещение + 1.
     width = max(offset, key=lambda x: x[1])[1] + 1
     height = max(offset, key=lambda x: x[0])[0] + 1
@@ -296,6 +323,9 @@ def encode_and_save_to_db_image(x_pos, y_pos):
 
 
     # stiranie_pamyati()
+    global last_object_hash
+    last_object_hash = stable_object_hash_from_offsets(offset)
+    print(f"OBJECT_HASH={last_object_hash}")
     save_to_bd(offset)
 
     # print(f"posl_tg для записи к posl_t0 такой: {posl_tg}")
