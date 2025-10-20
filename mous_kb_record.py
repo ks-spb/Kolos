@@ -250,8 +250,6 @@ class Recorder:
             # Добавляем отпускание кнопки или выполнение последовательности
             self.record.append(event)
 
-
-
     def on_click(self, x, y, button, is_pressed):
         """ Запись нажатия и отпускания кнопки мыши происходит,
         если определен объект на котором был клик """
@@ -278,6 +276,22 @@ class Recorder:
         # Записываем перемещение мыши
         out = {'type': 'mouse', 'event': 'click', 'image': hash_element, 'x': x, 'y': y}
         self.record.append(out)
+
+    def on_scroll(self, x, y, dx, dy):
+        """Запись прокрутки колёсиком (как move) + сообщение в консоль."""
+        # Сообщение во время записи
+        nap = 'вверх' if dy > 0 else ('вниз' if dy < 0 else 'без вертикали')
+        print(f'Сделан скролл страницы: dy={int(dy)} ({nap}), dx={int(dx)}; курсор x={int(x)}, y={int(y)}')
+
+        # Просто фиксируем факт действия в журнале записи
+        self.record.append({
+            'type': 'mouse',
+            'event': 'scroll',
+            'x': int(x),
+            'y': int(y),
+            'dx': int(dx),
+            'dy': int(dy),
+        })
 
 
 rec = Recorder()  # Создаем объект записи
@@ -309,9 +323,14 @@ def on_click(x, y, button, is_pressed):
         rec.on_click(x, y, button, is_pressed)
 
 
+def on_scroll(x, y, dx, dy):
+    """Действие при прокрутке колёсиком мыши."""
+    if rec.status:
+        rec.on_scroll(x, y, dx, dy)
+
 keyboard_listener = keyboard.Listener(on_press=on_press,
                                       on_release=on_release)  # Инициализация прослушивания клавиатуры
-mouse_listener = mouse.Listener(on_click=on_click)  # Инициализация прослушивания мыши
+mouse_listener = mouse.Listener(on_click=on_click, on_scroll=on_scroll)  # Инициализация прослушивания мыши
 
 mouse_listener.start()  # Старт прослушивания мыши
 keyboard_listener.start()  # Старт прослушивания клавиатуры
@@ -346,48 +365,25 @@ class Play:
         # print(f"Дошли сюда? action[event] = {action['event']}")
 
         if action['event'] == 'click':
-            # Перемещение мыши к заданной позиции
-            # Позиция определяется по центру элемента хэш которого указан в action['image']
-            # print(f'Выполнение клика мыши. action[image]: = ')
-
-            # 02.07.25 - заккоментировал т.к. не происходил клик
-            # if action['image']:
-            #     res = screen.get_hash_element(action['image'])
-            #     print(f'res = {res}')
-            #     # -------------------------------
-            #     # Сохранение изображений в отчете
-            #     scr = report.circle_an_object(screen.screenshot, screen.hashes_elements.values())  # Обводим элементы
-            #     report.save(scr, screen.get_element(action['image']))  # Сохранение скриншота и элемента
-            #     # -------------------------------
-            # print(f'res 2 = {res}')
-
-            # if res:
-            #     # pyautogui.moveTo(*res, 0.3)
-            #     pyautogui.click(*res, button='left')
-            # else:
             print('Нужно просто кликнуть мышкой и всё...')
             pyautogui.click(button='left')
 
             return
-            # res = None
-            # if action.get('image'):
-            #     # ждём координаты элемента с записанным хэшем
-            #     res = self._wait_for_element_by_hash(action['image'], timeout=2.0, interval=0.1)
-            #
-            # if res:
-            #     # можно подвести курсор плавно, чтобы видеть, что нашли верно
-            #     # pyautogui.moveTo(*res, 0.2)
-            #     pyautogui.click(*res, button='left')
-            # else:
-            #     print('Элемент по хэшу не найден вовремя. Резервный клик по текущей позиции.')
-            #     pyautogui.click(button='left')
-            # return
+
 
         if action['event'] == 'move':
             # Просто перемещение мыши к позиции
             koord_x = action['x']
             koord_y = action['y']
             pyautogui.moveTo(int(koord_x), int(koord_y), 0.3)
+
+        if action['event'] == 'scroll':
+            dy = int(action.get('dy', 0))
+            # dx пока игнорируем; при необходимости: mo.scroll(int(action.get('dx',0)), dy)
+            if dy != 0:
+                mo.scroll(0, dy)
+                print(f'play_one: выполнен scroll dy={dy}')
+            return
 
         if action['type'] == 'kb':
             # Работа с клавиатурой

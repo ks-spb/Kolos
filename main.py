@@ -336,7 +336,6 @@ def out_red(id):
                 cursor.execute("UPDATE points SET signal = ? WHERE id = ?", (max_signal[0] + 1, ekran))
                 online_svyaz(ekran)
 
-# todo Добавил поиск изображения на экране (возможно оно сместилось)
 # todo Добавить отрицательную реакцию, чтобы не повторять действия
 # todo Добавить в прошивку поиск путей, которые приведут к положительной реакции (например, имеется id связи от текущего состояния и имеется id связи к положительной реакции - попробовать их соединить в обратном направлении)
 
@@ -376,28 +375,30 @@ def out_red(id):
                 elif item[0] == 'click':
                     event = {'type': 'mouse', 'event': 'click', 'image': item[1]}
 
-                    # Закомментировал - т.к. дальше происходит добавление в команду координат x и y
-
-                    # print(f"В х и у передаётся следующее: {text[i+2]}")
-                    # x, y = text[i+2].split('.')
-                    # if event['event'] == 'down':
-                    #     event['image'] = text[i + 3]
-                    #     i += 1
-                    # i += 3  # У событий вверх и вниз разная длина, поэтому счетчик увеличиваем соответственно
-                    # event['x'] = int(x)
-                    # event['y'] = int(y)
 
                 elif item[0] == 'position':
                     # Данные для перемещения мыши без кликов
                     event = {'type': 'mouse', 'event': 'move', 'x': item[1], 'y': item[2], 'key': 'position'}
 
+
+                elif item[0] == 'scroll':
+
+                    try:
+                        step = int(item[1])
+
+                    except Exception:
+                        step = 0
+
+                    # маппим строго на ±1 «шажок» колеса
+                    dy = 1 if step > 0 else (-1 if step < 0 else 0)
+                    event = {'type': 'mouse', 'event': 'scroll', 'dy': dy}
+
                 else:
                     i += 1
                     continue
-                # try:
+
                 print(f'Попытка воспроизвести действие: {event}')
                 play.play_one(event)  # Воспроизводим событие
-                # except:
                 print('Выполнение скрипта остановлено')
                 break
 
@@ -599,18 +600,23 @@ if __name__ == '__main__':
                     vvedeno_luboe.append(event['key'])
                     # vvedeno_luboe.append(event['key'])
 
+
                 else:
-                    # Запись события мыши
-                    # position.x.y, image.id, Button.up.left,
+
                     print(f'Передаются на запись следующие event: {event}')
+
                     if event['event'] == 'click':
                         vvedeno_luboe.append('position.' + str(event['x']) + '.' + str(event['y']))
+
                         if event['image']:
-                            vvedeno_luboe.append(event['image']+'.'+'click')
+                            vvedeno_luboe.append(event['image'] + '.' + 'click')
+
                         else:
                             vvedeno_luboe.append('click.')
-                    #     vvedeno_luboe.append('image.' + str(event['image']))
-                    # vvedeno_luboe.append('Button.' + event['event'] + '.' + event['key'].split('.')[1])
+
+                    elif event['event'] == 'scroll':
+                        # Просто токен скролла, без привязки к элементу — как и договорились
+                        vvedeno_luboe.append(f"scroll.{int(event.get('dy', 0))}")
 
                 n += 1
 
@@ -818,4 +824,3 @@ if __name__ == '__main__':
 # TODO Если нельзя выполнить задание с текущего экрана - то необходимо запустить обратную прошивку от задания, которое
 #  выполнялось в последний раз и от того экрана - дойти до текущего экрана. Затем применить действия для перехода, а
 #  затем уже выполнить задание
-# Чтобы запустить push
