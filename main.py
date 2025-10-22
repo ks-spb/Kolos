@@ -288,7 +288,7 @@ def out_red(id):
         # Иначе - дать ответ и найти объект в другом месте либо откатить состояние к экрану и искать другой способ
         if obiekt_pod_kursorom == text[0]:
             print("\033[0m {}".format("**********************************"))
-            print("\033[31m {}".format("Ответ программы:"))  # Ответ
+            print("\033[31m {}".format("Ответ программы:  объект под курсором нужный"))  # Ответ
             print("\033[31m {}".format(text[0]))  # Ответ
             print("\033[0m {}".format("**********************************"))
         else:
@@ -320,6 +320,19 @@ def out_red(id):
                 x, y = koordinaty_obiekta
                 # Переводим курсор к объекту; duration можно подстроить (0–0.2 c)
                 pyautogui.moveTo(int(x), int(y), duration=0.15)
+                # поиск максимального ID из таблицы связей, чтобы её изменить и направить к новыми координатам
+                max_ID_svyazi = cursor.execute("SELECT IFNULL(MAX(id), 0) FROM svyazi").fetchone()[0]
+
+                name_new_koordinat = f"position.{int(x)}.{int(y)}"
+                max_signal = cursor.execute("SELECT MAX(signal) FROM points").fetchone()[0]
+                new_signal = max_signal + 1
+                id_new_koord = sozdat_new_tochky(name_new_koordinat, 'in', new_signal)
+                # Меняем точку В у связи на новую точку новых координат
+                cursor.execute("UPDATE svyazi SET id_finish = ? WHERE ID = ?", (id_new_koord, max_ID_svyazi))
+                # создаётся связь от новых координат к объекту (id объекта передаётся в функцию)
+                sozdat_svyaz(id_new_koord, id)
+                max_signal_2 = cursor.execute("SELECT MAX(signal) FROM points").fetchone()[0]
+                cursor.execute("UPDATE points SET signal = ? WHERE id = ?", (max_signal_2, id))
             else:
                 print("\033[0m {}".format("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"))
                 print("\033[31m {}".format(f"Объект на экране НЕ найден"))
