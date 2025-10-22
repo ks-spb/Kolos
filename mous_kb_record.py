@@ -373,15 +373,20 @@ class Play:
 
 
         if action['event'] == 'move':
-            # Просто перемещение мыши к позиции
             koord_x = action['x']
             koord_y = action['y']
-            pyautogui.moveTo(int(koord_x), int(koord_y), 0.3)
+            pyautogui.moveTo(int(koord_x), int(koord_y), 0.3)  # как и было :contentReference[oaicite:3]{index=3}
             # Сымитировать «живое» движение мыши (часто именно этого ждет UI)
             pyautogui.moveRel(1, 0, duration=0.05)
             pyautogui.moveRel(-1, 0, duration=0.05)
             # Дать время тултипу показаться
-            time.sleep(1)
+            time.sleep(0.2)
+            # ДОБАВЛЕНО: дать UI «подмигнуть» и обновить карту элементов
+            try:
+                from screen_monitoring import force_refresh_after_move
+                force_refresh_after_move(dwell=0.6)
+            except Exception as e:
+                print(f'force_refresh_after_move: {e}')
 
         if action['event'] == 'scroll':
             dy = int(action.get('dy', 0))

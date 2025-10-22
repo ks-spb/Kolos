@@ -49,18 +49,22 @@ def screen_monitor(queue_img):
 
 
 def process_changes(queue_hashes, queue_img):
-    """ При каждом обновлении экрана очищает выходной список и начинает заполнять его снова
-        разбирая полученный скриншот. По окончании данные помещает в очередь. """
+    """При каждом обновлении экрана очищает выходной список и начинает заполнять его снова,
+    разбирая полученный скриншот. По окончании данные помещает в очередь.
+
+    В очередь уходит кортеж:
+      ((screenshot, str(id_screen)), stable_elements)
+    где stable_elements: dict[stable_key -> [x, y, w, h]].
+    """
     print('Запуск процесса')
-    # Запускаем поток для мониторинга
+
+    # 1) Старт фонового потока, который кладёт в queue_img скриншот и его pHash
     thread = Thread(target=screen_monitor, args=(queue_img,))
     thread.start()
 
-    # -------- Состояние трекера стабильных ID (живёт между кадрами) --------
-    prev_tracks = {}   # stable_key -> (box=(x,y,w,h), last_raw_hash)
-    # stable_key — это «якорный» сырой pHash, зафиксированный при первом появлении элемента
-    # (строка длиной 16 символов, как и раньше)
-    # -----------------------------------------------------------------------
+    # -------- 2) Состояние трекера стабильных ID (живёт между кадрами) --------
+    # stable_key -> (bbox=(x,y,w,h), last_raw_hash)
+    prev_tracks = {}
 
     def _hamming(a_hex: str, b_hex: str) -> int:
         try:
@@ -68,302 +72,238 @@ def process_changes(queue_hashes, queue_img):
         except Exception:
             return 64
 
-    def _iou(a, b):
+    def _iou(a, b) -> float:
         ax, ay, aw, ah = a; bx, by, bw, bh = b
         x1 = max(ax, bx); y1 = max(ay, by)
-        x2 = min(ax+aw, bx+bw); y2 = min(ay+ah, by+bh)
-        inter = max(0, x2-x1) * max(0, y2-y1)
-        union = aw*ah + bw*bh - inter
+        x2 = min(ax + aw, bx + bw); y2 = min(ay + ah, by + bh)
+        inter = max(0, x2 - x1) * max(0, y2 - y1)
+        union = aw * ah + bw * bh - inter
         return (inter / union) if union else 0.0
 
-    # Порог сопоставления «это тот же объект»
-    HAMM_THR = 8     # допустимая «битовая» разница pHash
-    IOU_THR  = 0.30  # достаточное перекрытие прямоугольников
+    # Пороги сопоставления «это тот же объект»
+    HAMM_THR = 8       # допустимая «битовая» разница pHash
+    IOU_THR  = 0.30    # достаточное перекрытие прямоугольников
+
+    # Параметры детекции (две полосы «масштабов»)
+    # Можно вынести в константы наверх файла и подстраивать под своё рабочее место.
+    SCALES = [
+        # (low, high, kernel, min_w, min_h, min_area)
+        (50, 150, 3, 8,  8,  80),   # мелкие элементы
+        (100, 200, 5, 12, 12, 150), # средние элементы
+    ]
 
     while True:
         if not queue_img.empty():
             start_time = time.time()
 
-            # Получен новый скриншот → вытаскиваем
+            # 3) Получен новый скриншот из потока
             screenshot, screenshot_hash = queue_img.get()
             print('\n------------------------------------------------------------------------------')
             print(f'screen_monitoring. Экран изменился {datetime.datetime.now()}')
             print(f'screen_monitoring. ID изображений: {screenshot_hash}')
 
-            # Поиск контуров (как у вас сейчас)
-            edges = cv2.Canny(screenshot, 100, 200)
-            kernel = np.ones((7, 7), np.uint8)
-            closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
-            contours, hierarchy = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            # 4) Подготовка изображения — вытягиваем локальный контраст (устойчивее на тёмных темах)
+            gray  = cv2.cvtColor(screenshot, cv2.COLOR_BGRA2GRAY) if screenshot.shape[2] == 4 \
+                    else cv2.cvtColor(screenshot, cv2.COLOR_BGR2GRAY)
+            clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+            norm  = clahe.apply(gray)
 
-            # ---------- 1) Строим «сырые» элементы текущего кадра (raw pHash -> bbox) ----------
-            raw_elements = {}  # dict[raw_hash -> [x,y,w,h]]
-            for cnt in contours:
-                x, y, w, h = cv2.boundingRect(cnt)
-                seg = screenshot[y:y+h, x:x+w]
-                raw = cv2.img_hash.pHash(seg)
-                raw_hex = np.array(raw).tobytes().hex().lower()
+            # 5) Поиск контуров на двух «масштабах» и сбор сырых элементов (raw pHash -> bbox)
+            #    Дедупликация по форме (оставляем более узкий bbox, если сегмент совпал)
+            #    Для БД 'screen' по-прежнему используем СЫРОЙ pHash.
+            #    Для этого считаем pHash сегмента и кладём как ключ.
+            raw_elements = {}            # dict[str raw_hex -> [x, y, w, h]]
+            seen_shapes  = {}            # dict[str shape_hex -> (raw_hex, [x,y,w,h])]
+            from image_definition import stable_object_hash_from_matrix  # готовая утилита
 
-                if raw_hex not in raw_elements:
-                    raw_elements[raw_hex] = [int(x), int(y), int(w), int(h)]
+            for low, high, k, min_w, min_h, min_area in SCALES:
+                edges  = cv2.Canny(norm, low, high)
+                closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, np.ones((k, k), np.uint8))
+                # Важно: берём дерево контуров — не теряем вложенные иконки
+                contours, _ = cv2.findContours(closed, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-                # Если за время обработки кадр обновился — прерываемся и начнём заново
+                for cnt in contours:
+                    x, y, w, h = cv2.boundingRect(cnt)
+                    if w < min_w or h < min_h or (w * h) < min_area:
+                        continue
+
+                    seg = screenshot[y:y+h, x:x+w]
+
+                    # Сырый pHash для БД экранов
+                    raw = cv2.img_hash.pHash(seg)
+                    raw_hex = np.array(raw).tobytes().hex().lower()
+
+                    # Устойчивый ключ формы для дедупликации по двум «масштабам»
+                    segg = cv2.cvtColor(seg, cv2.COLOR_BGRA2GRAY) if seg.shape[2] == 4 \
+                           else cv2.cvtColor(seg, cv2.COLOR_BGR2GRAY)
+                    binm = cv2.adaptiveThreshold(segg, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                                 cv2.THRESH_BINARY, 11, 2)
+                    shape_hex = stable_object_hash_from_matrix((binm > 0).astype("uint8"))
+
+                    prev = seen_shapes.get(shape_hex)
+                    if prev is None or (w * h) < (prev[1][2] * prev[1][3]):
+                        seen_shapes[shape_hex] = (raw_hex, [int(x), int(y), int(w), int(h)])
+
+                # Если за время обработки кадр обновился — прерываем детекцию,
+                # начнём разбор следующего кадра (минимизируем лаг).
                 if not queue_img.empty():
                     break
-            else:
-                # ---------- 2) Сопоставляем с треком и выдаём СТАБИЛЬНЫЕ ключи ----------
-                # Каждому новому «сырому» элементу ищем лучший предыдущий трек по стоимости
-                # Стоимость: Hamming(prev_raw, cur_raw) + штраф за плохой IoU
-                taken_prev = set()
-                stable_elements = {}  # dict[stable_key -> [x,y,w,h]]
 
-                for cur_raw, cur_box in raw_elements.items():
-                    best_key, best_cost = None, 1e9
-                    for prev_key, (prev_box, prev_raw) in prev_tracks.items():
-                        if prev_key in taken_prev:
-                            continue
-                        d_h = _hamming(prev_raw, cur_raw)
-                        iou = _iou(prev_box, cur_box)
-                        # Комбинированная стоимость (веса можно подстроить)
-                        cost = d_h * 1.0 + (1.0 - iou) * 20.0
-                        if cost < best_cost:
-                            best_cost = cost
-                            best_key = prev_key
+            # Срез (shape → raw) превращаем в mapping raw → bbox
+            for raw_hex, box in (v for v in seen_shapes.values()):
+                if raw_hex not in raw_elements or (box[2]*box[3]) < (raw_elements[raw_hex][2]*raw_elements[raw_hex][3]):
+                    raw_elements[raw_hex] = box
 
-                    # Проверяем пороги сопоставления
-                    if best_key is not None:
-                        d_h = _hamming(prev_tracks[best_key][1], cur_raw)
-                        iou = _iou(prev_tracks[best_key][0], cur_box)
-                        if d_h <= HAMM_THR and iou >= IOU_THR:
-                            # Это тот же объект → сохраняем старый стабильный ключ
-                            stable_key = best_key
-                            taken_prev.add(best_key)
-                        else:
-                            # Новый объект → его стабильный ключ = его ПЕРВЫЙ «сырой» pHash
-                            stable_key = cur_raw
+            # Если за время обработки прилетел новый кадр — пропустим текущий результат
+            if not raw_elements:
+                continue
+
+            # 6) Сопоставление с треком и выпуск СТАБИЛЬНЫХ ключей (живут между кадрами)
+            taken_prev = set()
+            stable_elements = {}  # dict[stable_key -> [x,y,w,h]]
+
+            for cur_raw, cur_box in raw_elements.items():
+                best_key, best_cost = None, 1e9
+                for prev_key, (prev_box, prev_raw) in prev_tracks.items():
+                    if prev_key in taken_prev:
+                        continue
+                    d_h = _hamming(prev_raw, cur_raw)
+                    iou = _iou(prev_box, cur_box)
+                    # Комбинированная стоимость (веса можно подстроить)
+                    cost = d_h * 1.0 + (1.0 - iou) * 20.0
+                    if cost < best_cost:
+                        best_cost = cost
+                        best_key = prev_key
+
+                # Проверяем пороги сопоставления
+                if best_key is not None:
+                    d_h = _hamming(prev_tracks[best_key][1], cur_raw)
+                    iou = _iou(prev_tracks[best_key][0], cur_box)
+                    if d_h <= HAMM_THR and iou >= IOU_THR:
+                        # Это тот же объект → сохраняем старый стабильный ключ
+                        stable_key = best_key
+                        taken_prev.add(best_key)
                     else:
-                        # Нет подходящего трека → новый объект
+                        # Новый объект → его стабильный ключ = его ПЕРВЫЙ «сырой» pHash
                         stable_key = cur_raw
-
-                    stable_elements[stable_key] = cur_box
-
-                # Обновляем трек: последний raw и bbox по стабильному ключу
-                prev_tracks = {k: (stable_elements[k], k if k in raw_elements else
-                                   # если k — старый стабильный ключ, берём последний raw,
-                                   # т.е. ищем по совпадающему bbox обратным поиском
-                                   next((r for r,b in raw_elements.items() if b == stable_elements[k]), k))
-                               for k in stable_elements.keys()}
-
-                # ---------- 3) Работа с БД экранов — по СЫРЫМ ключам (как раньше) ----------
-                # (Ниже — ваш исходный код поиска id_screen с использованием hash_list/raw_set)
-                COUNT_EL = 5  # ваш порог
-                screens = cursor.execute("SELECT id, list FROM screen").fetchall()
-                id_screen = None
-                hashes_screen = None
-                max_count = 0
-                hash_list = list(raw_elements.keys())             # <-- СЫРЫЕ pHash для БД
-                hash_set  = set(hash_list)
-
-                for id_scr, screen_json in screens:
-                    screen_hashes = set(json.loads(screen_json))
-                    inter = screen_hashes.intersection(hash_set)
-                    if len(inter) > max_count:
-                        max_count = len(inter)
-                        id_screen = id_scr
-                        hashes_screen = screen_hashes
-                if hashes_screen:
-                    print("Совпало", max_count, "это", int(max_count/(len(hashes_screen)/100)), "%")
-
-                if hashes_screen and max_count/(len(hashes_screen)/100) > COUNT_EL:
-                    new_hashes = hash_set | hashes_screen
-                    cursor.execute("UPDATE screen SET list = ? WHERE id = ?",
-                                   (json.dumps(list(new_hashes)), id_screen))
-                    print('Обновляем запись об экране id', id_screen)
                 else:
-                    cursor.execute("INSERT INTO screen (list) VALUES (?)", (json.dumps(hash_list),))
-                    id_screen = cursor.execute('SELECT last_insert_rowid()').fetchone()[0]
-                    print('Создаем новую запись об экране id', id_screen)
-                cursor.commit()
+                    # Нет подходящего трека → новый объект
+                    stable_key = cur_raw
 
-                # ---------- 4) Отправляем в очередь СТАБИЛЬНЫЕ ключи ----------
-                while not queue_hashes.empty():
-                    queue_hashes.get()
-                queue_hashes.put(((screenshot, str(id_screen)), stable_elements))
+                stable_elements[stable_key] = cur_box
 
-                print(f'Время выполнения: {time.time() - start_time + 0.05} сек.')
-                print('------------------------------------------------------------------------------\n')
+            # Обновляем трек: последний raw и bbox по стабильному ключу
+            prev_tracks = {
+                k: (
+                    stable_elements[k],
+                    # если k — текущий сырой pHash, используем его;
+                    # иначе находим сырой pHash по совпадающему bbox (обратный поиск)
+                    k if k in raw_elements else next((r for r, b in raw_elements.items()
+                                                     if b == stable_elements[k]), k)
+                )
+                for k in stable_elements.keys()
+            }
 
+            # 7) Работа с БД экранов — по СЫРЫМ ключам (как и было)
+            COUNT_EL = 5
+            screens = cursor.execute("SELECT id, list FROM screen").fetchall()
+            id_screen = None
+            hashes_screen = None
+            max_count = 0
+            hash_list = list(raw_elements.keys())   # СЫРЫЕ pHash для БД
+            hash_set  = set(hash_list)
 
+            for id_scr, screen_json in screens:
+                screen_hashes = set(json.loads(screen_json))
+                inter = screen_hashes.intersection(hash_set)
+                if len(inter) > max_count:
+                    max_count = len(inter)
+                    id_screen = id_scr
+                    hashes_screen = screen_hashes
+            if hashes_screen:
+                print("Совпало", max_count, "это", int(max_count / (len(hashes_screen) / 100)), "%")
 
-# def process_changes(queue_hashes, queue_img):
-#     """ При каждом обновлении экрана очищает выходной список и начинает заполнять его снова
-#         разбирая полученный скриншот. По окончании данные помещает в очередь. """
-#     print('Запуск процесса')
-#     # Запускаем поток для мониторинга
-#     thread = Thread(target=screen_monitor, args=(queue_img,))
-#     thread.start()
-#     hashes_elements = {}
-#
-#     while True:
-#
-#         if not queue_img.empty():
-#             # Измеряем время выполнения
-#             start_time = time.time()
-#
-#             # Получен новый скриншот, выберем из него элементы
-#             screenshot, screenshot_hash = queue_img.get()  # Получаем скриншот и его хэш из очереди
-#             print('\n------------------------------------------------------------------------------')
-#             print(f'screen_monitoring. Экран изменился {datetime.datetime.now()}')
-#             print(f'screen_monitoring. ID изображений: {screenshot_hash}')
-#             # Принимает изображение типа Image
-#             # возвращает итератор координат и размеров всех элементов на изображении
-#             # в виде: [[x, y, w, h], ...] (x, y - верхняя левая точка, w, h - нижняя правая точка)
-#
-#             # Применяем Canny алгоритм для поиска границ
-#             edges = cv2.Canny(screenshot, 100, 200)
-#
-#             # ---------------------------------------------
-#             # Поиск элементов на экране, именно изображений
-#             # ---------------------------------------------
-#             # Применяем морфологическую операцию закрытия
-#             kernel = np.ones((7, 7), np.uint8)
-#             closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
-#
-#             # Ищем контуры и проходим по ним
-#             contours, hierarchy = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-#
-#             hashes_elements.clear()
-#             for cnt in contours:
-#
-#                 # Находим прямоугольник
-#                 # [x, y, w, h] (x, y - верхняя левая точка; w, h - ширина, высота)
-#
-#                 x, y, w, h = cv2.boundingRect(cnt)
-#                 w1, h1 = x + w, y + h
-#                 segment = screenshot[y:h1, x:w1]
-#
-#                 hash = cv2.img_hash.pHash(segment)  # Получаем хэш сегмента
-#                 hash_string = np.array(hash).tobytes().hex()  # Преобразование хэша в шестнадцатеричную строку
-#
-#                 if hash_string not in hashes_elements.keys():
-#                     # Если хэша нет в списке, то добавляем его
-#                     hashes_elements[hash_string] = [x, y, w, h]
-#
-#                 if not queue_img.empty():
-#                     # Если за время обработки скриншота экран снова изменится
-#                     # начинаем заново
-#                     break
-#
-#             else:
-#                 # Определение элементов экрана закончено
-#                 # ------------------------------------------------------------
-#                 # Поиск отличительных особенностей экрана и сохранение их в БД
-#                 # ------------------------------------------------------------
-#
-#                 """Тут код функции поиска отличительных признаков экрана,
-#                 пока поменял их на хэши найденных элементов
-#                 Возможно, это позволит лучше подбирать экраны с нужными элементами.
-#                 Но этот подход не учитывает положение элементов на экране, только их наличие."""
-#                 # """Функция замена хэша экрана.
-#                 # Сохраняет в БД отличительные особенности экранов, распознает их по ним.
-#                 # Принимает изображение экрана в формате NumPy,
-#                 # возвращает его номер.
-#                 #
-#                 # В своей работе использует поиск контуров на изображении. Находит расположение
-#                 # основных элементов составляет список их координат в виде хэшей.
-#                 # Для каждого экрана хранит и пополняет список его хэшей.
-#                 # Находит список хэшей полученного экрана, сравнивает его со списками имеющихся экранов.
-#                 # Для экрана, получившего большее количество совпадения хэшей проверяет их количество.
-#                 # Если оно больше определенного порога, экран признается найденным, список его хэшей
-#                 # пополняется теми из нового экрана, которых в нем не было.
-#                 # Если количество совпадений меньше порога, то экран считается новым, ему присваивается
-#                 # новый номер (следующий за имеющимися) и создается новая запись в БД."""
-#                 #
-#                 # # Допустимое отклонение в координатах и размерах прямоугольников
-#                 # # Чем больше это значение, тем более похожими будут хэши
-#                 # # и более похожими будут различные экраны
-#                 # ACCEPT = 2
-#                 #
-#                 # # Процент элементов на экране, которые должны совпадать, чтобы считать экран одинаковым
-#                 # # Чем меньше число, тем более похожими будут считаться различные экраны
-#                 # COUNT_EL = 20
-#                 #
-#                 #
-#                 # # Применяем морфологическую операцию закрытия
-#                 # kernel = np.ones((15, 15), np.uint8)
-#                 # closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
-#                 #
-#                 # # Ищем контуры и проходим по ним
-#                 # contours, hierarchy = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-#                 #
-#                 # hash_list = []
-#                 #
-#                 # for cnt in contours:
-#                 #     # Находим прямоугольник
-#                 #     x, y, *_ = cv2.boundingRect(cnt)
-#                 #
-#                 #     # Округляем координаты и размеры прямоугольника для получения допустимых отличий
-#                 #     x_scaled = round(x / ACCEPT) * ACCEPT
-#                 #     y_scaled = round(y / ACCEPT) * ACCEPT
-#                 #
-#                 #     rect_str = str(x_scaled) + str(y_scaled)
-#                 #
-#                 #     hash_bytes = zlib.crc32(rect_str.encode())
-#                 #     hash_list.append(f"{hash_bytes:08x}")  # Добавляем хэш в список
-#                 #
-#                 #     if not queue_img.empty():
-#                 #         break  # Если за время обработки скриншота экран снова изменится, начинаем заново
-#                 #
-#                 # else:
-#                     # Если вернуть функцию, нужно нижний код сдвинуть вправо и удалить константу
-#                 # Процент элементов на экране, которые должны совпадать, чтобы считать экран одинаковым
-#                 # Чем меньше число, тем более похожими будут считаться различные экраны
-#                 COUNT_EL = 5
-#
-#                 screens = cursor.execute("SELECT id, list FROM screen").fetchall()  # Читаем свойства экранов
-#                 id_screen = None  # id текущего экрана в БД
-#                 hashes_screen = None  # Список хэшей текущего экрана в БД
-#                 max_count = 0  # Максимальное количество совпадений
-#                 hash_list = list(hashes_elements.keys())  # В качестве отличительных особенностей хэши элементов
-#                 hash_set = set(hash_list)
-#                 for id_scr, screen_json in screens:
-#                     # В БД есть сохраненные экраны, проверим их на совпадение с имеющимся
-#                     screen_hashes = set(json.loads(screen_json))
-#                     intersection = screen_hashes.intersection(hash_set)  # Найти пересечение set
-#
-#                     if len(intersection) > max_count:
-#                         # Найден экран с максимальным количеством совпадений
-#                         max_count = len(intersection)
-#                         id_screen = id_scr
-#                         hashes_screen = screen_hashes
-#                 if hashes_screen:
-#                     print("Совпало", max_count, "это", int(max_count/(len(hashes_screen)/100)), "%")
-#
-#                 if hashes_screen and max_count/(len(hashes_screen)/100) > COUNT_EL:
-#                     # Экран с максимальным количеством совпадающих признаков проходит порог
-#                     # Считаем, что этот экран уже есть и найден.
-#                     # Дополняем набор его хэшей теми, которых у него не было и обновляем БД
-#                     new_hashes = hash_set | hashes_screen
-#                     cursor.execute("UPDATE screen SET list = ? WHERE id = ?",
-#                                    (json.dumps(list(new_hashes)), id_screen))
-#                     print('Обновляем запись об экране id', id_screen)
-#                 else:
-#                     # Экран новый, добавляем его в БД и получаем id нового экрана
-#                     cursor.execute("INSERT INTO screen (list) VALUES (?)", (json.dumps(hash_list),))
-#                     # id_screen = cursor.get_last_id()
-#                     id_screen = cursor.execute('SELECT last_insert_rowid()').fetchone()[0]
-#                     print('Создаем новую запись об экране id', id_screen)
-#                     # cv2.imwrite(f'new_screens/scr_{id_screen}.png', screenshot)  # Сохраняем изображение в файл
-#                 cursor.commit()
-#
-#                 # Если скриншот обработан, то передаем его, его хэш и список хэшей элементов в очередь
-#                 # Предварительно очистив ее
-#                 while not queue_hashes.empty():
-#                     queue_hashes.get()
-#                 queue_hashes.put(((screenshot, str(id_screen)), hashes_elements))
-#                 # print(f'Количество элементов последнего экрана: {len(hashes_elements)}')
-#                 # Выводим время выполнения
-#                 print(f'Время выполнения: {time.time() - start_time + 0.05} сек.')
-#                 print(f'screen.monitoring. queue_hashes.put(((screenshot, str(id_screen)), hashes_elements)) = {queue_hashes.put(((screenshot, str(id_screen)), hashes_elements))}')
-#                 print('------------------------------------------------------------------------------\n')
-#
+            if hashes_screen and max_count / (len(hashes_screen) / 100) > COUNT_EL:
+                new_hashes = hash_set | hashes_screen
+                cursor.execute("UPDATE screen SET list = ? WHERE id = ?",
+                               (json.dumps(list(new_hashes)), id_screen))
+                print('Обновляем запись об экране id', id_screen)
+            else:
+                cursor.execute("INSERT INTO screen (list) VALUES (?)", (json.dumps(hash_list),))
+                id_screen = cursor.execute('SELECT last_insert_rowid()').fetchone()[0]
+                print('Создаем новую запись об экране id', id_screen)
+            cursor.commit()
+
+            # 8) Отправляем в очередь СТАБИЛЬНЫЕ ключи и последний скриншот
+            while not queue_hashes.empty():
+                queue_hashes.get()
+            queue_hashes.put(((screenshot, str(id_screen)), stable_elements))
+
+            print(f'Время выполнения: {time.time() - start_time + 0.05:.3f} сек.')
+            print('------------------------------------------------------------------------------\n')
+
+# --- принудительное обновление кадра после ховера курсора ---
+def force_refresh_after_move(queue_img, dwell: float = 0.6):
+    """
+    Дать UI время отреагировать на наведение (tooltip/hover-эффекты),
+    затем снять скриншот и положить его в очередь так же, как это делает screen_monitor().
+    process_changes возьмёт кадр и обновит экран/хэши.
+    """
+    import time
+    import numpy as np
+    import pyautogui
+    import cv2
+
+    # Небольшая пауза, чтобы всплывающие элементы успели появиться
+    if dwell and dwell > 0:
+        time.sleep(float(dwell))
+
+    # Делаем скриншот в том же формате, что и мониторинг
+    img_pil = pyautogui.screenshot()
+    frame = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
+
+    # Хэш «кадра» (как идентификатор снимка; формат совпадает с monitor)
+    ph = cv2.img_hash.pHash(frame)
+    frame_hash = np.array(ph).tobytes().hex().lower()
+
+    # Кладём в очередь — дальше сработает обычный пайплайн process_changes
+    queue_img.put((frame, frame_hash))
+    print(f'force_refresh_after_move: добавлен кадр {frame_hash}')
+
+# --- Глобальная ссылка на входную очередь кадров ---
+_FORCE_QUEUE_IMG = None
+
+def register_input_queue(q):
+    """Регистрирует очередь кадров, созданную в main.py (queue_img)."""
+    global _FORCE_QUEUE_IMG
+    _FORCE_QUEUE_IMG = q
+
+def force_refresh_after_move(dwell: float = 0.6):
+    """
+    Пауза, чтобы UI успел отреагировать на наведение (tooltip/hover),
+    затем делаем скриншот и кладём его в ту же очередь, что читает process_changes().
+    """
+    import time
+    import numpy as np
+    import cv2
+    import pyautogui
+
+    if _FORCE_QUEUE_IMG is None:
+        print("force_refresh_after_move: очередь не зарегистрирована (нет register_input_queue)")
+        return
+
+    if dwell and dwell > 0:
+        time.sleep(float(dwell))
+
+    pil = pyautogui.screenshot()
+    frame = cv2.cvtColor(np.array(pil), cv2.COLOR_RGB2BGR)
+    hash_img = cv2.img_hash.pHash(frame)  # формат тот же, что в screen_monitor() :contentReference[oaicite:0]{index=0}
+
+    # оставляем только самый свежий кадр
+    try:
+        while not _FORCE_QUEUE_IMG.empty():
+            _FORCE_QUEUE_IMG.get_nowait()
+    except Exception:
+        pass
+
+    _FORCE_QUEUE_IMG.put((frame, hash_img))  # формат тот же: (np_img, pHash) :contentReference[oaicite:1]{index=1}

@@ -6,17 +6,24 @@
 
 Добавлен метод нахождения элемента под курсором и получение его хэша.
 """
-from time import process_time_ns
-
+import time
 import numpy as np
 import cv2
 import pyautogui
 
-import time
-
-
+VERBOSE = False
 # Список для хранения всех хэшей на текущем экране
 tekyshie_img_hash = []
+
+def _log_get_screen(msg: str, every_sec: float = 1.0):
+    """Печатает msg не чаще 1 раза в `every_sec` секунд и только при VERBOSE=True."""
+    global _LAST_GET_SCREEN_LOG
+    if not VERBOSE:
+        return
+    now = time.time()
+    if now - _LAST_GET_SCREEN_LOG >= every_sec:
+        print(msg)
+        _LAST_GET_SCREEN_LOG = now
 
 def screenshot(x_reg: int = 0, y_reg: int = 0, region: int = 0):
     """ Скриншот заданного квадрата или всего экрана
@@ -56,7 +63,7 @@ class Screen:
         Изменит дату последнего обновления.
         """
         global tekyshie_img_hash
-        print('Работа функции get_screen')
+        # print('Работа функции get_screen')
         if self.queue_hashes is None:
             print("get_screen. if self.queue_hashes is None")
             return False
@@ -77,7 +84,7 @@ class Screen:
             self._last_update = time.time()
             return True
         else:
-            print('get_screen выдал else')
+            # print('get_screen выдал else')
             return False
 
     def tekysie_hash(self):
@@ -112,41 +119,6 @@ class Screen:
         # Строгое поведение: если ни один прямоугольник не содержит точку — возвращаем None
         return candidate
 
-    # def list_search(self, x_point, y_point):
-    #     """Ищет в списке элемент по координатам.
-    #      Принимает координаты, возвращает хэш или None, если элемента нет
-    #      Координаты должны принадлежать прямоугольнику (ищем все выбираем минимальный)
-    #      Если такого нет, возвращаем ближайший элемент."""
-    #
-    #     self.get_screen()
-    #     # element = [hash for hash, coord in self.hashes_elements.items()
-    #     #            if coord[0] < x < coord[2] and coord[1] < y < coord[3]]
-    #     if not self.hashes_elements:
-    #         return None  # Нет элементов
-    #
-    #     # Находим, какому элементу принадлежат координаты места клика
-    #     candidate, square = None, None  # Кандидат на выдачу и его площадь (контур, которому принадлежит точка)
-    #     element, distance = None, None  # Ближайший элемент и расстояние до него
-    #     for hash, (x, y, w, h) in self.hashes_elements.items():
-    #         rect = np.array([[x, y], [x+w, y], [x+w, y+h], [x, y+h]])   # создаем массив вершин
-    #         rect_contour = rect.reshape((-1,1,2))  # преобразуем в формат контура
-    #         dist = cv2.pointPolygonTest(rect_contour, (x_point, y_point), True)
-    #         if dist >= 0:
-    #             # Точка внутри контура. Выбираем тот контур, у которого площадь меньше
-    #             this_square = w * h
-    #             if square is None or this_square < square:
-    #                 square = this_square
-    #                 candidate = hash
-    #         else:
-    #             # Точка снаружи контура. Выбираем ближайший
-    #             dist = abs(dist)
-    #             if distance is None or dist < distance:
-    #                 distance = dist
-    #                 element = hash
-    #
-    #     # Если найден контур, которому принадлежит точка, возвращаем его
-    #     # Иначе возвращаем ближайший
-    #     return candidate if candidate else element
 
     def get_element(self, hash):
         """Возвращает изображение в формате NumPy элемента по его хэшу.
@@ -200,99 +172,7 @@ class Screen:
         # маленький зазор в 1–2 пикселя помогает при дрожи рамки
         return self.list_search(pos.x, pos.y, inside_pad=1)
 
-    # def element_under_cursor(self):
-    #     """Возвращает ХЭШ элемента из глобальной карты (hashes_elements) под текущим курсором.
-    #     1) Берёт текущие координаты мыши;
-    #     2) Обновляет данные об экране (если в очереди есть свежий снимок);
-    #     3) Находит и возвращает хэш элемента из get_screen/hashес_elements, соответствующий этим координатам.
-    #        Если точного попадания нет — вернёт ближайший элемент. Если элементов нет — None.
-    #     """
-    #     try:
-    #         # 1) координаты курсора
-    #         pos = pyautogui.position()
-    #
-    #         # 2) подтянуть свежие данные об экране (если есть в очереди)
-    #         self.get_screen()
-    #
-    #         # 3) найти хэш по координатам в глобальной карте элементов
-    #         return self.list_search(pos.x, pos.y)
-    #     except Exception:
-    #         return None
 
-    # def element_under_cursor(self):
-    #     """Нахождение элемента под курсором и получение его хэша.
-    #     Вернет Хэш элемента или None"""
-    #     WIDTH = 100  # Ширина области, в которой ищем элемент
-    #     HEIGHT = 100  # Высота области, в которой ищем элемент
-    #
-    #     # Получаем координаты мыши
-    #     x, y = pyautogui.position()
-    #
-    #     try:
-    #         # Находим прямоугольник
-    #         x1, y1 = max(x - WIDTH // 2, 0), max(y - HEIGHT // 2, 0)  # Координаты не должны быть меньше 0
-    #         x2, y2 = x1 + WIDTH, y1 + HEIGHT
-    #
-    #         # Запоминаем координаты мыши на вырезанном участке
-    #         cur_x, cur_y = x - x1, y - y1
-    #
-    #
-    #         scr = screenshot()  # Получаем снимок экрана
-    #         # print(f'element_under_cursor. Получаем снимок экрана: {scr}')   #Снимок получается
-    #         # Вырезаем прямоугольник, в котором будем искать элемент
-    #         region = scr[y1:y2, x1:x2]
-    #         # print(f'element_under_cursor. region:  {region} из y1: {y1} и x1: {x1}')
-    #
-    #         # Применяем Canny алгоритм для поиска границ
-    #         edges = cv2.Canny(region, 100, 200)
-    #
-    #         # Применяем морфологическую операцию закрытия
-    #         kernel = np.ones((3, 3), np.uint8)
-    #         # closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
-    #         closed = cv2.dilate(edges, kernel, iterations=2)
-    #
-    #         # Ищем контуры и проходим по ним
-    #         contours, hierarchy = cv2.findContours(closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    #
-    #         # -----------------------------------------------------------------------
-    #         # Это добавлено при отладке и может быть удалено, для работы не нужно
-    #         # print(len(contours))
-    #         # cv2.imwrite("1\image_screenshot.jpg", screen.screenshot)
-    #         # s = 0
-    #         # -----------------------------------------------------------------------
-    #
-    #         for cnt in contours:
-    #             x, y, w, h = cv2.boundingRect(cnt)
-    #
-    #             # Ищем элемент, которому принадлежат координаты мыши
-    #             rect = np.array([[x, y], [x + w, y], [x + w, y + h], [x, y + h]])  # Создаем массив вершин
-    #             rect_contour = rect.reshape((-1, 1, 2))  # преобразуем в формат контура
-    #             dist = cv2.pointPolygonTest(rect_contour, (cur_x, cur_y), True)
-    #
-    #             # -----------------------------------------------------------------------
-    #             # Это добавлено при отладке и может быть удалено, для работы не нужно
-    #             # print(f'X {x} - {x+w}, а курсор {cur_x}\nY {y} - {y+h}, а курсор {cur_y}')
-    #             # w1, h1 = x + w, y + h
-    #             # segment = region[y:h1, x:w1]
-    #             #
-    #             # hash = cv2.img_hash.pHash(segment)  # Получаем хэш сегмента
-    #             # hash = np.array(hash).tobytes().hex()  # Преобразование хэша в шестнадцатеричную строку
-    #             #
-    #             # # Сохранить изображение с именем, содержащим текущее время
-    #             # cv2.imwrite("1\image_" + hash + ".jpg", segment)
-    #             #
-    #             # s += 1
-    #             # ---------------------------------------------------------------------
-    #             if dist >= 0:
-    #                 w1, h1 = x + w, y + h
-    #                 segment = region[y:h1, x:w1]
-    #                 # cv2.imshow("Rectangle Image", segment)
-    #                 # cv2.waitKey(0)
-    #                 hash = cv2.img_hash.pHash(segment)  # Получаем хэш сегмента
-    #                 return np.array(hash).tobytes().hex()  # Преобразование хэша в шестнадцатеричную строку
-    #     except:
-    #         pass
-    #     return None
 
 
 screen = Screen()  # Создаем объект для хранения информации об элементах текущего экрана
