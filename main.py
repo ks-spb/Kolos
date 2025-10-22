@@ -164,6 +164,7 @@ def proshivka():
     global pyt
     global online_svyaz_list
     global spisok_otricatelnih_deystvii
+    global source
     # 1. Если есть уже собранный ранее путь - пропустить эту функцию
     print(f'Передаётся следующий путь: {pyt}')
     if pyt:
@@ -195,6 +196,7 @@ def proshivka():
             print("\033[0m {}".format("**********************************"))
             print("\033[31m {}".format("Был пройден весь путь и цепочка действий закончилась"))  # Ответ
             print("\033[0m {}".format("**********************************"))
+            source = "input"
             return
         #   d. Если не находится в списке отрицательных действий - записать в список “путь”, эту точку и ID связи
         pyt.append((id_tochki_online_svyazi[0], pervaya_online_svyaz))
@@ -320,6 +322,11 @@ def out_red(id):
                 x, y = koordinaty_obiekta
                 # Переводим курсор к объекту; duration можно подстроить (0–0.2 c)
                 pyautogui.moveTo(int(x), int(y), duration=0.15)
+                # Сымитировать «живое» движение мыши (часто именно этого ждет UI)
+                pyautogui.moveRel(1, 0, duration=0.05)
+                pyautogui.moveRel(-1, 0, duration=0.05)
+                # Дать время тултипу показаться
+                time.sleep(1)
                 # поиск максимального ID из таблицы связей, чтобы её изменить и направить к новыми координатам
                 max_ID_svyazi = cursor.execute("SELECT IFNULL(MAX(id), 0) FROM svyazi").fetchone()[0]
 

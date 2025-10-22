@@ -6,6 +6,7 @@ import pyautogui
 import json
 import cv2
 import numpy as np
+import time
 
 import report
 from exceptions import *
@@ -376,6 +377,11 @@ class Play:
             koord_x = action['x']
             koord_y = action['y']
             pyautogui.moveTo(int(koord_x), int(koord_y), 0.3)
+            # Сымитировать «живое» движение мыши (часто именно этого ждет UI)
+            pyautogui.moveRel(1, 0, duration=0.05)
+            pyautogui.moveRel(-1, 0, duration=0.05)
+            # Дать время тултипу показаться
+            time.sleep(1)
 
         if action['event'] == 'scroll':
             dy = int(action.get('dy', 0))
