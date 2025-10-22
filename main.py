@@ -11,7 +11,7 @@ from multiprocessing import Process, Queue, Manager
 
 from PIL.ImageStat import Global
 
-import screen_monitoring
+import screen
 from db import Database
 from mous_kb_record import rec, play
 from screen_monitoring import process_changes
@@ -19,6 +19,8 @@ from screen import screen, Screen
 from report import report
 import pyautogui
 from exceptions import ElementNotFound
+
+screen.VERBOSE = True   #Чтобы выключить консоль вписать False
 
 
 def stiranie_pamyati():
@@ -320,13 +322,18 @@ def out_red(id):
 
             if _is_point_xy(koordinaty_obiekta):
                 x, y = koordinaty_obiekta
-                # Переводим курсор к объекту; duration можно подстроить (0–0.2 c)
+                # Переводим курсор к объекту
                 pyautogui.moveTo(int(x), int(y), duration=0.15)
                 # Сымитировать «живое» движение мыши (часто именно этого ждет UI)
                 pyautogui.moveRel(1, 0, duration=0.05)
                 pyautogui.moveRel(-1, 0, duration=0.05)
                 # Дать время тултипу показаться
-                time.sleep(1)
+                time.sleep(0.2)
+                # --- ДОБАВЛЕНО: обновить экран и хэши объектов ---
+                from screen_monitoring import force_refresh_after_move
+                # queue_img — та же очередь, которую ты передаёшь в process_changes/monitor
+                force_refresh_after_move(queue_img, dwell=0.6)
+
                 # поиск максимального ID из таблицы связей, чтобы её изменить и направить к новыми координатам
                 max_ID_svyazi = cursor.execute("SELECT IFNULL(MAX(id), 0) FROM svyazi").fetchone()[0]
 
@@ -536,6 +543,11 @@ if __name__ == '__main__':
 
     screen.queue_hashes = queue_hashes  # Передаем источник экранов в их приемник в основном потоке
 
+    import screen_monitoring as sm
+
+    sm.register_input_queue(
+        queue_img)  # теперь force_refresh_after_move знает, куда класть кадры :contentReference[oaicite:2]{index=2}
+
     # -----------------------------------------------------------
     cursor = Database('Li_db_v1_4.db')
     A = True
@@ -591,7 +603,7 @@ if __name__ == '__main__':
 
         # Пытаюсь вытащить текущие хэши из экрана
         screen_instance = Screen()
-        print(f'main. Screen.tekysie_hash 2: {screen_instance.tekysie_hash()}')  # main. Screen.tekysie_hash: <function Screen.tekysie_hash at 0x0000029AD2CD9440>
+        # print(f'main. Screen.tekysie_hash 2: {screen_instance.tekysie_hash()}')  # main. Screen.tekysie_hash: <function Screen.tekysie_hash at 0x0000029AD2CD9440>
 
         if not queue_hashes.empty():
             print("Изменился экран - поэтому запускается функция переноса состояния")
@@ -841,6 +853,3 @@ if __name__ == '__main__':
 
 
 # TODO во время записи действий открываются экраны. Либо нужно автоматически записывать их в цепочку, либо действия выполнять до появления нового экрана, затем снова записывать часть
-# TODO Если нельзя выполнить задание с текущего экрана - то необходимо запустить обратную прошивку от задания, которое
-#  выполнялось в последний раз и от того экрана - дойти до текущего экрана. Затем применить действия для перехода, а
-#  затем уже выполнить задание
