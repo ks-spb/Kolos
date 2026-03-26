@@ -1,0 +1,22 @@
+---
+description: Архитектурные правила рефакторинга и разработки
+globs:
+  - "**/*.py"
+alwaysApply: true
+---
+
+- Before implementation, propose the target file structure.
+- First design the file structure, then write the code.
+- If a function is > 40 lines, split it.
+- If repetition occurs more than once, extract it into a helper/class.
+- Duplication is forbidden (DRY).
+- Small private helper methods are mandatory for non-trivial logic.
+- Any new module: types + docstring + consistent naming style.
+- Docstrings and type hints are mandatory.
+- Complex logic must go only through layers (application/domain/repositories/services).
+- Do not mix IO/API/business logic in a single function.
+- After changes, mandatory self-review:
+  - what was simplified
+  - what was extracted
+  - what was removed
+

@@ -7,45 +7,16 @@
 # Управление: 'q' — выход из окна; Ctrl+C — выход из консоли.
 
 import time
-import sys
-import multiprocessing as mp
 
 import cv2
-import numpy as np
 import pyautogui
 
-# Берём глобальный экземпляр screen из твоего модуля
-from screen import screen  # screen: Screen()
+# Берём глобальный экземпляр screen из нового CV ядра
+from cv_core.compat_adapter import screen
 
 # Настройки
 SHOW_WINDOW = True                 # Отрисовывать окно с подсветкой
 POLL_DELAY = 0.05                  # Интервал опроса очереди/экрана
-MONITOR_FUNC_NAME = "process_changes"  # Имя функции мониторинга в screen_monitoring.py
-
-
-def start_monitoring(queue):
-    """
-    Старт фонового процесса мониторинга экрана.
-    Ожидается, что в screen_monitoring.py есть функция process_changes(queue),
-    которая пишет в очередь кортеж вида: ((screenshot, id_screen), hashes_elements)
-    """
-    try:
-        import screen_monitoring as sm
-    except Exception as e:
-        print("Не удалось импортировать screen_monitoring.py:", e)
-        sys.exit(1)
-
-    fn = getattr(sm, MONITOR_FUNC_NAME, None)
-    if fn is None:
-        print(f"В screen_monitoring.py нет функции {MONITOR_FUNC_NAME}(...). "
-              f"Проверь имя и сигнатуру.")
-        sys.exit(1)
-
-    proc = mp.Process(target=fn, args=(queue,), daemon=True)
-    proc.start()
-    return proc
-
-
 def draw_overlay(img_bgr, boxes, highlight_key=None, cursor_xy=None):
     """
     Рисуем прямоугольники элементов и подсветку выбранного/под курсором.
@@ -73,15 +44,7 @@ def draw_overlay(img_bgr, boxes, highlight_key=None, cursor_xy=None):
 
 
 def main():
-    # На Windows обязательно spawn
-    try:
-        mp.set_start_method("spawn", force=True)
-    except RuntimeError:
-        pass
-
-    q = mp.Queue(maxsize=1)      # Очередь только со свежим кадром
-    screen.queue_hashes = q      # Привязываем очередь к нашему Screen
-    proc = start_monitoring(q)   # Старт фонового процесса мониторинга
+    screen.start()
 
     print("Мониторинг экрана запущен.")
     print("Подсказка: наведите курсор на интересующий элемент — его ключ появится в консоли, "
@@ -133,11 +96,7 @@ def main():
         pass
     finally:
         cv2.destroyAllWindows()
-        try:
-            proc.terminate()
-            proc.join(timeout=0.5)
-        except Exception:
-            pass
+        screen.stop()
 
 
 if __name__ == "__main__":

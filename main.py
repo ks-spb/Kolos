@@ -7,15 +7,12 @@ import time
 import sys
 from time import sleep
 import random
-from multiprocessing import Process, Queue, Manager
 
 from PIL.ImageStat import Global
 
-import screen
 from db import Database
 from mous_kb_record import rec, play
-from screen_monitoring import process_changes
-from screen import screen, Screen
+from cv_core.compat_adapter import screen
 from report import report
 import pyautogui
 from exceptions import ElementNotFound
@@ -329,10 +326,8 @@ def out_red(id):
                 pyautogui.moveRel(-1, 0, duration=0.05)
                 # Дать время тултипу показаться
                 time.sleep(0.2)
-                # --- ДОБАВЛЕНО: обновить экран и хэши объектов ---
-                from screen_monitoring import force_refresh_after_move
-                # queue_img — та же очередь, которую ты передаёшь в process_changes/monitor
-                force_refresh_after_move(queue_img, dwell=0.6)
+                # Обновить экран и карту объектов после перемещения курсора.
+                screen.force_refresh_after_move(dwell=0.6)
 
                 # поиск максимального ID из таблицы связей, чтобы её изменить и направить к новыми координатам
                 max_ID_svyazi = cursor.execute("SELECT IFNULL(MAX(id), 0) FROM svyazi").fetchone()[0]
@@ -535,18 +530,7 @@ if __name__ == '__main__':
     old_ekran = 0
     # Запуск процесса наблюдения за экраном
     print('Запуск процесса наблюдения за экраном')
-    manager = Manager()  # Управление доступом к общим объектам
-    queue_hashes = manager.Queue()  # Очередь для передачи списка хэшей элементов
-    queue_img = Queue()  # Очередь для передачи скриншота в np
-    p1 = Process(name='ElementSearch', target=process_changes, args=(queue_hashes, queue_img,))
-    p1.start()
-
-    screen.queue_hashes = queue_hashes  # Передаем источник экранов в их приемник в основном потоке
-
-    import screen_monitoring as sm
-
-    sm.register_input_queue(
-        queue_img)  # теперь force_refresh_after_move знает, куда класть кадры :contentReference[oaicite:2]{index=2}
+    screen.start()
 
     # -----------------------------------------------------------
     cursor = Database('Li_db_v1_4.db')
@@ -601,11 +585,8 @@ if __name__ == '__main__':
         print('************************************************************************')
         print("schetchik = ", schetchik)
 
-        # Пытаюсь вытащить текущие хэши из экрана
-        screen_instance = Screen()
-        # print(f'main. Screen.tekysie_hash 2: {screen_instance.tekysie_hash()}')  # main. Screen.tekysie_hash: <function Screen.tekysie_hash at 0x0000029AD2CD9440>
-
-        if not queue_hashes.empty():
+        if screen.last_update != last_update_screen:
+            last_update_screen = screen.last_update
             print("Изменился экран - поэтому запускается функция переноса состояния")
             perenos_sostoyaniya()
 

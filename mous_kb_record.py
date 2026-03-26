@@ -11,7 +11,7 @@ import time
 import report
 from exceptions import *
 from report import report
-from screen import screen
+from cv_core.compat_adapter import screen
 from db import Database
 
 listener_kb = KeyboardListener()  # Слушатель клавиатуры
@@ -195,6 +195,7 @@ class Recorder:
         """ Начать запись """
         self.record.clear()  # Удаление старой записи перед началом новой
         self.status = True
+        screen.get_screen()
 
         # ----------------------------------
         # Создание отчета в виде изображений
@@ -383,8 +384,7 @@ class Play:
             time.sleep(0.2)
             # ДОБАВЛЕНО: дать UI «подмигнуть» и обновить карту элементов
             try:
-                from screen_monitoring import force_refresh_after_move
-                force_refresh_after_move(dwell=0.6)
+                screen.force_refresh_after_move(dwell=0.6)
             except Exception as e:
                 print(f'force_refresh_after_move: {e}')
 

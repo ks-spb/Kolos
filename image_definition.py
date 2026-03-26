@@ -12,7 +12,7 @@ from db import Database
 from pynput import keyboard
 import hashlib
 
-from screen import screen
+from cv_core.compat_adapter import screen
 
 
 # import sqlite3
