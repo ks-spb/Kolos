@@ -1,0 +1,18 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+pyautogui = "~=0.9.54"
+opencv-python = "~=4.11.0.86"
+pillow = "~=11.2.1"
+numpy = "~=2.2.6"
+diagrams = "~=0.24.4"
+pynput = "~=1.8.1"
+mss = "~=10.0.0"
+
+[dev-packages]
+
+[requires]
+python_version = "3.13"

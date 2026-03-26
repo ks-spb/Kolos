@@ -1,0 +1,9 @@
+Различные запросы к БД:
+
+Вытащить информацию:
+max_signal = cursor.execute("SELECT MAX(signal) FROM points").fetchone()
+poisk_id_max_signal = cursor.execute("SELECT id FROM points WHERE signal = ?", max_signal).fetchone()
+
+Update:
+cursor.execute("UPDATE points SET signal = ? WHERE id = ?", (max_signal[0] + 1, id))
+
