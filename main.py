@@ -10,6 +10,7 @@ import random
 
 from PIL.ImageStat import Global
 
+from launch_workdir import ensure_script_directory_is_cwd
 from db import Database
 from mous_kb_record import rec, play
 from cv_core.compat_adapter import screen
@@ -527,6 +528,7 @@ def zazhiganie_obiektov_na_ekrane():
 
 
 if __name__ == '__main__':
+    ensure_script_directory_is_cwd(__file__)
     old_ekran = 0
     # Запуск процесса наблюдения за экраном
     print('Запуск процесса наблюдения за экраном')
