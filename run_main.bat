@@ -1,4 +1,5 @@
 @echo off
 cd /d "%~dp0"
-py -3 main.py
+REM Kolos встроен в окно Glaz; запускается только Glaz.
+py -3 "%~dp0Glaz\main.py"
 if errorlevel 1 pause

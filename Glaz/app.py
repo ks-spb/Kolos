@@ -34,6 +34,7 @@ from utils import (
     get_cursor_pos,
     set_cursor_pos,
 )
+from kolos_subprocess import KolosSubprocessController, project_root_from_glaz_file
 
 # Путь к файлу отладочных логов (инструментация)
 _DEBUG_LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".cursor", "debug.log")
@@ -122,6 +123,9 @@ class ScreenCaptureApp:
         self._last_update_frame_time: float = 0.0
         self._last_processing_log_time: float = 0.0
 
+        # Встроенный Kolos (stdout/stderr → панель справа)
+        self._kolos_controller: KolosSubprocessController | None = None
+
         # Фоновая обработка full-res: пики + детекция объектов (latest-frame-wins)
         self._processing_executor = ThreadPoolExecutor(max_workers=1)
         self._processing_lock = threading.Lock()
@@ -139,6 +143,7 @@ class ScreenCaptureApp:
         self._preview_full_photo: ImageTk.PhotoImage | None = None
 
         self._setup_ui()
+        self._start_kolos_embedded()
         self.root.protocol("WM_DELETE_WINDOW", self._on_root_close)
         self._init_loupe_controller()
         self._setup_hotkeys()
@@ -483,16 +488,19 @@ class ScreenCaptureApp:
         zoomed_scroll.pack(side="right", fill="y")
         self._zoomed_tree.configure(yscrollcommand=zoomed_scroll.set)
 
-        detector_frame = ttk.LabelFrame(self._right_frame, text="Режим детектора", padding=10)
-        detector_frame.pack(fill="both", expand=True)
-        self._detector_mode_var = tk.StringVar(value=ImageProcessor.lines_detector_mode())
-        self._detector_mode_label = ttk.Label(
-            detector_frame,
-            textvariable=self._detector_mode_var,
-            font=("Consolas", 16, "bold"),
-            anchor="center",
+        kolos_frame = ttk.LabelFrame(self._right_frame, text="Kolos", padding=5)
+        kolos_frame.pack(fill="both", expand=True)
+        self._kolos_text = scrolledtext.ScrolledText(
+            kolos_frame, height=14, wrap=tk.WORD, font=("Consolas", 9), state=tk.DISABLED
         )
-        self._detector_mode_label.pack(fill="both", expand=True)
+        self._kolos_text.pack(fill="both", expand=True)
+        kolos_inp = ttk.Frame(kolos_frame)
+        kolos_inp.pack(fill="x", pady=(6, 0))
+        ttk.Label(kolos_inp, text="Ввод → Kolos (Enter):").pack(side=tk.LEFT)
+        self._kolos_input_var = tk.StringVar()
+        self._kolos_entry = ttk.Entry(kolos_inp, textvariable=self._kolos_input_var)
+        self._kolos_entry.pack(side=tk.LEFT, fill="x", expand=True, padx=(6, 0))
+        self._kolos_entry.bind("<Return>", self._on_kolos_input_return)
     
     def _update_objects_table(self):
         """Обновление таблицы грубых объектов из _zoomed_signature_to_ids."""
@@ -521,9 +529,52 @@ class ScreenCaptureApp:
 
     def _on_root_close(self):
         """Сохранение базы объектов и закрытие приложения."""
+        if self._kolos_controller is not None:
+            self._kolos_controller.stop()
+            self._kolos_controller = None
         self._objects_repo.save(self._full_signature_to_ids, self._zoomed_signature_to_ids, self._next_refined_id)
         self._processing_executor.shutdown(wait=False, cancel_futures=True)
         self.root.destroy()
+
+    def _start_kolos_embedded(self) -> None:
+        """Поднять Kolos в подпроцессе; вывод в панель, ввод из поля."""
+        root = project_root_from_glaz_file(__file__)
+        self._kolos_controller = KolosSubprocessController(root, self._kolos_thread_event)
+        err = self._kolos_controller.start()
+        if err:
+            self._kolos_append_main_thread(f"Kolos: {err}\n")
+        else:
+            self._kolos_entry.focus_set()
+
+    def _kolos_thread_event(self, stream: str, payload: str) -> None:
+        """Вызывается из потоков чтения подпроцесса — только маршрутизация в UI-поток."""
+        self.root.after(0, lambda: self._kolos_handle_event(stream, payload))
+
+    def _kolos_handle_event(self, stream: str, payload: str) -> None:
+        if stream == "_exit":
+            self._kolos_append_main_thread(f"[Kolos завершён, код {payload}]\n")
+            return
+        prefix = "[err] " if stream == "stderr" else ""
+        self._kolos_append_main_thread(f"{prefix}{payload}\n")
+
+    def _kolos_append_main_thread(self, text: str) -> None:
+        """Добавить текст в панель Kolos (только из главного потока Tk)."""
+        self._kolos_text.configure(state=tk.NORMAL)
+        self._kolos_text.insert(tk.END, text)
+        blob = self._kolos_text.get("1.0", "end-1c")
+        if len(blob) > 200_000:
+            self._kolos_text.delete("1.0", "end-100000c")
+        self._kolos_text.see(tk.END)
+        self._kolos_text.configure(state=tk.DISABLED)
+
+    def _on_kolos_input_return(self, event=None):
+        """Передать строку в stdin Kolos (аналог консольного ввода)."""
+        if self._kolos_controller is None or not self._kolos_controller.is_running:
+            return "break"
+        line = self._kolos_input_var.get()
+        self._kolos_input_var.set("")
+        self._kolos_controller.send_line(line)
+        return "break"
     
     def _on_shift_pressed(self, event=None):
         """Обработчик нажатия левого Shift - сохранение пиков."""
@@ -715,15 +766,13 @@ class ScreenCaptureApp:
             return
         self.current_peaks_image = result.peaks_image
         self._detected_objects = result.objects
-        self._detector_mode_var.set(result.detector_mode)
         now = time.time()
         if now - self._last_processing_log_time >= 2.0:
             self._last_processing_log_time = now
             self.status_var.set(
                 f"Обработка: пики {result.timings_ms['peaks']:.0f}ms, "
                 f"детекция {result.timings_ms['detect']:.0f}ms, "
-                f"итого {result.timings_ms['total']:.0f}ms, "
-                f"detector={result.detector_mode}"
+                f"итого {result.timings_ms['total']:.0f}ms"
             )
 
     def _on_capture_error(self, error_msg: str):
