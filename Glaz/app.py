@@ -34,6 +34,8 @@ from utils import (
     get_cursor_pos,
     set_cursor_pos,
 )
+from kolos_ansi import line_looks_red_in_terminal, strip_sgr
+from kolos_digits_hint import KOLOS_DIGITS_HINT_RU
 from kolos_subprocess import KolosSubprocessController, project_root_from_glaz_file
 
 # Путь к файлу отладочных логов (инструментация)
@@ -139,8 +141,6 @@ class ScreenCaptureApp:
         self._screenshots_dir = os.path.join(self._project_dir, "object_screenshots")
         self._contour_screenshots_dir = os.path.join(self._project_dir, "contour_screenshots")
         self._step1_loupe_image: Image.Image | None = None  # копия лупы на шаге 1 (грубое)
-        self._preview_zoomed_photo: ImageTk.PhotoImage | None = None
-        self._preview_full_photo: ImageTk.PhotoImage | None = None
 
         self._setup_ui()
         self._start_kolos_embedded()
@@ -182,8 +182,8 @@ class ScreenCaptureApp:
         self._left_frame = ttk.Frame(self._main_pane)
         self._main_pane.add(self._left_frame, weight=1)
         
-        # Средняя панель: превью скриншотов лупы (грубое и полное разрешение)
-        self._middle_frame = ttk.Frame(self._main_pane, width=140)
+        # Средняя панель: лупа + справка по цифрам Kolos
+        self._middle_frame = ttk.Frame(self._main_pane, width=280)
         self._middle_frame.pack_propagate(0)
         self._main_pane.add(self._middle_frame, weight=0)
         
@@ -435,43 +435,28 @@ class ScreenCaptureApp:
         status_bar.pack(fill="x", padx=10, pady=(0, 10))
     
     def _setup_screenshot_previews(self):
-        """Средняя панель: текущая лупа и превью скриншотов."""
-        # Текущая лупа (в реальном времени)
+        """Средняя панель: текущая лупа и справка по цифрам Kolos."""
         current_loupe_frame = ttk.LabelFrame(self._middle_frame, text="Текущая лупа", padding=5)
         current_loupe_frame.pack(fill="x", pady=(0, 5))
         self._current_loupe_label = ttk.Label(current_loupe_frame, text="—", anchor="center")
         self._current_loupe_label.pack(fill="x")
         self._current_loupe_photo: ImageTk.PhotoImage | None = None
-        
-        # Грубое определение (сохранённый скриншот)
-        zoomed_preview_frame = ttk.LabelFrame(self._middle_frame, text="Грубое определение", padding=5)
-        zoomed_preview_frame.pack(fill="x", pady=(0, 5))
-        self._preview_zoomed_label = ttk.Label(zoomed_preview_frame, text="—", anchor="center")
-        self._preview_zoomed_label.pack(fill="x")
-        
-        full_preview_frame = ttk.LabelFrame(self._middle_frame, text="Полное разрешение", padding=5)
-        full_preview_frame.pack(fill="x")
-        self._preview_full_label = ttk.Label(full_preview_frame, text="—", anchor="center")
-        self._preview_full_label.pack(fill="x")
-    
-    def _update_screenshot_previews(self, zoomed_image: Image.Image | None, full_image: Image.Image | None):
-        """Обновление превью в средней области. PIL Image -> PhotoImage для Label."""
-        if zoomed_image is not None:
-            img = zoomed_image.copy()
-            if img.mode != "RGB":
-                img = img.convert("RGB")
-            self._preview_zoomed_photo = ImageTk.PhotoImage(img)
-            self._preview_zoomed_label.configure(image=self._preview_zoomed_photo, text="")
-        else:
-            self._preview_zoomed_label.configure(image="", text="—")
-        if full_image is not None:
-            img = full_image.copy()
-            if img.mode != "RGB":
-                img = img.convert("RGB")
-            self._preview_full_photo = ImageTk.PhotoImage(img)
-            self._preview_full_label.configure(image=self._preview_full_photo, text="")
-        else:
-            self._preview_full_label.configure(image="", text="—")
+
+        hint_frame = ttk.LabelFrame(self._middle_frame, text="Цифры Kolos", padding=5)
+        hint_frame.pack(fill="both", expand=True)
+        self._kolos_digits_hint = scrolledtext.ScrolledText(
+            hint_frame,
+            height=14,
+            width=34,
+            wrap=tk.WORD,
+            font=("Segoe UI", 9),
+            state=tk.DISABLED,
+            relief="flat",
+        )
+        self._kolos_digits_hint.pack(fill="both", expand=True)
+        self._kolos_digits_hint.configure(state=tk.NORMAL)
+        self._kolos_digits_hint.insert("1.0", KOLOS_DIGITS_HINT_RU)
+        self._kolos_digits_hint.configure(state=tk.DISABLED)
     
     def _setup_objects_table(self):
         """Правая панель: таблица грубых объектов и индикатор режима детектора."""
@@ -493,6 +478,7 @@ class ScreenCaptureApp:
         self._kolos_text = scrolledtext.ScrolledText(
             kolos_frame, height=14, wrap=tk.WORD, font=("Consolas", 9), state=tk.DISABLED
         )
+        self._kolos_text.tag_configure("kolos_red", foreground="#b71c1c")
         self._kolos_text.pack(fill="both", expand=True)
         kolos_inp = ttk.Frame(kolos_frame)
         kolos_inp.pack(fill="x", pady=(6, 0))
@@ -560,7 +546,12 @@ class ScreenCaptureApp:
     def _kolos_append_main_thread(self, text: str) -> None:
         """Добавить текст в панель Kolos (только из главного потока Tk)."""
         self._kolos_text.configure(state=tk.NORMAL)
-        self._kolos_text.insert(tk.END, text)
+        for line in text.splitlines(keepends=True):
+            clean = strip_sgr(line)
+            if line_looks_red_in_terminal(line):
+                self._kolos_text.insert(tk.END, clean, ("kolos_red",))
+            else:
+                self._kolos_text.insert(tk.END, clean)
         blob = self._kolos_text.get("1.0", "end-1c")
         if len(blob) > 200_000:
             self._kolos_text.delete("1.0", "end-100000c")
@@ -1212,13 +1203,6 @@ class ScreenCaptureApp:
             if diff_pct > 0:
                 msg += ". Объект практически тот же самый, отличие менее 20%"
             self._event_bus.emit("object_recognized", refined_id=refined_id, is_new=False, message=msg)
-            if self._do_screenshots_var.get():
-                zoomed_path = os.path.join(self._screenshots_dir, f"object_{refined_id}_zoomed.png")
-                zoomed_img = None
-                if os.path.isfile(zoomed_path):
-                    with Image.open(zoomed_path) as im:
-                        zoomed_img = im.copy()
-                self._update_screenshot_previews(zoomed_img, None)
         else:
             # Новый объект — записываем только грубую подпись
             refined_id = self._next_refined_id
@@ -1242,7 +1226,6 @@ class ScreenCaptureApp:
                 if zoomed_img is not None:
                     zoomed_path = os.path.join(self._screenshots_dir, f"object_{refined_id}_zoomed.png")
                     zoomed_img.save(zoomed_path)
-                self._update_screenshot_previews(zoomed_img, None)
 
         # Завершаем процесс определения
         self._recognition_state = RecognitionIdle()
