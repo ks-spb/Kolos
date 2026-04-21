@@ -1,4 +1,4 @@
-"""Тесты снятия ANSI и определения красных строк вывода Kolos."""
+"""Тесты снятия ANSI и определения специальных строк вывода Kolos."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "Glaz"))
 
-from kolos_ansi import line_looks_red_in_terminal, strip_sgr  # noqa: E402
+from kolos_ansi import line_looks_red_in_terminal, line_looks_user_input, strip_sgr  # noqa: E402
 
 
 class TestKolosAnsi(unittest.TestCase):
@@ -32,6 +32,14 @@ class TestKolosAnsi(unittest.TestCase):
         raw = "\x1b[31m id_ekran_e75d486e7b85e901\n"
         self.assertTrue(line_looks_red_in_terminal(raw))
         self.assertIn("id_ekran", strip_sgr(raw))
+
+    def test_user_input_marker_plain(self) -> None:
+        raw = "z ========================= Введено\n"
+        self.assertTrue(line_looks_user_input(raw))
+
+    def test_user_input_marker_with_sgr(self) -> None:
+        raw = "\x1b[0mz ========================= Введено\n"
+        self.assertTrue(line_looks_user_input(raw))
 
 
 if __name__ == "__main__":

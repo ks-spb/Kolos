@@ -589,13 +589,19 @@ def perenos_sostoyaniya():
 
     screen_id = None
     if _screen_resolver is not None:
-        screen_id = _screen_resolver.update(hashes, frame_size=frame_size)
+        monitor_idx = None
+        try:
+            monitor_idx = screen.monitor_idx
+        except Exception:
+            monitor_idx = None
+        screen_id = _screen_resolver.update(hashes, frame_size=frame_size, monitor_idx=monitor_idx)
     if screen_id is None:
         return
 
     new_name_id_ekran = f"id_ekran_{screen_id}"
     if old_ekran == new_name_id_ekran:
         return
+    print("Изменился экран - поэтому запускается функция переноса состояния")
     print(f'Новый нейм экрана в перенос состояния: {new_name_id_ekran}')
     # region agent log
     _agent_log(
@@ -724,7 +730,6 @@ if __name__ == '__main__':
 
         if screen.last_update != last_update_screen:
             last_update_screen = screen.last_update
-            print("Изменился экран - поэтому запускается функция переноса состояния")
             perenos_sostoyaniya()
 
         if source == 'input':

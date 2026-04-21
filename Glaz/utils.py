@@ -8,6 +8,22 @@ import os
 from datetime import datetime
 
 
+def compute_lines_to_delete(current_lines: int, max_lines: int) -> int:
+    """
+    Сколько строк нужно удалить из начала, чтобы осталось не больше max_lines.
+
+    Args:
+        current_lines: текущее количество строк в буфере
+        max_lines: максимальное количество строк
+
+    Returns:
+        Количество строк для удаления (>= 0).
+    """
+    if max_lines <= 0:
+        return max(0, int(current_lines))
+    return max(0, int(current_lines) - int(max_lines))
+
+
 def get_cursor_pos() -> tuple[int, int]:
     """
     Получение глобальных координат курсора мыши (Windows).

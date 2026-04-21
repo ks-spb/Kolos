@@ -34,7 +34,7 @@ class KolosSubprocessController:
     def is_running(self) -> bool:
         return self._proc is not None and self._proc.poll() is None
 
-    def start(self) -> str:
+    def start(self, *, monitor_idx: int | None = None) -> str:
         """Запуск Kolos. Возвращает сообщение об ошибке или пустую строку при успехе."""
         main_py = self._project_root / "main.py"
         if not main_py.is_file():
@@ -44,6 +44,8 @@ class KolosSubprocessController:
         env["PYTHONUNBUFFERED"] = "1"
         # Иначе на Windows пайп получает cp1251/OEM, а читаем как UTF-8 — «» вместо русского текста.
         env["PYTHONIOENCODING"] = "utf-8"
+        if monitor_idx is not None:
+            env["KOLOS_MONITOR_IDX"] = str(int(monitor_idx))
 
         creationflags = 0
         if sys.platform == "win32":

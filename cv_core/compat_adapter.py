@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import threading
 import time
 from dataclasses import dataclass
@@ -39,6 +40,29 @@ class _CompatConfig:
     monitor_idx: int = 1
 
 
+def _read_env_monitor_idx(env: dict[str, str] | None = None) -> int | None:
+    """
+    Прочитать индекс монитора из окружения.
+
+    Правила:
+    - переменная: KOLOS_MONITOR_IDX
+    - 1..N — физические мониторы (mss)
+    - 0 запрещён (виртуальный «все мониторы вместе»)
+    - при ошибке парсинга/диапазона: вернуть None (значит использовать дефолт)
+    """
+    env = os.environ if env is None else env
+    raw = (env.get("KOLOS_MONITOR_IDX") or "").strip()
+    if not raw:
+        return None
+    try:
+        idx = int(raw)
+    except ValueError:
+        return None
+    if idx <= 0:
+        return None
+    return idx
+
+
 class ScreenCompat:
     """Drop-in replacement for old `screen.Screen` instance API."""
 
@@ -49,6 +73,9 @@ class ScreenCompat:
         self._detection = DetectionService()
         self._state = ScreenState()
         self._cfg = _CompatConfig()
+        env_monitor = _read_env_monitor_idx()
+        if env_monitor is not None:
+            self._cfg.monitor_idx = env_monitor
         self._thread: Optional[threading.Thread] = None
         self._stop = threading.Event()
         self._last_update = 0.0
@@ -56,6 +83,11 @@ class ScreenCompat:
         self.screenshot = None
         self.screenshot_hash = None
         self.hashes_elements: dict[str, list[int]] = {}
+
+    @property
+    def monitor_idx(self) -> int:
+        """Текущий индекс монитора для захвата (1..N)."""
+        return int(self._cfg.monitor_idx)
 
     @property
     def queue_hashes(self):

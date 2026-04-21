@@ -33,8 +33,9 @@ from utils import (
     generate_filename,
     get_cursor_pos,
     set_cursor_pos,
+    compute_lines_to_delete,
 )
-from kolos_ansi import line_looks_red_in_terminal, strip_sgr
+from kolos_ansi import line_looks_red_in_terminal, line_looks_user_input, strip_sgr
 from kolos_digits_hint import KOLOS_DIGITS_HINT_RU
 from kolos_subprocess import KolosSubprocessController, project_root_from_glaz_file
 
@@ -127,6 +128,7 @@ class ScreenCaptureApp:
 
         # Встроенный Kolos (stdout/stderr → панель справа)
         self._kolos_controller: KolosSubprocessController | None = None
+        self._kolos_max_lines: int = 10_000
 
         # Фоновая обработка full-res: пики + детекция объектов (latest-frame-wins)
         self._processing_executor = ThreadPoolExecutor(max_workers=1)
@@ -148,8 +150,17 @@ class ScreenCaptureApp:
         self._init_loupe_controller()
         self._setup_hotkeys()
         
-        # Автозапуск захвата экрана после инициализации
-        self.root.after(500, self._start_capture)
+        # Автозапуск захвата экрана: по умолчанию выключен.
+        # Включение при необходимости: установить переменную окружения GLAZ_AUTOSTART=1
+        autostart = os.environ.get("GLAZ_AUTOSTART", "0").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+            "y",
+            "on",
+        )
+        if autostart:
+            self.root.after(500, self._start_capture)
     
     def _setup_window_position(self):
         """Размещение окна на мониторе 2 в полноэкранном режиме."""
@@ -476,9 +487,12 @@ class ScreenCaptureApp:
         kolos_frame = ttk.LabelFrame(self._right_frame, text="Kolos", padding=5)
         kolos_frame.pack(fill="both", expand=True)
         self._kolos_text = scrolledtext.ScrolledText(
-            kolos_frame, height=14, wrap=tk.WORD, font=("Consolas", 9), state=tk.DISABLED
+            kolos_frame, height=14, wrap=tk.WORD, font=("Consolas", 9), state=tk.NORMAL
         )
         self._kolos_text.tag_configure("kolos_red", foreground="#b71c1c")
+        self._kolos_text.tag_configure("kolos_user_input", foreground="#0b2a5b", background="#cfe3ff")
+        self._configure_copyable_readonly_text(self._kolos_text)
+        self._make_text_readonly(self._kolos_text)
         self._kolos_text.pack(fill="both", expand=True)
         kolos_inp = ttk.Frame(kolos_frame)
         kolos_inp.pack(fill="x", pady=(6, 0))
@@ -526,7 +540,7 @@ class ScreenCaptureApp:
         """Поднять Kolos в подпроцессе; вывод в панель, ввод из поля."""
         root = project_root_from_glaz_file(__file__)
         self._kolos_controller = KolosSubprocessController(root, self._kolos_thread_event)
-        err = self._kolos_controller.start()
+        err = self._kolos_controller.start(monitor_idx=self.capture.selected_monitor)
         if err:
             self._kolos_append_main_thread(f"Kolos: {err}\n")
         else:
@@ -545,18 +559,109 @@ class ScreenCaptureApp:
 
     def _kolos_append_main_thread(self, text: str) -> None:
         """Добавить текст в панель Kolos (только из главного потока Tk)."""
-        self._kolos_text.configure(state=tk.NORMAL)
         for line in text.splitlines(keepends=True):
             clean = strip_sgr(line)
-            if line_looks_red_in_terminal(line):
+            if line_looks_user_input(line):
+                self._kolos_text.insert(tk.END, clean, ("kolos_user_input",))
+            elif line_looks_red_in_terminal(line):
                 self._kolos_text.insert(tk.END, clean, ("kolos_red",))
             else:
                 self._kolos_text.insert(tk.END, clean)
-        blob = self._kolos_text.get("1.0", "end-1c")
-        if len(blob) > 200_000:
-            self._kolos_text.delete("1.0", "end-100000c")
+        self._enforce_text_max_lines(self._kolos_text, self._kolos_max_lines)
         self._kolos_text.see(tk.END)
-        self._kolos_text.configure(state=tk.DISABLED)
+
+    def _configure_copyable_readonly_text(self, widget: tk.Text) -> None:
+        """
+        Разрешить выделение и копирование из read-only Text/ScrolledText.
+
+        Примечание: state=DISABLED сохраняем, чтобы пользователь не мог редактировать вывод.
+        """
+        widget.bind("<Control-c>", lambda e: self._copy_text_selection(widget, e, "Control-c"))
+        widget.bind("<Control-C>", lambda e: self._copy_text_selection(widget, e, "Control-C"))
+        widget.bind("<Control-Shift-c>", lambda e: self._copy_text_selection(widget, e, "Control-Shift-c"))
+        widget.bind("<Control-Shift-C>", lambda e: self._copy_text_selection(widget, e, "Control-Shift-C"))
+        widget.bind("<<Copy>>", lambda e: self._copy_text_selection(widget, e, "<<Copy>>"))
+        # Раскладка клавиатуры может менять keysym (ru/en). На Windows keycode для C обычно 67.
+        widget.bind("<Control-KeyPress>", lambda e: self._copy_on_ctrl_keypress(widget, e))
+        widget.bind("<Button-3>", lambda e: self._show_copy_context_menu(widget, e))
+
+    def _copy_on_ctrl_keypress(self, widget: tk.Text, event) -> str | None:
+        keycode = getattr(event, "keycode", None)
+        # VK_C = 67 на Windows
+        if keycode == 67:
+            return self._copy_text_selection(widget, event, "Control-KeyPress(VK_C)")
+        return None
+
+    def _make_text_readonly(self, widget: tk.Text) -> None:
+        """Запретить редактирование Text, сохранив выделение и копирование."""
+        widget.configure(insertontime=0, cursor="arrow")
+        # Блокируем редактирующие клавиши, но не мешаем копированию/навигации/выделению.
+        widget.bind("<Key>", lambda e: self._readonly_key_filter(widget, e))
+        # Блокируем вставку/вырезание.
+        for seq in ("<Control-v>", "<Control-V>", "<Shift-Insert>", "<<Paste>>", "<Control-x>", "<Control-X>", "<<Cut>>"):
+            widget.bind(seq, lambda e: "break")
+
+    def _readonly_key_filter(self, widget: tk.Text, event) -> str | None:
+        """
+        Фильтр клавиш для read-only Text:
+        - разрешаем навигацию и сочетания копирования
+        - остальное блокируем, чтобы нельзя было редактировать
+        """
+        keysym = getattr(event, "keysym", None)
+        state = getattr(event, "state", None)
+        keycode = getattr(event, "keycode", None)
+        # Маска Ctrl для Tk на Windows обычно 0x0008 (8). Проверяем бит.
+        ctrl = bool(state & 0x0008) if isinstance(state, int) else False
+        # Разрешаем копирование (пусть отработают специализированные биндинги)
+        if ctrl and (keysym in ("c", "C") or keycode == 67):
+            return None
+        # Разрешаем навигацию/прокрутку
+        if keysym in ("Left", "Right", "Up", "Down", "Home", "End", "Prior", "Next"):
+            return None
+        # Разрешаем служебные модификаторы
+        if keysym in ("Shift_L", "Shift_R", "Control_L", "Control_R", "Alt_L", "Alt_R"):
+            return None
+        return "break"
+
+    def _copy_text_selection(self, widget: tk.Text, event=None, source: str = "?") -> str:
+        """Скопировать выделенный текст в clipboard."""
+        try:
+            selected = widget.get(tk.SEL_FIRST, tk.SEL_LAST)
+        except tk.TclError:
+            return "break"
+        widget.clipboard_clear()
+        widget.clipboard_append(selected)
+        return "break"
+
+    def _show_copy_context_menu(self, widget: tk.Text, event) -> str:
+        """ПКМ → меню Copy (если есть выделение)."""
+        menu = tk.Menu(widget, tearoff=0)
+        try:
+            widget.get(tk.SEL_FIRST, tk.SEL_LAST)
+            has_sel = True
+        except tk.TclError:
+            has_sel = False
+        menu.add_command(label="Copy", command=lambda: self._copy_text_selection(widget), state=("normal" if has_sel else "disabled"))
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+        return "break"
+
+    def _enforce_text_max_lines(self, widget: tk.Text, max_lines: int) -> None:
+        """Ограничить буфер Text до последних max_lines строк."""
+        if max_lines <= 0:
+            return
+        try:
+            end_index = widget.index("end-1c")
+            current_lines = int(end_index.split(".", 1)[0])
+        except (tk.TclError, ValueError):
+            return
+        to_delete = compute_lines_to_delete(current_lines, max_lines)
+        if to_delete <= 0:
+            return
+        # Удаляем целые строки: если нужно удалить N строк, удаляем [1..N] → до (N+1).0
+        widget.delete("1.0", f"{to_delete + 1}.0")
 
     def _on_kolos_input_return(self, event=None):
         """Передать строку в stdin Kolos (аналог консольного ввода)."""
