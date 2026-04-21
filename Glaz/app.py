@@ -38,6 +38,7 @@ from utils import (
 from kolos_ansi import line_looks_red_in_terminal, line_looks_user_input, strip_sgr
 from kolos_digits_hint import KOLOS_DIGITS_HINT_RU
 from kolos_subprocess import KolosSubprocessController, project_root_from_glaz_file
+from cv_core.glaz_ipc import write_last_confirmed_target
 
 # Путь к файлу отладочных логов (инструментация)
 _DEBUG_LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".cursor", "debug.log")
@@ -1308,6 +1309,7 @@ class ScreenCaptureApp:
             if diff_pct > 0:
                 msg += ". Объект практически тот же самый, отличие менее 20%"
             self._event_bus.emit("object_recognized", refined_id=refined_id, is_new=False, message=msg)
+            write_last_confirmed_target(refined_id)
         else:
             # Новый объект — записываем только грубую подпись
             refined_id = self._next_refined_id
@@ -1324,6 +1326,7 @@ class ScreenCaptureApp:
                 self._zoomed_signature_to_ids,
                 self._next_refined_id
             )
+            write_last_confirmed_target(refined_id)
             self._update_objects_table()
             if self._do_screenshots_var.get():
                 os.makedirs(self._screenshots_dir, exist_ok=True)

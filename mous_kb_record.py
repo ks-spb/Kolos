@@ -12,6 +12,7 @@ import report
 from exceptions import *
 from report import report
 from cv_core.compat_adapter import screen
+from cv_core.glaz_ipc import read_last_confirmed_target
 from db import Database
 
 listener_kb = KeyboardListener()  # Слушатель клавиатуры
@@ -258,9 +259,15 @@ class Recorder:
         if not is_pressed:
             return  # Если кнопка отпущена, то ничего не записываем
 
+        # Привязка клика к последнему подтверждённому объекту Glaz (межпроцессный IPC).
+        target = read_last_confirmed_target(max_age_sec=2.0)
+        refined_id = target.refined_id if target else None
+        unresolved = refined_id is None
+
+        # legacy: по-прежнему фиксируем CV-хэш объекта под курсором (для обратной совместимости и отчёта).
         # hash_element = screen.list_search(x, y)  # Поиск элемента на экране по координатам клика
         hash_element = screen.element_under_cursor()   # 21.03.24 - Поиск элемента под курсором
-        print(f'Объект под курсором для записи действий: {hash_element}')
+        print(f'Объект под курсором для записи действий: {hash_element}; refined_id={refined_id}; unresolved={unresolved}')
 
         # -------------------------------
         # Сохранение изображений в отчете
@@ -269,14 +276,20 @@ class Recorder:
         # -------------------------------
 
         if not hash_element:
-            # Если элемент не найден, то выходим
-            print("**** ВНИМАНИЕ! Хэш элемента не найден на экране! Запись последовательности прервана! ****************")
-            out = {'type': 'mouse', 'event': 'click', 'image': hash_element, 'x': x, 'y': y}
-            self.record.append(out)
-            return
+            print("**** ВНИМАНИЕ! Хэш элемента не найден на экране! Клик записан без привязки к элементу. **************")
 
-        # Записываем перемещение мыши
-        out = {'type': 'mouse', 'event': 'click', 'image': hash_element, 'x': x, 'y': y}
+        out = {
+            'type': 'mouse',
+            'event': 'click',
+            # legacy:
+            'image': hash_element,
+            # новый формат:
+            'refined_id': refined_id,
+            'unresolved': bool(unresolved),
+            # fallback:
+            'x': int(x),
+            'y': int(y),
+        }
         self.record.append(out)
 
     def on_scroll(self, x, y, dx, dy):
@@ -367,9 +380,21 @@ class Play:
         # print(f"Дошли сюда? action[event] = {action['event']}")
 
         if action['event'] == 'click':
-            print('Нужно просто кликнуть мышкой и всё...')
-            pyautogui.click(button='left')
+            # Совместимость: если есть CV-идентификатор элемента, стараемся кликнуть по его центру.
+            # refined_id сохраняется как метаданные и используется на этапах выше (Glaz).
+            image_hash = action.get('image')
+            if image_hash:
+                try:
+                    res = screen.get_hash_element(image_hash)
+                except Exception as e:
+                    print(f'play_one(click): get_hash_element failed: {e}')
+                    res = None
+                if res:
+                    pyautogui.click(*res, button='left')
+                    return
 
+            # Fallback: обычный клик в текущей позиции курсора
+            pyautogui.click(button='left')
             return
 
 
