@@ -7,6 +7,7 @@ import time
 import sys
 from time import sleep
 import random
+import os
 
 from PIL.ImageStat import Global
 
@@ -14,6 +15,8 @@ from launch_workdir import ensure_script_directory_is_cwd
 from db import Database
 from mous_kb_record import rec, play
 from cv_core.compat_adapter import screen
+from cv_core.screens_repository import ScreensRepository
+from cv_core.screen_resolver import ScreenResolver, ResolverConfig
 from report import report
 import pyautogui
 from exceptions import ElementNotFound
@@ -21,14 +24,49 @@ from exceptions import ElementNotFound
 screen.VERBOSE = True   #Чтобы выключить консоль вписать False
 
 
+def _agent_log(hypothesis_id: str, location: str, message: str, data: dict) -> None:
+    """NDJSON debug log for session 032654 (no secrets)."""
+    try:
+        import json, time  # noqa: E401
+        payload = {
+            "sessionId": "032654",
+            "runId": "pre-fix",
+            "hypothesisId": hypothesis_id,
+            "location": location,
+            "message": message,
+            "data": data,
+            "timestamp": int(time.time() * 1000),
+        }
+        with open("debug-032654.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
+
 def stiranie_pamyati():
     global old_ekran
     # Удаление лишних строчек в таблице точки, где id>10 - это точка и реакция на 0, которая постоянно записывается.
     print("Запущено стирание памяти")
+    # region agent log
+    _agent_log(
+        "H1",
+        "main.py:stiranie_pamyati",
+        "memory erase requested",
+        {"old_ekran_before": old_ekran},
+    )
+    # endregion
     cursor.execute("DELETE FROM points WHERE id > 3")
     cursor.execute("DELETE FROM svyazi WHERE ID > 3")
     cursor.execute("UPDATE points SET signal = 0 ")
     old_ekran = 0
+    # region agent log
+    _agent_log(
+        "H1",
+        "main.py:stiranie_pamyati",
+        "memory erase completed",
+        {"old_ekran_after": old_ekran},
+    )
+    # endregion
 
 
 def obrabotka_symbol(symbol):
@@ -168,6 +206,14 @@ def proshivka():
     # 1. Если есть уже собранный ранее путь - пропустить эту функцию
     print(f'Передаётся следующий путь: {pyt}')
     if pyt:
+        # region agent log
+        _agent_log(
+            "H3",
+            "main.py:proshivka",
+            "using existing path; executing first action",
+            {"pyt0": pyt[0] if pyt else None, "online_svyaz_list0": online_svyaz_list[0] if online_svyaz_list else None},
+        )
+        # endregion
         out_red(pyt[0][0])   # Первое действие в пути
         if pyt:   # Путь может быть удалён, если под курсором мыши не то изображение
             pyt.pop(0)
@@ -175,6 +221,14 @@ def proshivka():
     # 2. Если список pamyat пустой - пропустить эту функцию
     print(f'Передаётся следующий in_pamyat_name: {in_pamyat_name}')
     if not in_pamyat_name:
+        # region agent log
+        _agent_log(
+            "H2",
+            "main.py:proshivka",
+            "skipping proshivka because in_pamyat_name is empty",
+            {"schetchik": schetchik, "online_svyaz_list_len": len(online_svyaz_list)},
+        )
+        # endregion
         return
     # 3. Иначе:
     #   a. Берётся онлайн связь первая в списке
@@ -185,6 +239,14 @@ def proshivka():
         id_tochki_online_svyazi = cursor.execute("SELECT id_finish FROM svyazi WHERE ID = ?",
                                                  (pervaya_online_svyaz, )).fetchone()
         print(f'Нашли id_finish: {id_tochki_online_svyazi} от первой в списке онлайн связей')
+        # region agent log
+        _agent_log(
+            "H3",
+            "main.py:proshivka",
+            "picked first online link",
+            {"pervaya_online_svyaz": pervaya_online_svyaz, "id_finish": id_tochki_online_svyazi[0] if id_tochki_online_svyazi else None},
+        )
+        # endregion
         # c. Проверяется находится ли эта точка в списке отрицательных действий
         if id_tochki_online_svyazi[0] in spisok_otricatelnih_deystvii:
             if pyt[0][0] ==  id_tochki_online_svyazi[0]:   # Если точка первая в пути
@@ -467,8 +529,17 @@ def poisk_id_s_max_signal_points():
 
 def tekyshiy_ekran():
     # Находится id текущего экрана.
-    id_ekran = screen.screenshot_hash
-    new_name_id_ekran = "id_ekran_" + str(id_ekran)
+    global old_ekran
+    # Предпочитаем уже резолвленный экран (стабильный), иначе fallback на текущий hash.
+    if isinstance(old_ekran, str) and old_ekran.startswith("id_ekran_"):
+        new_name_id_ekran = old_ekran
+    else:
+        if not screen_capture_enabled:
+            return None
+        id_ekran = screen.screenshot_hash
+        if not id_ekran:
+            return None
+        new_name_id_ekran = "id_ekran_" + str(id_ekran)
     # print(f'Новый нейм экрана: {new_name_id_ekran}')
     poisk_id_ekrana = cursor.execute("SELECT id FROM points WHERE name = ?", (new_name_id_ekran,)).fetchone()
     if poisk_id_ekrana:
@@ -481,6 +552,9 @@ def tekyshiy_ekran():
 def perenos_sostoyaniya():
     # Функция определяет какой сейчас экран, отличается ли от старого. Если отличается - перенос состояния в этот экран
     global old_ekran
+    global _screen_resolver
+    if not screen_capture_enabled:
+        return
     # Забираем свежие данные через Screen
     if not screen.get_screen():
         # при необходимости — дождаться пакета
@@ -490,15 +564,59 @@ def perenos_sostoyaniya():
             time.sleep(0.1)
 
     # теперь всё берём из screen
-    id_screen = screen.screenshot_hash  # это str(id экрана)
-    hashes = screen.get_all_hashes()  # список ключей элементов
-    new_name_id_ekran = "id_ekran_" + str(id_screen)
+    # Экран = множество объектов; отбрасываем слишком маленькие bbox (мусор детектора).
+    hashes: set[str] = set()
+    try:
+        for h, bbox in (screen.hashes_elements or {}).items():
+            try:
+                _, _, w, hh = bbox
+                if int(w) * int(hh) >= 36:  # 6x6 px
+                    hashes.add(h)
+            except Exception:
+                continue
+    except Exception:
+        hashes = set(screen.get_all_hashes() or [])
+
+    # Даем стабилизатору шанс "устояться"; пока нет screen_id — не пишем экран в БД.
+    frame_size = None
+    try:
+        if screen.screenshot is not None:
+            sh = screen.screenshot.shape
+            if len(sh) >= 2:
+                frame_size = (int(sh[1]), int(sh[0]))
+    except Exception:
+        frame_size = None
+
+    screen_id = None
+    if _screen_resolver is not None:
+        screen_id = _screen_resolver.update(hashes, frame_size=frame_size)
+    if screen_id is None:
+        return
+
+    new_name_id_ekran = f"id_ekran_{screen_id}"
+    if old_ekran == new_name_id_ekran:
+        return
     print(f'Новый нейм экрана в перенос состояния: {new_name_id_ekran}')
+    # region agent log
+    _agent_log(
+        "H4",
+        "main.py:perenos_sostoyaniya",
+        "screen state transfer",
+        {"new_name_id_ekran": new_name_id_ekran, "old_ekran_before": old_ekran, "screen_last_update": screen.last_update},
+    )
+    # endregion
     obrabotka_symbol(new_name_id_ekran)
     print(f"Сейчас такой экран id: {new_name_id_ekran}, старый экран такой: {old_ekran}")
-    if old_ekran != new_name_id_ekran:
-        old_ekran = new_name_id_ekran
-        print(f'Теперь старый и новый экраны одинаковые')
+    old_ekran = new_name_id_ekran
+    print(f'Теперь старый и новый экраны одинаковые')
+    # region agent log
+    _agent_log(
+        "H4",
+        "main.py:perenos_sostoyaniya",
+        "old_ekran updated",
+        {"old_ekran_after": old_ekran},
+    )
+    # endregion
     # else:
         # print('!!!!!!!!!!!!!ВНИМАНИЕ!!!!!!ЭКРАН НЕ ИЗМЕНИЛСЯ!!!!!!!!!!!')
 
@@ -530,12 +648,29 @@ def zazhiganie_obiektov_na_ekrane():
 if __name__ == '__main__':
     ensure_script_directory_is_cwd(__file__)
     old_ekran = 0
+    _screen_resolver = None
+    # Захват экрана по умолчанию ВКЛЮЧЕН. Выключение: установить KOLOS_CAPTURE=0
+    screen_capture_enabled = os.environ.get("KOLOS_CAPTURE", "1").strip().lower() in ("1", "true", "yes", "y", "on")
     # Запуск процесса наблюдения за экраном
-    print('Запуск процесса наблюдения за экраном')
-    screen.start()
+    if screen_capture_enabled:
+        print('Запуск процесса наблюдения за экраном')
+        screen.start()
+    else:
+        print('Захват экрана выключен. Для включения: KOLOS_CAPTURE=1')
 
     # -----------------------------------------------------------
     cursor = Database('Li_db_v1_4.db')
+    # Экранное хранилище (таблицы + резолвер со стабилизацией)
+    try:
+        _screens_repo = ScreensRepository(cursor)
+        _screens_repo.ensure_schema()
+        _screen_resolver = ScreenResolver(
+            _screens_repo,
+            ResolverConfig(stable_delay_sec=0.45, recall_min=0.8, precision_min=0.8, limit_candidates=200),
+        )
+    except Exception as e:
+        print(f"ВНИМАНИЕ: хранилище экранов не инициализировано: {e}")
+        _screen_resolver = None
     A = True
 
     t0_10 = 0  # для проверки на изменение to за 10 циклов
@@ -661,6 +796,14 @@ if __name__ == '__main__':
             online_svyaz_list = []
             spisok_otricatelnih_deystvii = []
             print('!!!Отработана функция 0 !!! Обнуляется онлайн связь и список отрицательных действий')
+            # region agent log
+            _agent_log(
+                "H1",
+                "main.py:main_loop",
+                "input 0 branch executed",
+                {"old_ekran_after": old_ekran, "online_svyaz_list_len": len(online_svyaz_list), "in_pamyat_name_len": len(in_pamyat_name)},
+            )
+            # endregion
             continue
 
         elif vvedeno_luboe in [' 1', '1']:
@@ -690,6 +833,14 @@ if __name__ == '__main__':
             # чтобы не зависало при нажатии на 1 - добавил вместо функции переноса состояния сюда вручную перенос,
             # используя сохранённый старый экран
             obrabotka_symbol(old_ekran)
+            # region agent log
+            _agent_log(
+                "H2",
+                "main.py:main_loop",
+                "input 1 branch executed; memory cleared and old_ekran re-injected",
+                {"old_ekran": old_ekran, "tekushiy_id": tekushiy_id, "in_pamyat_name_len": len(in_pamyat_name), "online_svyaz_list_len": len(online_svyaz_list)},
+            )
+            # endregion
 
         elif vvedeno_luboe in [' 2', '2']:
             # Введена отрицательная реакция - создать с ней связь
