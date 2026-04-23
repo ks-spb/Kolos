@@ -12,7 +12,7 @@ import json
 import numpy as np
 import threading
 from concurrent.futures import Future, ThreadPoolExecutor
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 
 try:
     import cv2
@@ -39,6 +39,13 @@ from kolos_ansi import line_looks_red_in_terminal, line_looks_user_input, strip_
 from kolos_digits_hint import KOLOS_DIGITS_HINT_RU
 from kolos_subprocess import KolosSubprocessController, project_root_from_glaz_file
 from cv_core.glaz_ipc import write_last_confirmed_target
+from cv_core.global_peaks_scale import read_global_peaks_scale_from_env, uniform_preview_size
+from cv_core.peaks_coordinate_map import (
+    ltrb_preview_to_full,
+    point_preview_to_full,
+    scale_min_line_length_for_preview,
+    scale_threshold_for_preview,
+)
 
 # Путь к файлу отладочных логов (инструментация)
 _DEBUG_LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".cursor", "debug.log")
@@ -51,6 +58,10 @@ class ProcessingResult:
     objects: list[DetectedObject]
     timings_ms: dict[str, float]
     detector_mode: str
+    full_size: tuple[int, int] = (0, 0)
+    preview_size: tuple[int, int] = (0, 0)
+    effective_scale: float = 1.0
+    preview_objects: list[DetectedObject] = field(default_factory=list)
 
 
 class ScreenCaptureApp:
@@ -126,6 +137,10 @@ class ScreenCaptureApp:
         self._update_frame_interval = 1.0  # с
         self._last_update_frame_time: float = 0.0
         self._last_processing_log_time: float = 0.0
+        # Глобальные пики/детекция: uniform preview (по умолчанию 0.5); лупа остаётся на full-res кропе.
+        self._global_peaks_scale: float = float(read_global_peaks_scale_from_env())
+        self._preview_objects_for_contours: list[DetectedObject] = []
+        self._peaks_effective_scale: float = 1.0
 
         # Встроенный Kolos (stdout/stderr → панель справа)
         self._kolos_controller: KolosSubprocessController | None = None
@@ -837,21 +852,91 @@ class ScreenCaptureApp:
                 self._submit_processing(pending)
 
     def _compute_peaks_and_objects(self, image: Image.Image, threshold: int, invert: bool) -> ProcessingResult:
-        """Вычислить full-res пики и объекты в фоне с таймингами."""
+        """Пики + объекты в фоне. Глобально — на uniform preview, bbox — в full-res; лупа не затрагивается."""
         t0 = time.perf_counter()
-        peaks_img = ImageProcessor.detect_color_peaks(image, threshold, invert)
+        fw, fh = map(int, image.size)
+        pw, ph, s_eff = uniform_preview_size(fw, fh, self._global_peaks_scale)
+        inv = 1.0 / s_eff
+        t_down0 = t0
+        t_down1 = t0
+        t_map0 = t0
+        t_map1 = t0
+        if s_eff >= 0.999 or (pw, ph) == (fw, fh):
+            t1 = time.perf_counter()
+            peaks_img = ImageProcessor.detect_color_peaks(image, threshold, invert)
+            t2 = time.perf_counter()
+            objects = self._object_detector.detect(peaks_img)
+            t3 = time.perf_counter()
+            return ProcessingResult(
+                peaks_image=peaks_img,
+                objects=objects,
+                timings_ms={
+                    "downscale": 0.0,
+                    "peaks": (t2 - t1) * 1000.0,
+                    "detect": (t3 - t2) * 1000.0,
+                    "remap": 0.0,
+                    "total": (t3 - t0) * 1000.0,
+                },
+                detector_mode=ImageProcessor.lines_detector_mode(),
+                full_size=(fw, fh),
+                preview_size=(fw, fh),
+                effective_scale=1.0,
+                preview_objects=list(objects),
+            )
+
+        t_down0 = time.perf_counter()
+        if _HAS_OPENCV:
+            arr = np.array(image.convert("RGB"))[:, :, ::-1]  # BGR
+            new_w, new_h = int(pw), int(ph)
+            arr_small = cv2.resize(
+                arr, (new_w, new_h), interpolation=cv2.INTER_AREA
+            )
+            small_rgb = cv2.cvtColor(arr_small, cv2.COLOR_BGR2RGB)
+            preview = Image.fromarray(small_rgb, mode="RGB")
+        else:
+            preview = image.resize((int(pw), int(ph)), Image.Resampling.BILINEAR)
+        t_down1 = time.perf_counter()
+
+        thr_p = scale_threshold_for_preview(int(threshold), s_eff)
+        mll_p = scale_min_line_length_for_preview(3, s_eff)
         t1 = time.perf_counter()
-        objects = self._object_detector.detect(peaks_img)
+        peaks_img = ImageProcessor.detect_color_peaks(preview, int(thr_p), invert)
         t2 = time.perf_counter()
+        objects_prev = self._object_detector.detect(
+            peaks_img, black_threshold=128, min_line_length=int(mll_p)
+        )
+        t3 = time.perf_counter()
+
+        t_map0 = time.perf_counter()
+        remapped: list[DetectedObject] = []
+        for obj in objects_prev:
+            l, t, r, b = ltrb_preview_to_full(*obj.bbox, inv_scale=float(inv))
+            cxf, cyf = point_preview_to_full(
+                float(obj.center_peaks[0]), float(obj.center_peaks[1]), inv_scale=float(inv)
+            )
+            remapped.append(
+                replace(
+                    obj,
+                    bbox=(l, t, r, b),
+                    center_peaks=(cxf, cyf),
+                )
+            )
+        t_map1 = time.perf_counter()
         return ProcessingResult(
             peaks_image=peaks_img,
-            objects=objects,
+            objects=remapped,
             timings_ms={
-                "peaks": (t1 - t0) * 1000.0,
-                "detect": (t2 - t1) * 1000.0,
-                "total": (t2 - t0) * 1000.0,
+                "downscale": (t_down1 - t_down0) * 1000.0,
+                "peaks": (t2 - t1) * 1000.0,
+                "detect": (t3 - t2) * 1000.0,
+                "remap": (t_map1 - t_map0) * 1000.0,
+                "total": (t_map1 - t0) * 1000.0,
             },
             detector_mode=ImageProcessor.lines_detector_mode(),
+            full_size=(fw, fh),
+            preview_size=(int(pw), int(ph)),
+            effective_scale=float(s_eff),
+            preview_objects=list(objects_prev),
         )
 
     def _consume_processing_result(self) -> None:
@@ -863,12 +948,16 @@ class ScreenCaptureApp:
             return
         self.current_peaks_image = result.peaks_image
         self._detected_objects = result.objects
+        self._preview_objects_for_contours = list(result.preview_objects)
+        self._peaks_effective_scale = float(result.effective_scale)
         now = time.time()
         if now - self._last_processing_log_time >= 2.0:
             self._last_processing_log_time = now
             self.status_var.set(
-                f"Обработка: пики {result.timings_ms['peaks']:.0f}ms, "
+                f"Обработка: down {result.timings_ms.get('downscale', 0.0):.0f}ms, "
+                f"пики {result.timings_ms['peaks']:.0f}ms, "
                 f"детекция {result.timings_ms['detect']:.0f}ms, "
+                f"remap {result.timings_ms.get('remap', 0.0):.0f}ms, "
                 f"итого {result.timings_ms['total']:.0f}ms"
             )
 
@@ -1043,12 +1132,14 @@ class ScreenCaptureApp:
         if self.current_peaks_image is None:
             self.log_message("Нет изображения пиков. Включите отображение пиков.", error=True)
             return
-        # Используем те же данные, что и при наведении:
-        # current_peaks_image + тот же детектор объектов.
+        # Используем превью-пики и bbox в координатах превью (если global preview включён),
+        # чтобы зелёные прямоугольники лежали на том же кадре, что и `current_peaks_image`.
         peaks_arr = np.array(self.current_peaks_image)
         if peaks_arr.ndim > 2:
             peaks_arr = peaks_arr[:, :, 0]
-        objects = self._object_detector.detect(self.current_peaks_image)
+        objects = self._preview_objects_for_contours or []
+        if not objects:
+            objects = self._object_detector.detect(self.current_peaks_image)
         result = cv2.cvtColor(peaks_arr, cv2.COLOR_GRAY2BGR)
         for obj in objects:
             left, top, right, bottom = obj.bbox
@@ -1083,7 +1174,7 @@ class ScreenCaptureApp:
         return
 
     def _mouse_to_peaks_coords(self, display_width: int, display_height: int) -> tuple[float, float] | None:
-        """Преобразование позиции мыши (монитор) в full-res координаты изображения Пики."""
+        """Преобразование позиции мыши (монитор) в координаты изображения Пики (размер = current_peaks_image)."""
         monitor = self.capture.monitor_info
         if monitor is None or self.current_peaks_image is None:
             return None
@@ -1098,7 +1189,7 @@ class ScreenCaptureApp:
         return peak_px, peak_py
 
     def _object_center_to_monitor_coords(self, cx_peaks: float, cy_peaks: float) -> tuple[int, int]:
-        """Центр объекта (full-res Пики) -> глобальные экранные координаты."""
+        """Центр объекта (координаты current_peaks_image / full-res bbox после remap) -> экран."""
         monitor = self.capture.monitor_info
         if monitor is None or self.current_peaks_image is None:
             return 0, 0

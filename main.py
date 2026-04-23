@@ -4,6 +4,7 @@
 
 
 import time
+from cv_core.why_trace import WhyTracer
 import sys
 from time import sleep
 import random
@@ -206,6 +207,13 @@ def proshivka():
     # 1. Если есть уже собранный ранее путь - пропустить эту функцию
     print(f'Передаётся следующий путь: {pyt}')
     if pyt:
+        _why.trace(
+            trace_id=_why_trace_id,
+            event="PROSHIVKA_USE_EXISTING_PATH",
+            why="Путь уже построен; выполняем первое действие из pyt[0]",
+            data={"pyt0": (pyt[0][0] if pyt else None), "pyt_len": len(pyt), "online_svyaz_list_len": len(online_svyaz_list)},
+            lvl=2,
+        )
         # region agent log
         _agent_log(
             "H3",
@@ -221,6 +229,13 @@ def proshivka():
     # 2. Если список pamyat пустой - пропустить эту функцию
     print(f'Передаётся следующий in_pamyat_name: {in_pamyat_name}')
     if not in_pamyat_name:
+        _why.trace(
+            trace_id=_why_trace_id,
+            event="PROSHIVKA_SKIP",
+            why="Пропускаем proshivka(): краткосрочная память пуста",
+            data={"schetchik": schetchik, "online_svyaz_list_len": len(online_svyaz_list)},
+            lvl=2,
+        )
         # region agent log
         _agent_log(
             "H2",
@@ -235,6 +250,13 @@ def proshivka():
     if online_svyaz_list:
         pervaya_online_svyaz = online_svyaz_list[0]
         print(f'Первая точка в списке онлайн связей: {pervaya_online_svyaz}')
+        _why.trace(
+            trace_id=_why_trace_id,
+            event="PROSHIVKA_PICK_ONLINE_LINK",
+            why="Берём первую онлайн-связь как наиболее вероятное продолжение (online_svyaz_list[0])",
+            data={"picked": pervaya_online_svyaz, "online_svyaz_list_len": len(online_svyaz_list)},
+            lvl=2,
+        )
         #   b. Найти ID точки по связи, указанной в списке Online_svyaz
         id_tochki_online_svyazi = cursor.execute("SELECT id_finish FROM svyazi WHERE ID = ?",
                                                  (pervaya_online_svyaz, )).fetchone()
@@ -254,6 +276,13 @@ def proshivka():
         # Проверка является ли найденная точка реакцией
         elif id_tochki_online_svyazi[0] in (1, 2, 3):
             print('Найденная точка является реакцией - поэтому вышли из функции')
+            _why.trace(
+                trace_id=_why_trace_id,
+                event="PROSHIVKA_REACTION_END",
+                why="Следующая точка является реакцией (1/2/3) — цепочка завершена; память очищается",
+                data={"id_finish": id_tochki_online_svyazi[0]},
+                lvl=2,
+            )
             in_pamyat_name = []   # Обнулить список памяти - т.к. цепочка дошла до нужного результата
             print("\033[0m {}".format("**********************************"))
             print("\033[31m {}".format("Был пройден весь путь и цепочка действий закончилась"))  # Ответ
@@ -262,6 +291,13 @@ def proshivka():
             return
         #   d. Если не находится в списке отрицательных действий - записать в список “путь”, эту точку и ID связи
         pyt.append((id_tochki_online_svyazi[0], pervaya_online_svyaz))
+        _why.trace(
+            trace_id=_why_trace_id,
+            event="PROSHIVKA_PATH_APPEND",
+            why="Добавили найденную точку в путь выполнения (pyt)",
+            data={"id_finish": id_tochki_online_svyazi[0], "svyaz_id": pervaya_online_svyaz, "pyt_len": len(pyt)},
+            lvl=3,
+        )
 
         #   e. Ищется следующая точка от этой добавленной, при этом ID связи увеличивается на 1 от только что добавленной
         next_id = pervaya_online_svyaz + 1
@@ -320,9 +356,23 @@ def out_red(id):
         # Поменять сигнал нейтральной точки на max+1
         # Удалить список pamyat
     print(f'в out_red передалась следующее id: {id}')
+    _why.trace(
+        trace_id=_why_trace_id,
+        event="OUT_RED_START",
+        why="Начинаем исполнение действия/ответа по id точки",
+        data={"id": id},
+        lvl=2,
+    )
     type_tochki = cursor.execute("SELECT type FROM points WHERE id = ?", (id, )).fetchone()
     print(f'out_red. Нашли следующий тип точки: {type_tochki[0]} у id = {id}')
     if type_tochki[0] == 'REAC':
+        _why.trace(
+            trace_id=_why_trace_id,
+            event="OUT_RED_REACTION",
+            why="Точка является реакцией (REAC) — очищаем путь и память",
+            data={"id": id},
+            lvl=2,
+        )
         sozdat_svyaz(id, (3, ))
         # Поиск максимального сигнала в таблице points
         max_signal = cursor.execute("SELECT MAX(signal) FROM points").fetchone()
@@ -347,15 +397,36 @@ def out_red(id):
         print(f'Имеются следующие объекты на экране записанные в БД: {list_goryashih_in}')
         # print(f'На экране всего найдены следующие объекты: {screen.get_all_hashes()}')
         print(f'Объект под курсором мыши: {obiekt_pod_kursorom}')
+        _why.trace(
+            trace_id=_why_trace_id,
+            event="OUT_RED_IMAGE_CHECK",
+            why="Проверяем: под курсором нужный объект или требуется поиск/перемещение",
+            data={"want_hash": text[0], "under_cursor": obiekt_pod_kursorom},
+            lvl=2,
+        )
 
         # Если объект под курсором мыши соответствует нужному изображению - то просто дать ответ этого изображения
         # Иначе - дать ответ и найти объект в другом месте либо откатить состояние к экрану и искать другой способ
         if obiekt_pod_kursorom == text[0]:
+            _why.trace(
+                trace_id=_why_trace_id,
+                event="OUT_RED_IMAGE_OK",
+                why="Под курсором уже нужный объект — дополнительных действий не требуется",
+                data={"hash": text[0]},
+                lvl=2,
+            )
             print("\033[0m {}".format("**********************************"))
             print("\033[31m {}".format("Ответ программы:  объект под курсором нужный"))  # Ответ
             print("\033[31m {}".format(text[0]))  # Ответ
             print("\033[0m {}".format("**********************************"))
         else:
+            _why.trace(
+                trace_id=_why_trace_id,
+                event="OUT_RED_IMAGE_MISMATCH",
+                why="Под курсором другой объект — пробуем найти нужный на экране и перевести курсор",
+                data={"want_hash": text[0], "under_cursor": obiekt_pod_kursorom},
+                lvl=2,
+            )
             print("\033[0m {}".format("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"))
             print("\033[31m {}".format(f"Объект под курсором: {obiekt_pod_kursorom}, а должен быть: {text[0]}"))
             print("\033[0m {}".format("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"))
@@ -702,6 +773,9 @@ if __name__ == '__main__':
 
     perenos_sostoyaniya()
 
+    _why = WhyTracer.from_env()
+    _why_trace_id = _why.next_trace_id()
+
     while A:
         if rec.status:
             # Блокируем основную программу, пока идет запись
@@ -735,6 +809,17 @@ if __name__ == '__main__':
         if source == 'input':
             # Ввод строки с клавиатуры, запись по-буквенно
             vvedeno_luboe = input("Введите текст: ")
+            # Нужно для подсветки введённого в Glaz: там строки ввода распознаются по маркеру "Введено".
+            # Раньше для цифровых команд (1..9) маркер не печатался, из-за чего они не подсвечивались.
+            if vvedeno_luboe != "":
+                _why_trace_id = _why.next_trace_id()
+                _why.trace(
+                    trace_id=_why_trace_id,
+                    event="INPUT_READ",
+                    why="Получен ввод пользователя (source=input)",
+                    data={"raw": vvedeno_luboe, "raw_type": type(vvedeno_luboe).__name__},
+                )
+                print(vvedeno_luboe, '========================= Введено')
 
         elif source == 'rec':
             # Источник события мыши и клавиатуры. Чтение из объекта rec
@@ -953,19 +1038,48 @@ if __name__ == '__main__':
 
         elif vvedeno_luboe != "":
             bil_klick = False
-            print(vvedeno_luboe, '========================= Введено')
+            _why.trace(
+                trace_id=_why_trace_id,
+                event="INPUT_DISPATCH",
+                why="Обработка пользовательского ввода начата",
+                data={
+                    "is_list": isinstance(vvedeno_luboe, list),
+                    "len": (len(vvedeno_luboe) if hasattr(vvedeno_luboe, "__len__") else None),
+                },
+            )
             for vvedeno_luboe1 in vvedeno_luboe:
                 # 16.06.23 - связываем сущность одной команды с t0, обнуляем tp и t
                 # print(f"Рассматривается следующее введённое сообщение: {vvedeno_luboe1}")
                 if '.' and 'click' in vvedeno_luboe1:
                     print(f"Сообщение содержит и точку и click: {vvedeno_luboe1}")
+                    _why.trace(
+                        trace_id=_why_trace_id,
+                        event="INPUT_CLICK_SPLIT",
+                        why="Ввод содержит 'click' — разбиваем по '.' и обрабатываем части",
+                        data={"chunk": vvedeno_luboe1},
+                        lvl=2,
+                    )
                     # для разрыва сущности, если происходит нажатие кнопок, а затем клик мышкой
                     # Если клик не находится в начале списка - нужно принудительно отделить его от предыдущих сущностей
                     for vvedeno_luboe2 in vvedeno_luboe1.split('.'):
+                        _why.trace(
+                            trace_id=_why_trace_id,
+                            event="SYMBOL",
+                            why="Передаём часть клика в obrabotka_symbol()",
+                            data={"symbol": vvedeno_luboe2},
+                            lvl=3,
+                        )
                         obrabotka_symbol(vvedeno_luboe2)
                     bil_klick = True
                 else:
                     # print(f'Сообщение не содержит точку или click: {vvedeno_luboe1}')
+                    _why.trace(
+                        trace_id=_why_trace_id,
+                        event="SYMBOL",
+                        why="Передаём элемент ввода в obrabotka_symbol()",
+                        data={"symbol": vvedeno_luboe1},
+                        lvl=3,
+                    )
                     obrabotka_symbol(vvedeno_luboe1)
                     bil_klick = False
             # 12.01.23 - Если введено не list (т.е. не содержит клик) - то сохранить во входящих
@@ -974,6 +1088,13 @@ if __name__ == '__main__':
                 for vvedeno_luboe_split in vvedeno_luboe.split():
                     print(f"Добавляется в in_pamyat_name {vvedeno_luboe_split}")
                     in_pamyat_name.append(vvedeno_luboe_split)
+                    _why.trace(
+                        trace_id=_why_trace_id,
+                        event="MEMORY_APPEND",
+                        why="Добавили токен ввода в краткосрочную память (in_pamyat_name)",
+                        data={"token": vvedeno_luboe_split, "in_pamyat_name_len": len(in_pamyat_name)},
+                        lvl=2,
+                    )
             print(f'in_pamyat_name содержит следующее: {in_pamyat_name}')
             vvedeno_luboe = ''
             # print("Было введено vvedeno_luboe: ", vvedeno_luboe)
@@ -984,6 +1105,13 @@ if __name__ == '__main__':
                 print(f'Счетчик = 1 и in_pamyat сейчас такая: {in_pamyat_name}')
                 if in_pamyat_name != []:
                     # Если программа сюда перешла - значит не было ничего введено и происходит поиск возможных действий.
+                    _why.trace(
+                        trace_id=_why_trace_id,
+                        event="AUTO_PROSHIVKA",
+                        why="Нет нового ввода; запускаем proshivka() по памяти",
+                        data={"schetchik": schetchik, "in_pamyat_name_len": len(in_pamyat_name)},
+                        lvl=2,
+                    )
                     proshivka()
             elif schetchik >= 10:
                 schetchik = 0
