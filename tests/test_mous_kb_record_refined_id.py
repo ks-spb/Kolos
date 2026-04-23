@@ -10,6 +10,8 @@ class TestMouseKbRecordRefinedId(unittest.TestCase):
 
         class _Target:
             refined_id = 42
+            center_xy = (9, 8)
+            bbox_ltrb = (1, 2, 3, 4)
 
         # patch read_last_confirmed_target
         orig_reader = mkr.read_last_confirmed_target
@@ -39,6 +41,8 @@ class TestMouseKbRecordRefinedId(unittest.TestCase):
             self.assertEqual(ev["refined_id"], 42)
             self.assertFalse(ev["unresolved"])
             self.assertEqual(ev["image"], "hash123")
+            self.assertEqual(ev["glaz_center_xy"], (9, 8))
+            self.assertEqual(ev["glaz_bbox_ltrb"], (1, 2, 3, 4))
             self.assertEqual(ev["x"], 10)
             self.assertEqual(ev["y"], 20)
         finally:

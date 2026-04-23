@@ -260,14 +260,21 @@ class Recorder:
             return  # Если кнопка отпущена, то ничего не записываем
 
         # Привязка клика к последнему подтверждённому объекту Glaz (межпроцессный IPC).
-        target = read_last_confirmed_target(max_age_sec=2.0)
+        # TTL увеличен: в реальном сценарии между "определён" в UI и кликом часто проходит >2с.
+        target_ttl_sec = 10.0
+        target = read_last_confirmed_target(max_age_sec=target_ttl_sec)
         refined_id = target.refined_id if target else None
+        glaz_center_xy = target.center_xy if target else None
+        glaz_bbox_ltrb = target.bbox_ltrb if target else None
         unresolved = refined_id is None
 
         # legacy: по-прежнему фиксируем CV-хэш объекта под курсором (для обратной совместимости и отчёта).
         # hash_element = screen.list_search(x, y)  # Поиск элемента на экране по координатам клика
         hash_element = screen.element_under_cursor()   # 21.03.24 - Поиск элемента под курсором
-        print(f'Объект под курсором для записи действий: {hash_element}; refined_id={refined_id}; unresolved={unresolved}')
+        print(
+            f'Объект под курсором для записи действий: {hash_element}; '
+            f'refined_id={refined_id}; glaz_center={glaz_center_xy}; unresolved={unresolved}'
+        )
 
         # -------------------------------
         # Сохранение изображений в отчете
@@ -285,6 +292,8 @@ class Recorder:
             'image': hash_element,
             # новый формат:
             'refined_id': refined_id,
+            'glaz_center_xy': glaz_center_xy,
+            'glaz_bbox_ltrb': glaz_bbox_ltrb,
             'unresolved': bool(unresolved),
             # fallback:
             'x': int(x),
@@ -380,8 +389,17 @@ class Play:
         # print(f"Дошли сюда? action[event] = {action['event']}")
 
         if action['event'] == 'click':
+            # Приоритет: если Glaz передал координаты подтверждённого объекта — кликаем туда.
+            glaz_center = action.get("glaz_center_xy")
+            if isinstance(glaz_center, (list, tuple)) and len(glaz_center) == 2:
+                try:
+                    gx, gy = int(glaz_center[0]), int(glaz_center[1])
+                    pyautogui.click(gx, gy, button="left")
+                    return
+                except Exception as e:
+                    print(f'play_one(click): glaz_center click failed: {e}')
+
             # Совместимость: если есть CV-идентификатор элемента, стараемся кликнуть по его центру.
-            # refined_id сохраняется как метаданные и используется на этапах выше (Glaz).
             image_hash = action.get('image')
             if image_hash:
                 try:
