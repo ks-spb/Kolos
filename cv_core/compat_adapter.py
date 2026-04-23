@@ -20,6 +20,7 @@ from .config import (
     DEFAULT_PEAKS_THRESHOLD,
 )
 from .detection_service import DetectionService
+from .image_hash import ImageAnchorConfig
 from .screen_state import ScreenState
 
 
@@ -82,7 +83,9 @@ class ScreenCompat:
 
         self.screenshot = None
         self.screenshot_hash = None
+        self.image_anchor_hash = None
         self.hashes_elements: dict[str, list[int]] = {}
+        self._anchor_cfg = ImageAnchorConfig(taskbar_exclude_ratio=0.05, cursor_mask_size_px=120)
 
     @property
     def monitor_idx(self) -> int:
@@ -123,9 +126,15 @@ class ScreenCompat:
                     invert=self._cfg.invert,
                     min_line_length=self._cfg.min_line_length,
                 )
-                snap = self._state.update(frame, records)
+                try:
+                    pos = pyautogui.position()
+                    cursor_xy = (int(pos.x), int(pos.y))
+                except Exception:
+                    cursor_xy = None
+                snap = self._state.update(frame, records, cursor_xy=cursor_xy, anchor_cfg=self._anchor_cfg)
                 self.screenshot = snap.screenshot_np
                 self.screenshot_hash = snap.screenshot_hash
+                self.image_anchor_hash = snap.image_anchor_hash
                 self.hashes_elements = snap.hashes_elements
                 self._last_update = time.time()
             time.sleep(0.02)
@@ -143,9 +152,15 @@ class ScreenCompat:
             invert=self._cfg.invert,
             min_line_length=self._cfg.min_line_length,
         )
-        snap = self._state.update(frame, records)
+        try:
+            pos = pyautogui.position()
+            cursor_xy = (int(pos.x), int(pos.y))
+        except Exception:
+            cursor_xy = None
+        snap = self._state.update(frame, records, cursor_xy=cursor_xy, anchor_cfg=self._anchor_cfg)
         self.screenshot = snap.screenshot_np
         self.screenshot_hash = snap.screenshot_hash
+        self.image_anchor_hash = snap.image_anchor_hash
         self.hashes_elements = snap.hashes_elements
         self._last_update = time.time()
 

@@ -665,7 +665,17 @@ def perenos_sostoyaniya():
             monitor_idx = screen.monitor_idx
         except Exception:
             monitor_idx = None
-        screen_id = _screen_resolver.update(hashes, frame_size=frame_size, monitor_idx=monitor_idx)
+        img_hash = None
+        try:
+            img_hash = screen.image_anchor_hash
+        except Exception:
+            img_hash = None
+        screen_id = _screen_resolver.update(
+            hashes,
+            image_hash=img_hash,
+            frame_size=frame_size,
+            monitor_idx=monitor_idx,
+        )
     if screen_id is None:
         return
 
@@ -743,7 +753,26 @@ if __name__ == '__main__':
         _screens_repo.ensure_schema()
         _screen_resolver = ScreenResolver(
             _screens_repo,
-            ResolverConfig(stable_delay_sec=0.45, recall_min=0.8, precision_min=0.8, limit_candidates=200),
+            ResolverConfig(
+                stable_delay_sec=0.45,
+                # switch thresholds (строгие): подтверждение нового/другого экрана
+                recall_min=0.8,
+                precision_min=0.8,
+                # image-anchor: удержание рабочего стола при шуме детектора
+                use_image_anchor=True,
+                stay_hamming_max=6,
+                switch_hamming_min=12,
+                # удержание текущего экрана (мягче): гистерезис против дрожания
+                stay_recall_min=0.65,
+                stay_precision_min=0.55,
+                # окно стабильности N-of-M
+                window_size=6,
+                stable_required=4,
+                # фильтр одноразовых объектов
+                volatile_window=4,
+                volatile_min_hits=2,
+                limit_candidates=200,
+            ),
         )
     except Exception as e:
         print(f"ВНИМАНИЕ: хранилище экранов не инициализировано: {e}")

@@ -57,6 +57,15 @@ def _line_points_from_circles(a, ra, b, rb):
     end   = (bx - rb * math.cos(angle), by - rb * math.sin(angle))
     return start, end, angle
 
+def _normalize_output_path(path_value: str | Path, default_name: str = "diagram_output.png") -> Path:
+    """
+    Приводит путь вывода к безопасному для файловой системы виду.
+    """
+    raw_path = str(path_value).replace("\x00", "").strip().strip("'").strip('"')
+    if not raw_path:
+        return Path.cwd() / default_name
+    return Path(raw_path).expanduser()
+
 
 
 
@@ -497,8 +506,20 @@ def draw_graph_from_db(
         draw.rectangle((midx - lw/2 - 4, midy - lh - 8, midx + lw/2 + 4, midy - 2), fill="white")
         draw.text((midx - lw/2, midy - lh - 6), label, fill="black", font=font)
 
-    img.save(out_path, format="PNG")
-    print(f"Диаграмма сохранена: {Path(out_path).resolve()}")
+    safe_out_path = _normalize_output_path(out_path)
+    safe_out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        img.save(str(safe_out_path), format="PNG")
+    except OSError as exc:
+        # На Windows иногда прилетает Errno 22 при "грязном" пути.
+        if getattr(exc, "errno", None) != 22:
+            raise
+        safe_out_path = Path.cwd() / "diagram_output.png"
+        img.save(str(safe_out_path), format="PNG")
+        print(f"Путь вывода был некорректен, файл сохранен в fallback: {safe_out_path.resolve()}")
+    else:
+        print(f"Диаграмма сохранена: {safe_out_path.resolve()}")
 
 
 def _draw_self_loop(draw, center, radius, label, font, dpi):

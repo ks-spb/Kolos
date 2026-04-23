@@ -10,6 +10,7 @@ from PIL import Image
 
 from .detection_service import DetectedRecord
 from .hash_compat import screen_hash_for_frame
+from .image_hash import ImageAnchorConfig, dhash64_hex
 
 
 @dataclass
@@ -18,6 +19,7 @@ class ScreenSnapshot:
 
     screenshot_np: np.ndarray
     screenshot_hash: str
+    image_anchor_hash: str
     hashes_elements: dict[str, list[int]]
     elements_map: dict[str, DetectedRecord]
 
@@ -28,15 +30,24 @@ class ScreenState:
     def __init__(self) -> None:
         self._snapshot: Optional[ScreenSnapshot] = None
 
-    def update(self, frame: Image.Image, records: list[DetectedRecord]) -> ScreenSnapshot:
+    def update(
+        self,
+        frame: Image.Image,
+        records: list[DetectedRecord],
+        *,
+        cursor_xy: tuple[int, int] | None = None,
+        anchor_cfg: ImageAnchorConfig | None = None,
+    ) -> ScreenSnapshot:
         """Replace snapshot from frame + records."""
         frame_np = np.array(frame.convert("RGB"))[:, :, ::-1].copy()
         hashes_elements = {r.hash_id: [*r.bbox_xywh] for r in records}
         screenshot_hash = screen_hash_for_frame(frame.size, hashes_elements.keys())
+        image_anchor_hash = dhash64_hex(frame, cfg=anchor_cfg, cursor_xy=cursor_xy)
         elements_map = {r.hash_id: r for r in records}
         self._snapshot = ScreenSnapshot(
             screenshot_np=frame_np,
             screenshot_hash=screenshot_hash,
+            image_anchor_hash=image_anchor_hash,
             hashes_elements=hashes_elements,
             elements_map=elements_map,
         )
