@@ -1,5 +1,7 @@
 """ Версия v4.
 19.06.25 - Создал новый файл main. Отрабатывается алгоритм со слоями.
+
+ТЕСТ-МАРКЕР: ensure_current_screen_before_input(context="user_input_dispatch")
 """
 
 
@@ -1003,6 +1005,31 @@ def ensure_current_screen_before_input(*, context: str) -> bool:
     return False
 
 
+def _warmup_screen_on_startup(*, timeout_sec: float = 12.0, interval_sec: float = 0.25) -> bool:
+    """Прогреть определение текущего экрана на старте.
+
+    Цель: получить валидный `old_ekran` вида 'id_ekran_*' до основного цикла, без ручной промотки.
+    Возвращает True, если экран удалось определить за отведённое время.
+    """
+    try:
+        timeout = max(0.0, float(timeout_sec))
+        interval = max(0.05, float(interval_sec))
+    except Exception:
+        timeout = 12.0
+        interval = 0.25
+
+    t_end = time.time() + timeout
+    while time.time() < t_end:
+        try:
+            if ensure_current_screen_before_input(context="startup_warmup"):
+                return True
+        except Exception:
+            # Прогрев не должен ронять старт программы.
+            pass
+        time.sleep(interval)
+    return False
+
+
 def perenos_sostoyaniya():
     # Функция определяет какой сейчас экран, отличается ли от старого. Если отличается - перенос состояния в этот экран
     global old_ekran
@@ -1274,7 +1301,8 @@ if __name__ == '__main__':
     izmenilos_li_sostyanie = 0
 
 
-    perenos_sostoyaniya()
+    if not _warmup_screen_on_startup(timeout_sec=12.0, interval_sec=0.25):
+        print("ВНИМАНИЕ: не удалось определить экран на старте за отведённое время; продолжаем без прогрева.")
 
     _why = WhyTracer.from_env()
     _why_trace_id = _why.next_trace_id()
