@@ -1,0 +1,995 @@
+[14:06:19] ЗАПИСЬ.КЛИК: Зафиксирован клик во время записи
+  данные: image_hash=hash123, record_len=1, refined_id=42, unresolved=False, x=10, y=20
+[14:06:45] ЗАПИСЬ.КЛИК: Зафиксирован клик во время записи
+  данные: image_hash=hash123, record_len=1, refined_id=42, unresolved=False, x=10, y=20
+[14:09:19] ВВОД.ПОЛУЧЕН: Получен ввод пользователя (source=input)
+  trace_id: t000002
+  состояние сейчас (max signal): id=17 name=id_ekran_12 type=in signal=31
+  данные: ввод=9, длина=1
+[14:09:19] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000002
+  состояние ДО: id=3 name=ney type=REAC signal=0
+  данные: symbol=0
+[14:09:19] ТОЧКА.СОЗДАНА: Создана новая входная точка (in) для символа
+  trace_id: t000002
+  состояние сейчас (max signal): id=4 name=0 type=in signal=1
+  данные: new_id=4, new_signal=1, symbol=0
+[14:09:19] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000002
+  состояние сейчас (max signal): id=4 name=0 type=in signal=1
+  данные: finish=0, id_finish=4, id_start=1, start=poz
+[14:09:19] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000002
+  состояние ДО: id=3 name=ney type=REAC signal=0
+  состояние ПОСЛЕ: id=4 name=0 type=in signal=1
+  данные: linked_from=1, linked_to=4, symbol=0
+[14:09:58] ВВОД.ПОЛУЧЕН: Получен ввод пользователя (source=input)
+  trace_id: t000003
+  состояние сейчас (max signal): id=4 name=0 type=in signal=1
+  данные: ввод=o1, длина=2
+[14:09:59] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000003
+  состояние ДО: id=4 name=0 type=in signal=1
+  данные: symbol=o
+[14:09:59] ТОЧКА.СОЗДАНА: Создана новая входная точка (in) для символа
+  trace_id: t000003
+  состояние сейчас (max signal): id=5 name=o type=in signal=2
+  данные: new_id=5, new_signal=2, symbol=o
+[14:09:59] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000003
+  состояние сейчас (max signal): id=5 name=o type=in signal=2
+  данные: finish=o, id_finish=5, id_start=4, start=0
+[14:09:59] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000003
+  состояние ДО: id=4 name=0 type=in signal=1
+  состояние ПОСЛЕ: id=5 name=o type=in signal=2
+  данные: linked_from=4, linked_to=5, symbol=o
+[14:09:59] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000003
+  состояние ДО: id=5 name=o type=in signal=2
+  данные: symbol=1
+[14:09:59] ТОЧКА.СОЗДАНА: Создана новая входная точка (in) для символа
+  trace_id: t000003
+  состояние сейчас (max signal): id=6 name=1 type=in signal=3
+  данные: new_id=6, new_signal=3, symbol=1
+[14:09:59] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000003
+  состояние сейчас (max signal): id=6 name=1 type=in signal=3
+  данные: finish=1, id_finish=6, id_start=5, start=o
+[14:09:59] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000003
+  состояние ДО: id=5 name=o type=in signal=2
+  состояние ПОСЛЕ: id=6 name=1 type=in signal=3
+  данные: linked_from=5, linked_to=6, symbol=1
+[14:09:59] ЭКРАН.СМЕНА: Обнаружена смена экрана, переносим состояние в новый экран
+  trace_id: t000003
+  состояние ДО: id=6 name=1 type=in signal=3
+  данные: hashes_count=132, new_ekran=id_ekran_9, old_ekran=0, screen_id=9
+[14:09:59] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000003
+  состояние ДО: id=6 name=1 type=in signal=3
+  данные: symbol=id_ekran_9
+[14:09:59] ТОЧКА.СОЗДАНА: Создана новая входная точка (in) для символа
+  trace_id: t000003
+  состояние сейчас (max signal): id=7 name=id_ekran_9 type=in signal=4
+  данные: new_id=7, new_signal=4, symbol=id_ekran_9
+[14:09:59] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000003
+  состояние сейчас (max signal): id=7 name=id_ekran_9 type=in signal=4
+  данные: finish=id_ekran_9, id_finish=7, id_start=6, start=1
+[14:09:59] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000003
+  состояние ДО: id=6 name=1 type=in signal=3
+  состояние ПОСЛЕ: id=7 name=id_ekran_9 type=in signal=4
+  данные: linked_from=6, linked_to=7, symbol=id_ekran_9
+[14:09:59] ЭКРАН.СМЕНА.КОНЕЦ: Перенос состояния завершён: old_ekran обновлён
+  trace_id: t000003
+  состояние ДО: id=6 name=1 type=in signal=3
+  состояние ПОСЛЕ: id=7 name=id_ekran_9 type=in signal=4
+  данные: old_ekran=id_ekran_9
+[14:10:02] ВВОД.ПОЛУЧЕН: Получен ввод пользователя (source=input)
+  trace_id: t000004
+  состояние сейчас (max signal): id=7 name=id_ekran_9 type=in signal=4
+  данные: ввод=3, длина=1
+[14:10:03] ЗАПИСЬ.СТАРТ: Запущена запись мыши/клавиатуры (остановка по ESC)
+[14:10:03] КОМАНДА.3.СТАРТ_ЗАПИСИ: Включена запись мыши и клавиатуры (остановка по ESC)
+  trace_id: t000004
+  состояние сейчас (max signal): id=7 name=id_ekran_9 type=in signal=4
+[14:10:07] ЗАПИСЬ.СТОП: Остановлена запись мыши/клавиатуры
+  данные: events_count=0
+[14:10:14] ВВОД.ПОЛУЧЕН: Получен ввод пользователя (source=input)
+  trace_id: t000005
+  состояние сейчас (max signal): id=7 name=id_ekran_9 type=in signal=4
+  данные: ввод=3, длина=1
+[14:10:14] ЗАПИСЬ.СТАРТ: Запущена запись мыши/клавиатуры (остановка по ESC)
+[14:10:14] КОМАНДА.3.СТАРТ_ЗАПИСИ: Включена запись мыши и клавиатуры (остановка по ESC)
+  trace_id: t000005
+  состояние сейчас (max signal): id=7 name=id_ekran_9 type=in signal=4
+[14:10:27] ЗАПИСЬ.КЛИК: Зафиксирован клик во время записи
+  данные: image_hash=c0392438769f2f7c, record_len=1, refined_id=1, unresolved=False, x=35, y=32
+[14:10:30] ЗАПИСЬ.СТОП: Остановлена запись мыши/клавиатуры
+  данные: events_count=1
+[14:10:37] ВВОД.ПОЛУЧЕН: Получен ввод пользователя (source=input)
+  trace_id: t000006
+  состояние сейчас (max signal): id=7 name=id_ekran_9 type=in signal=4
+  данные: ввод=5, длина=1
+[14:10:37] КОМАНДА.5.СОХРАНИТЬ_ЗАПИСЬ_В_ВВОД: Следующий цикл преобразует rec.record в токены и обработает их
+  trace_id: t000006
+  состояние сейчас (max signal): id=7 name=id_ekran_9 type=in signal=4
+  данные: record_len=1
+[14:10:37] ЗАПИСЬ.В_ТОКЕНЫ: Записанные события преобразованы в токены для обработки
+  trace_id: t000006
+  состояние сейчас (max signal): id=7 name=id_ekran_9 type=in signal=4
+  данные: событий=1, токенов=2
+[14:10:37] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000006
+  состояние ДО: id=7 name=id_ekran_9 type=in signal=4
+  данные: symbol=position.35.32
+[14:10:37] ТОЧКА.СОЗДАНА: Создана новая входная точка (in) для символа
+  trace_id: t000006
+  состояние сейчас (max signal): id=8 name=position.35.32 type=in signal=5
+  данные: new_id=8, new_signal=5, symbol=position.35.32
+[14:10:37] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000006
+  состояние сейчас (max signal): id=8 name=position.35.32 type=in signal=5
+  данные: finish=position.35.32, id_finish=8, id_start=7, start=id_ekran_9
+[14:10:37] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000006
+  состояние ДО: id=7 name=id_ekran_9 type=in signal=4
+  состояние ПОСЛЕ: id=8 name=position.35.32 type=in signal=5
+  данные: linked_from=7, linked_to=8, symbol=position.35.32
+[14:10:37] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000006
+  состояние ДО: id=8 name=position.35.32 type=in signal=5
+  данные: symbol=c0392438769f2f7c
+[14:10:37] ТОЧКА.СОЗДАНА: Создана новая входная точка (in) для символа
+  trace_id: t000006
+  состояние сейчас (max signal): id=9 name=c0392438769f2f7c type=in signal=6
+  данные: new_id=9, new_signal=6, symbol=c0392438769f2f7c
+[14:10:37] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000006
+  состояние сейчас (max signal): id=9 name=c0392438769f2f7c type=in signal=6
+  данные: finish=c0392438769f2f7c, id_finish=9, id_start=8, start=position.35.32
+[14:10:37] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000006
+  состояние ДО: id=8 name=position.35.32 type=in signal=5
+  состояние ПОСЛЕ: id=9 name=c0392438769f2f7c type=in signal=6
+  данные: linked_from=8, linked_to=9, symbol=c0392438769f2f7c
+[14:10:37] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000006
+  состояние ДО: id=9 name=c0392438769f2f7c type=in signal=6
+  данные: symbol=click
+[14:10:37] ТОЧКА.СОЗДАНА: Создана новая входная точка (in) для символа
+  trace_id: t000006
+  состояние сейчас (max signal): id=10 name=click type=in signal=7
+  данные: new_id=10, new_signal=7, symbol=click
+[14:10:37] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000006
+  состояние сейчас (max signal): id=10 name=click type=in signal=7
+  данные: finish=click, id_finish=10, id_start=9, start=c0392438769f2f7c
+[14:10:37] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000006
+  состояние ДО: id=9 name=c0392438769f2f7c type=in signal=6
+  состояние ПОСЛЕ: id=10 name=click type=in signal=7
+  данные: linked_from=9, linked_to=10, symbol=click
+[14:10:49] ВВОД.ПОЛУЧЕН: Получен ввод пользователя (source=input)
+  trace_id: t000007
+  состояние сейчас (max signal): id=10 name=click type=in signal=7
+  данные: ввод=1, длина=1
+[14:10:49] КОМАНДА.1.ПЛЮС: Положительная реакция: очистка памяти и привязка к текущему экрану
+  trace_id: t000007
+  состояние ДО: id=10 name=click type=in signal=7
+  данные: old_ekran=id_ekran_9, tekushiy_id=10
+[14:10:49] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000007
+  состояние ДО: id=10 name=click type=in signal=7
+  данные: symbol=poz
+[14:10:49] ТОЧКА.ОБНОВЛЕНА: Обновлён сигнал существующей точки по символу
+  trace_id: t000007
+  состояние сейчас (max signal): id=1 name=poz type=REAC signal=8
+  данные: id=1, new_signal=8, symbol=poz
+[14:10:49] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000007
+  состояние сейчас (max signal): id=1 name=poz type=REAC signal=8
+  данные: finish=poz, id_finish=1, id_start=10, start=click
+[14:10:49] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000007
+  состояние ДО: id=10 name=click type=in signal=7
+  состояние ПОСЛЕ: id=1 name=poz type=REAC signal=8
+  данные: linked_from=10, linked_to=1, symbol=poz
+[14:10:49] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000007
+  состояние ДО: id=1 name=poz type=REAC signal=8
+  данные: symbol=id_ekran_9
+[14:10:49] ТОЧКА.ОБНОВЛЕНА: Обновлён сигнал существующей точки по символу
+  trace_id: t000007
+  состояние сейчас (max signal): id=7 name=id_ekran_9 type=in signal=9
+  данные: id=7, new_signal=9, symbol=id_ekran_9
+[14:10:49] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000007
+  состояние сейчас (max signal): id=7 name=id_ekran_9 type=in signal=9
+  данные: finish=id_ekran_9, id_finish=7, id_start=1, start=poz
+[14:10:49] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000007
+  состояние ДО: id=1 name=poz type=REAC signal=8
+  состояние ПОСЛЕ: id=7 name=id_ekran_9 type=in signal=9
+  данные: linked_from=1, linked_to=7, symbol=id_ekran_9
+[14:10:49] КОМАНДА.1.ПЛЮС.КОНЕЦ: Положительная реакция завершена
+  trace_id: t000007
+  состояние ДО: id=10 name=click type=in signal=7
+  состояние ПОСЛЕ: id=7 name=id_ekran_9 type=in signal=9
+  данные: online_svyaz_list_len=1, память_in_pamyat_name_len=0
+[14:10:56] ВВОД.ПОЛУЧЕН: Получен ввод пользователя (source=input)
+  trace_id: t000008
+  состояние сейчас (max signal): id=7 name=id_ekran_9 type=in signal=9
+  данные: ввод=o1, длина=2
+[14:10:56] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000008
+  состояние ДО: id=7 name=id_ekran_9 type=in signal=9
+  данные: symbol=o
+[14:10:56] ТОЧКА.ОБНОВЛЕНА: Обновлён сигнал существующей точки по символу
+  trace_id: t000008
+  состояние сейчас (max signal): id=5 name=o type=in signal=10
+  данные: id=5, new_signal=10, symbol=o
+[14:10:56] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000008
+  состояние сейчас (max signal): id=5 name=o type=in signal=10
+  данные: finish=o, id_finish=5, id_start=7, start=id_ekran_9
+[14:10:56] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000008
+  состояние ДО: id=7 name=id_ekran_9 type=in signal=9
+  состояние ПОСЛЕ: id=5 name=o type=in signal=10
+  данные: linked_from=7, linked_to=5, symbol=o
+[14:10:56] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000008
+  состояние ДО: id=5 name=o type=in signal=10
+  данные: symbol=1
+[14:10:56] ТОЧКА.ОБНОВЛЕНА: Обновлён сигнал существующей точки по символу
+  trace_id: t000008
+  состояние сейчас (max signal): id=6 name=1 type=in signal=11
+  данные: id=6, new_signal=11, symbol=1
+[14:10:56] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000008
+  состояние сейчас (max signal): id=6 name=1 type=in signal=11
+  данные: finish=1, id_finish=6, id_start=5, start=o
+[14:10:56] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000008
+  состояние ДО: id=5 name=o type=in signal=10
+  состояние ПОСЛЕ: id=6 name=1 type=in signal=11
+  данные: linked_from=5, linked_to=6, symbol=1
+[14:11:00] ВВОД.ПОЛУЧЕН: Получен ввод пользователя (source=input)
+  trace_id: t000009
+  состояние сейчас (max signal): id=6 name=1 type=in signal=11
+  данные: ввод=8, длина=1
+[14:11:06] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000009
+  состояние сейчас (max signal): id=6 name=1 type=in signal=11
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=1, pyt_len=0
+[14:11:06] ПРОШИВКА.ВЫБОР_СВЯЗИ: Выбрана первая онлайн-связь как наиболее вероятное продолжение
+  trace_id: t000009
+  состояние сейчас (max signal): id=6 name=1 type=in signal=11
+  данные: svyaz_id=7
+[14:11:06] ПРОШИВКА.НАЙДЕНА_ТОЧКА: По онлайн-связи найдена следующая точка (id_finish)
+  trace_id: t000009
+  состояние сейчас (max signal): id=6 name=1 type=in signal=11
+  данные: id_finish=7, svyaz_id=7
+[14:11:06] ИСПОЛНЕНИЕ.OUT_RED.СТАРТ: Начинаем исполнение действия/ответа по точке
+  trace_id: t000009
+  состояние ДО: id=6 name=1 type=in signal=11
+  данные: id=7, тип=in, точка=id_ekran_9
+[14:11:06] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000009
+  состояние сейчас (max signal): id=7 name=id_ekran_9 type=in signal=12
+  данные: finish=id_ekran_9, id_finish=7, id_start=6, start=1
+[14:11:11] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000009
+  состояние сейчас (max signal): id=7 name=id_ekran_9 type=in signal=12
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=2, pyt_len=3
+[14:11:11] ИСПОЛНЕНИЕ.OUT_RED.СТАРТ: Начинаем исполнение действия/ответа по точке
+  trace_id: t000009
+  состояние ДО: id=7 name=id_ekran_9 type=in signal=12
+  данные: id=8, тип=in, точка=position.35.32
+[14:11:16] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000009
+  состояние сейчас (max signal): id=8 name=position.35.32 type=in signal=13
+  данные: finish=position.35.32, id_finish=8, id_start=7, start=id_ekran_9
+[14:11:21] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000009
+  состояние сейчас (max signal): id=8 name=position.35.32 type=in signal=13
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=1, pyt_len=2
+[14:11:22] ИСПОЛНЕНИЕ.OUT_RED.СТАРТ: Начинаем исполнение действия/ответа по точке
+  trace_id: t000009
+  состояние ДО: id=8 name=position.35.32 type=in signal=13
+  данные: id=9, тип=in, точка=c0392438769f2f7c
+[14:11:22] ИСПОЛНЕНИЕ.ОБЪЕКТ.ПОД_КУРСОРОМ.ОК: Под курсором нужный объект (исполнение без перемещения)
+  trace_id: t000009
+  состояние сейчас (max signal): id=8 name=position.35.32 type=in signal=13
+  данные: under_cursor=c0392438769f2f7c, want_hash=c0392438769f2f7c
+[14:11:27] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000009
+  состояние сейчас (max signal): id=8 name=position.35.32 type=in signal=13
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=1, pyt_len=1
+[14:11:27] ИСПОЛНЕНИЕ.OUT_RED.СТАРТ: Начинаем исполнение действия/ответа по точке
+  trace_id: t000009
+  состояние ДО: id=8 name=position.35.32 type=in signal=13
+  данные: id=10, тип=in, точка=click
+[14:11:28] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000009
+  состояние сейчас (max signal): id=10 name=click type=in signal=14
+  данные: finish=click, id_finish=10, id_start=8, start=position.35.32
+[14:11:34] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000009
+  состояние сейчас (max signal): id=10 name=click type=in signal=14
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=1, pyt_len=0
+[14:11:34] ПРОШИВКА.ВЫБОР_СВЯЗИ: Выбрана первая онлайн-связь как наиболее вероятное продолжение
+  trace_id: t000009
+  состояние сейчас (max signal): id=10 name=click type=in signal=14
+  данные: svyaz_id=11
+[14:11:34] ПРОШИВКА.НАЙДЕНА_ТОЧКА: По онлайн-связи найдена следующая точка (id_finish)
+  trace_id: t000009
+  состояние сейчас (max signal): id=10 name=click type=in signal=14
+  данные: id_finish=1, svyaz_id=11
+[14:11:34] ПРОШИВКА.КОНЕЦ_РЕАКЦИЯ: Следующая точка — реакция; цепочка завершена, память очищена
+  trace_id: t000009
+  состояние сейчас (max signal): id=10 name=click type=in signal=14
+  данные: reaction_id=1
+[14:12:03] ВВОД.ПОЛУЧЕН: Получен ввод пользователя (source=input)
+  trace_id: t000010
+  состояние сейчас (max signal): id=10 name=click type=in signal=14
+  данные: ввод=o3, длина=2
+[14:12:03] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000010
+  состояние ДО: id=10 name=click type=in signal=14
+  данные: symbol=o
+[14:12:03] ТОЧКА.ОБНОВЛЕНА: Обновлён сигнал существующей точки по символу
+  trace_id: t000010
+  состояние сейчас (max signal): id=5 name=o type=in signal=15
+  данные: id=5, new_signal=15, symbol=o
+[14:12:03] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000010
+  состояние сейчас (max signal): id=5 name=o type=in signal=15
+  данные: finish=o, id_finish=5, id_start=10, start=click
+[14:12:03] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000010
+  состояние ДО: id=10 name=click type=in signal=14
+  состояние ПОСЛЕ: id=5 name=o type=in signal=15
+  данные: linked_from=10, linked_to=5, symbol=o
+[14:12:03] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000010
+  состояние ДО: id=5 name=o type=in signal=15
+  данные: symbol=3
+[14:12:03] ТОЧКА.СОЗДАНА: Создана новая входная точка (in) для символа
+  trace_id: t000010
+  состояние сейчас (max signal): id=11 name=3 type=in signal=16
+  данные: new_id=11, new_signal=16, symbol=3
+[14:12:03] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000010
+  состояние сейчас (max signal): id=11 name=3 type=in signal=16
+  данные: finish=3, id_finish=11, id_start=5, start=o
+[14:12:03] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000010
+  состояние ДО: id=5 name=o type=in signal=15
+  состояние ПОСЛЕ: id=11 name=3 type=in signal=16
+  данные: linked_from=5, linked_to=11, symbol=3
+[14:12:11] ВВОД.ПОЛУЧЕН: Получен ввод пользователя (source=input)
+  trace_id: t000011
+  состояние сейчас (max signal): id=11 name=3 type=in signal=16
+  данные: ввод=3, длина=1
+[14:12:11] ЗАПИСЬ.СТАРТ: Запущена запись мыши/клавиатуры (остановка по ESC)
+[14:12:11] КОМАНДА.3.СТАРТ_ЗАПИСИ: Включена запись мыши и клавиатуры (остановка по ESC)
+  trace_id: t000011
+  состояние сейчас (max signal): id=11 name=3 type=in signal=16
+[14:12:28] ЗАПИСЬ.КЛИК: Зафиксирован клик во время записи
+  данные: image_hash=2ca531019cef89cd, record_len=1, refined_id=5, unresolved=False, x=1860, y=27
+[14:13:07] ЗАПИСЬ.КЛИК: Зафиксирован клик во время записи
+  данные: image_hash=6d193296a04f4f47, record_len=3, refined_id=11, unresolved=False, x=1894, y=13
+[14:13:26] ЗАПИСЬ.КЛИК: Зафиксирован клик во время записи
+  данные: image_hash=2ca531019cef89cd, record_len=4, refined_id=8, unresolved=False, x=1861, y=26
+[14:13:27] ЗАПИСЬ.СТОП: Остановлена запись мыши/клавиатуры
+  данные: events_count=4
+[14:13:36] ВВОД.ПОЛУЧЕН: Получен ввод пользователя (source=input)
+  trace_id: t000012
+  состояние сейчас (max signal): id=11 name=3 type=in signal=16
+  данные: ввод=5, длина=1
+[14:13:36] КОМАНДА.5.СОХРАНИТЬ_ЗАПИСЬ_В_ВВОД: Следующий цикл преобразует rec.record в токены и обработает их
+  trace_id: t000012
+  состояние сейчас (max signal): id=11 name=3 type=in signal=16
+  данные: record_len=4
+[14:13:36] ЗАПИСЬ.В_ТОКЕНЫ: Записанные события преобразованы в токены для обработки
+  trace_id: t000012
+  состояние сейчас (max signal): id=11 name=3 type=in signal=16
+  данные: событий=4, токенов=7
+[14:13:36] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000012
+  состояние ДО: id=11 name=3 type=in signal=16
+  данные: symbol=position.1860.27
+[14:13:36] ТОЧКА.СОЗДАНА: Создана новая входная точка (in) для символа
+  trace_id: t000012
+  состояние сейчас (max signal): id=12 name=position.1860.27 type=in signal=17
+  данные: new_id=12, new_signal=17, symbol=position.1860.27
+[14:13:36] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000012
+  состояние сейчас (max signal): id=12 name=position.1860.27 type=in signal=17
+  данные: finish=position.1860.27, id_finish=12, id_start=11, start=3
+[14:13:36] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000012
+  состояние ДО: id=11 name=3 type=in signal=16
+  состояние ПОСЛЕ: id=12 name=position.1860.27 type=in signal=17
+  данные: linked_from=11, linked_to=12, symbol=position.1860.27
+[14:13:36] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000012
+  состояние ДО: id=12 name=position.1860.27 type=in signal=17
+  данные: symbol=2ca531019cef89cd
+[14:13:36] ТОЧКА.СОЗДАНА: Создана новая входная точка (in) для символа
+  trace_id: t000012
+  состояние сейчас (max signal): id=13 name=2ca531019cef89cd type=in signal=18
+  данные: new_id=13, new_signal=18, symbol=2ca531019cef89cd
+[14:13:36] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000012
+  состояние сейчас (max signal): id=13 name=2ca531019cef89cd type=in signal=18
+  данные: finish=2ca531019cef89cd, id_finish=13, id_start=12, start=position.1860.27
+[14:13:36] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000012
+  состояние ДО: id=12 name=position.1860.27 type=in signal=17
+  состояние ПОСЛЕ: id=13 name=2ca531019cef89cd type=in signal=18
+  данные: linked_from=12, linked_to=13, symbol=2ca531019cef89cd
+[14:13:36] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000012
+  состояние ДО: id=13 name=2ca531019cef89cd type=in signal=18
+  данные: symbol=click
+[14:13:36] ТОЧКА.ОБНОВЛЕНА: Обновлён сигнал существующей точки по символу
+  trace_id: t000012
+  состояние сейчас (max signal): id=10 name=click type=in signal=19
+  данные: id=10, new_signal=19, symbol=click
+[14:13:36] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000012
+  состояние сейчас (max signal): id=10 name=click type=in signal=19
+  данные: finish=click, id_finish=10, id_start=13, start=2ca531019cef89cd
+[14:13:36] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000012
+  состояние ДО: id=13 name=2ca531019cef89cd type=in signal=18
+  состояние ПОСЛЕ: id=10 name=click type=in signal=19
+  данные: linked_from=13, linked_to=10, symbol=click
+[14:13:36] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000012
+  состояние ДО: id=10 name=click type=in signal=19
+  данные: symbol=Key.enter
+[14:13:36] ТОЧКА.СОЗДАНА: Создана новая входная точка (in) для символа
+  trace_id: t000012
+  состояние сейчас (max signal): id=14 name=Key.enter type=in signal=20
+  данные: new_id=14, new_signal=20, symbol=Key.enter
+[14:13:36] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000012
+  состояние сейчас (max signal): id=14 name=Key.enter type=in signal=20
+  данные: finish=Key.enter, id_finish=14, id_start=10, start=click
+[14:13:36] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000012
+  состояние ДО: id=10 name=click type=in signal=19
+  состояние ПОСЛЕ: id=14 name=Key.enter type=in signal=20
+  данные: linked_from=10, linked_to=14, symbol=Key.enter
+[14:13:36] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000012
+  состояние ДО: id=14 name=Key.enter type=in signal=20
+  данные: symbol=position.1894.13
+[14:13:36] ТОЧКА.СОЗДАНА: Создана новая входная точка (in) для символа
+  trace_id: t000012
+  состояние сейчас (max signal): id=15 name=position.1894.13 type=in signal=21
+  данные: new_id=15, new_signal=21, symbol=position.1894.13
+[14:13:36] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000012
+  состояние сейчас (max signal): id=15 name=position.1894.13 type=in signal=21
+  данные: finish=position.1894.13, id_finish=15, id_start=14, start=Key.enter
+[14:13:36] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000012
+  состояние ДО: id=14 name=Key.enter type=in signal=20
+  состояние ПОСЛЕ: id=15 name=position.1894.13 type=in signal=21
+  данные: linked_from=14, linked_to=15, symbol=position.1894.13
+[14:13:36] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000012
+  состояние ДО: id=15 name=position.1894.13 type=in signal=21
+  данные: symbol=6d193296a04f4f47
+[14:13:36] ТОЧКА.СОЗДАНА: Создана новая входная точка (in) для символа
+  trace_id: t000012
+  состояние сейчас (max signal): id=16 name=6d193296a04f4f47 type=in signal=22
+  данные: new_id=16, new_signal=22, symbol=6d193296a04f4f47
+[14:13:36] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000012
+  состояние сейчас (max signal): id=16 name=6d193296a04f4f47 type=in signal=22
+  данные: finish=6d193296a04f4f47, id_finish=16, id_start=15, start=position.1894.13
+[14:13:36] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000012
+  состояние ДО: id=15 name=position.1894.13 type=in signal=21
+  состояние ПОСЛЕ: id=16 name=6d193296a04f4f47 type=in signal=22
+  данные: linked_from=15, linked_to=16, symbol=6d193296a04f4f47
+[14:13:36] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000012
+  состояние ДО: id=16 name=6d193296a04f4f47 type=in signal=22
+  данные: symbol=click
+[14:13:36] ТОЧКА.ОБНОВЛЕНА: Обновлён сигнал существующей точки по символу
+  trace_id: t000012
+  состояние сейчас (max signal): id=10 name=click type=in signal=23
+  данные: id=10, new_signal=23, symbol=click
+[14:13:36] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000012
+  состояние сейчас (max signal): id=10 name=click type=in signal=23
+  данные: finish=click, id_finish=10, id_start=16, start=6d193296a04f4f47
+[14:13:36] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000012
+  состояние ДО: id=16 name=6d193296a04f4f47 type=in signal=22
+  состояние ПОСЛЕ: id=10 name=click type=in signal=23
+  данные: linked_from=16, linked_to=10, symbol=click
+[14:13:36] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000012
+  состояние ДО: id=10 name=click type=in signal=23
+  данные: symbol=position.1861.26
+[14:13:38] ТОЧКА.СОЗДАНА: Создана новая входная точка (in) для символа
+  trace_id: t000012
+  состояние сейчас (max signal): id=17 name=position.1861.26 type=in signal=24
+  данные: new_id=17, new_signal=24, symbol=position.1861.26
+[14:13:38] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000012
+  состояние сейчас (max signal): id=17 name=position.1861.26 type=in signal=24
+  данные: finish=position.1861.26, id_finish=17, id_start=10, start=click
+[14:13:38] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000012
+  состояние ДО: id=10 name=click type=in signal=23
+  состояние ПОСЛЕ: id=17 name=position.1861.26 type=in signal=24
+  данные: linked_from=10, linked_to=17, symbol=position.1861.26
+[14:13:38] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000012
+  состояние ДО: id=17 name=position.1861.26 type=in signal=24
+  данные: symbol=2ca531019cef89cd
+[14:13:38] ТОЧКА.ОБНОВЛЕНА: Обновлён сигнал существующей точки по символу
+  trace_id: t000012
+  состояние сейчас (max signal): id=13 name=2ca531019cef89cd type=in signal=25
+  данные: id=13, new_signal=25, symbol=2ca531019cef89cd
+[14:13:38] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000012
+  состояние сейчас (max signal): id=13 name=2ca531019cef89cd type=in signal=25
+  данные: finish=2ca531019cef89cd, id_finish=13, id_start=17, start=position.1861.26
+[14:13:38] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000012
+  состояние ДО: id=17 name=position.1861.26 type=in signal=24
+  состояние ПОСЛЕ: id=13 name=2ca531019cef89cd type=in signal=25
+  данные: linked_from=17, linked_to=13, symbol=2ca531019cef89cd
+[14:13:38] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000012
+  состояние ДО: id=13 name=2ca531019cef89cd type=in signal=25
+  данные: symbol=click
+[14:13:38] ТОЧКА.ОБНОВЛЕНА: Обновлён сигнал существующей точки по символу
+  trace_id: t000012
+  состояние сейчас (max signal): id=10 name=click type=in signal=26
+  данные: id=10, new_signal=26, symbol=click
+[14:13:38] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000012
+  состояние сейчас (max signal): id=10 name=click type=in signal=26
+  данные: finish=click, id_finish=10, id_start=13, start=2ca531019cef89cd
+[14:13:38] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000012
+  состояние ДО: id=13 name=2ca531019cef89cd type=in signal=25
+  состояние ПОСЛЕ: id=10 name=click type=in signal=26
+  данные: linked_from=13, linked_to=10, symbol=click
+[14:13:52] ВВОД.ПОЛУЧЕН: Получен ввод пользователя (source=input)
+  trace_id: t000013
+  состояние сейчас (max signal): id=10 name=click type=in signal=26
+  данные: ввод=1, длина=1
+[14:13:52] КОМАНДА.1.ПЛЮС: Положительная реакция: очистка памяти и привязка к текущему экрану
+  trace_id: t000013
+  состояние ДО: id=10 name=click type=in signal=26
+  данные: old_ekran=id_ekran_9, tekushiy_id=10
+[14:13:52] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000013
+  состояние ДО: id=10 name=click type=in signal=26
+  данные: symbol=poz
+[14:13:52] ТОЧКА.ОБНОВЛЕНА: Обновлён сигнал существующей точки по символу
+  trace_id: t000013
+  состояние сейчас (max signal): id=1 name=poz type=REAC signal=27
+  данные: id=1, new_signal=27, symbol=poz
+[14:13:52] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000013
+  состояние сейчас (max signal): id=1 name=poz type=REAC signal=27
+  данные: finish=poz, id_finish=1, id_start=10, start=click
+[14:13:52] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000013
+  состояние ДО: id=10 name=click type=in signal=26
+  состояние ПОСЛЕ: id=1 name=poz type=REAC signal=27
+  данные: linked_from=10, linked_to=1, symbol=poz
+[14:13:52] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000013
+  состояние ДО: id=1 name=poz type=REAC signal=27
+  данные: symbol=id_ekran_9
+[14:13:52] ТОЧКА.ОБНОВЛЕНА: Обновлён сигнал существующей точки по символу
+  trace_id: t000013
+  состояние сейчас (max signal): id=7 name=id_ekran_9 type=in signal=28
+  данные: id=7, new_signal=28, symbol=id_ekran_9
+[14:13:52] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000013
+  состояние сейчас (max signal): id=7 name=id_ekran_9 type=in signal=28
+  данные: finish=id_ekran_9, id_finish=7, id_start=1, start=poz
+[14:13:52] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000013
+  состояние ДО: id=1 name=poz type=REAC signal=27
+  состояние ПОСЛЕ: id=7 name=id_ekran_9 type=in signal=28
+  данные: linked_from=1, linked_to=7, symbol=id_ekran_9
+[14:13:52] КОМАНДА.1.ПЛЮС.КОНЕЦ: Положительная реакция завершена
+  trace_id: t000013
+  состояние ДО: id=10 name=click type=in signal=26
+  состояние ПОСЛЕ: id=7 name=id_ekran_9 type=in signal=28
+  данные: online_svyaz_list_len=3, память_in_pamyat_name_len=0
+[14:14:03] ВВОД.ПОЛУЧЕН: Получен ввод пользователя (source=input)
+  trace_id: t000014
+  состояние сейчас (max signal): id=7 name=id_ekran_9 type=in signal=28
+  данные: ввод=o3, длина=2
+[14:14:03] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000014
+  состояние ДО: id=7 name=id_ekran_9 type=in signal=28
+  данные: symbol=o
+[14:14:03] ТОЧКА.ОБНОВЛЕНА: Обновлён сигнал существующей точки по символу
+  trace_id: t000014
+  состояние сейчас (max signal): id=5 name=o type=in signal=29
+  данные: id=5, new_signal=29, symbol=o
+[14:14:03] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000014
+  состояние сейчас (max signal): id=5 name=o type=in signal=29
+  данные: finish=o, id_finish=5, id_start=7, start=id_ekran_9
+[14:14:03] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000014
+  состояние ДО: id=7 name=id_ekran_9 type=in signal=28
+  состояние ПОСЛЕ: id=5 name=o type=in signal=29
+  данные: linked_from=7, linked_to=5, symbol=o
+[14:14:03] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000014
+  состояние ДО: id=5 name=o type=in signal=29
+  данные: symbol=3
+[14:14:03] ТОЧКА.ОБНОВЛЕНА: Обновлён сигнал существующей точки по символу
+  trace_id: t000014
+  состояние сейчас (max signal): id=11 name=3 type=in signal=30
+  данные: id=11, new_signal=30, symbol=3
+[14:14:03] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000014
+  состояние сейчас (max signal): id=11 name=3 type=in signal=30
+  данные: finish=3, id_finish=11, id_start=5, start=o
+[14:14:03] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000014
+  состояние ДО: id=5 name=o type=in signal=29
+  состояние ПОСЛЕ: id=11 name=3 type=in signal=30
+  данные: linked_from=5, linked_to=11, symbol=3
+[14:14:08] ВВОД.ПОЛУЧЕН: Получен ввод пользователя (source=input)
+  trace_id: t000015
+  состояние сейчас (max signal): id=11 name=3 type=in signal=30
+  данные: ввод=8, длина=1
+[14:14:14] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000015
+  состояние сейчас (max signal): id=11 name=3 type=in signal=30
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=1, pyt_len=0
+[14:14:14] ПРОШИВКА.ВЫБОР_СВЯЗИ: Выбрана первая онлайн-связь как наиболее вероятное продолжение
+  trace_id: t000015
+  состояние сейчас (max signal): id=11 name=3 type=in signal=30
+  данные: svyaz_id=20
+[14:14:14] ПРОШИВКА.НАЙДЕНА_ТОЧКА: По онлайн-связи найдена следующая точка (id_finish)
+  trace_id: t000015
+  состояние сейчас (max signal): id=11 name=3 type=in signal=30
+  данные: id_finish=12, svyaz_id=20
+[14:14:15] ИСПОЛНЕНИЕ.OUT_RED.СТАРТ: Начинаем исполнение действия/ответа по точке
+  trace_id: t000015
+  состояние ДО: id=11 name=3 type=in signal=30
+  данные: id=12, тип=in, точка=position.1860.27
+[14:14:19] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000015
+  состояние сейчас (max signal): id=12 name=position.1860.27 type=in signal=31
+  данные: finish=position.1860.27, id_finish=12, id_start=11, start=3
+[14:14:25] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000015
+  состояние сейчас (max signal): id=12 name=position.1860.27 type=in signal=31
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=1, pyt_len=9
+[14:14:25] ИСПОЛНЕНИЕ.OUT_RED.СТАРТ: Начинаем исполнение действия/ответа по точке
+  trace_id: t000015
+  состояние ДО: id=12 name=position.1860.27 type=in signal=31
+  данные: id=13, тип=in, точка=2ca531019cef89cd
+[14:14:26] ИСПОЛНЕНИЕ.ОБЪЕКТ.ПОД_КУРСОРОМ.ОК: Под курсором нужный объект (исполнение без перемещения)
+  trace_id: t000015
+  состояние сейчас (max signal): id=12 name=position.1860.27 type=in signal=31
+  данные: under_cursor=2ca531019cef89cd, want_hash=2ca531019cef89cd
+[14:14:32] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000015
+  состояние сейчас (max signal): id=12 name=position.1860.27 type=in signal=31
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=1, pyt_len=8
+[14:14:32] ИСПОЛНЕНИЕ.OUT_RED.СТАРТ: Начинаем исполнение действия/ответа по точке
+  trace_id: t000015
+  состояние ДО: id=12 name=position.1860.27 type=in signal=31
+  данные: id=10, тип=in, точка=click
+[14:14:32] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000015
+  состояние сейчас (max signal): id=10 name=click type=in signal=32
+  данные: finish=click, id_finish=10, id_start=12, start=position.1860.27
+[14:14:38] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000015
+  состояние сейчас (max signal): id=10 name=click type=in signal=32
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=5, pyt_len=7
+[14:14:38] ИСПОЛНЕНИЕ.OUT_RED.СТАРТ: Начинаем исполнение действия/ответа по точке
+  trace_id: t000015
+  состояние ДО: id=10 name=click type=in signal=32
+  данные: id=14, тип=in, точка=Key.enter
+[14:14:39] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000015
+  состояние сейчас (max signal): id=14 name=Key.enter type=in signal=33
+  данные: finish=Key.enter, id_finish=14, id_start=10, start=click
+[14:14:42] ЭКРАН.СМЕНА: Обнаружена смена экрана, переносим состояние в новый экран
+  trace_id: t000015
+  состояние ДО: id=14 name=Key.enter type=in signal=33
+  данные: hashes_count=164, new_ekran=id_ekran_11, old_ekran=id_ekran_9, screen_id=11
+[14:14:42] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000015
+  состояние ДО: id=14 name=Key.enter type=in signal=33
+  данные: symbol=id_ekran_11
+[14:14:42] ТОЧКА.СОЗДАНА: Создана новая входная точка (in) для символа
+  trace_id: t000015
+  состояние сейчас (max signal): id=18 name=id_ekran_11 type=in signal=34
+  данные: new_id=18, new_signal=34, symbol=id_ekran_11
+[14:14:42] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000015
+  состояние сейчас (max signal): id=18 name=id_ekran_11 type=in signal=34
+  данные: finish=id_ekran_11, id_finish=18, id_start=14, start=Key.enter
+[14:14:42] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000015
+  состояние ДО: id=14 name=Key.enter type=in signal=33
+  состояние ПОСЛЕ: id=18 name=id_ekran_11 type=in signal=34
+  данные: linked_from=14, linked_to=18, symbol=id_ekran_11
+[14:14:42] ЭКРАН.СМЕНА.КОНЕЦ: Перенос состояния завершён: old_ekran обновлён
+  trace_id: t000015
+  состояние ДО: id=14 name=Key.enter type=in signal=33
+  состояние ПОСЛЕ: id=18 name=id_ekran_11 type=in signal=34
+  данные: old_ekran=id_ekran_11
+[14:14:45] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000015
+  состояние сейчас (max signal): id=18 name=id_ekran_11 type=in signal=34
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=0, pyt_len=6
+[14:14:45] ИСПОЛНЕНИЕ.OUT_RED.СТАРТ: Начинаем исполнение действия/ответа по точке
+  trace_id: t000015
+  состояние ДО: id=18 name=id_ekran_11 type=in signal=34
+  данные: id=15, тип=in, точка=position.1894.13
+[14:14:50] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000015
+  состояние сейчас (max signal): id=15 name=position.1894.13 type=in signal=35
+  данные: finish=position.1894.13, id_finish=15, id_start=18, start=id_ekran_11
+[14:14:56] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000015
+  состояние сейчас (max signal): id=15 name=position.1894.13 type=in signal=35
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=1, pyt_len=5
+[14:14:56] ИСПОЛНЕНИЕ.OUT_RED.СТАРТ: Начинаем исполнение действия/ответа по точке
+  trace_id: t000015
+  состояние ДО: id=15 name=position.1894.13 type=in signal=35
+  данные: id=16, тип=in, точка=6d193296a04f4f47
+[14:15:04] ИСПОЛНЕНИЕ.ОБЪЕКТ.ПОД_КУРСОРОМ.ОК: Под курсором нужный объект (исполнение без перемещения)
+  trace_id: t000015
+  состояние сейчас (max signal): id=15 name=position.1894.13 type=in signal=35
+  данные: under_cursor=6d193296a04f4f47, want_hash=6d193296a04f4f47
+[14:15:09] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000015
+  состояние сейчас (max signal): id=15 name=position.1894.13 type=in signal=35
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=1, pyt_len=4
+[14:15:09] ИСПОЛНЕНИЕ.OUT_RED.СТАРТ: Начинаем исполнение действия/ответа по точке
+  trace_id: t000015
+  состояние ДО: id=15 name=position.1894.13 type=in signal=35
+  данные: id=10, тип=in, точка=click
+[14:15:09] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000015
+  состояние сейчас (max signal): id=10 name=click type=in signal=36
+  данные: finish=click, id_finish=10, id_start=15, start=position.1894.13
+[14:15:15] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000015
+  состояние сейчас (max signal): id=10 name=click type=in signal=36
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=6, pyt_len=3
+[14:15:15] ИСПОЛНЕНИЕ.OUT_RED.СТАРТ: Начинаем исполнение действия/ответа по точке
+  trace_id: t000015
+  состояние ДО: id=10 name=click type=in signal=36
+  данные: id=17, тип=in, точка=position.1861.26
+[14:15:20] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000015
+  состояние сейчас (max signal): id=17 name=position.1861.26 type=in signal=37
+  данные: finish=position.1861.26, id_finish=17, id_start=10, start=click
+[14:15:22] ЭКРАН.СМЕНА: Обнаружена смена экрана, переносим состояние в новый экран
+  trace_id: t000015
+  состояние ДО: id=17 name=position.1861.26 type=in signal=37
+  данные: hashes_count=132, new_ekran=id_ekran_9, old_ekran=id_ekran_11, screen_id=9
+[14:15:22] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000015
+  состояние ДО: id=17 name=position.1861.26 type=in signal=37
+  данные: symbol=id_ekran_9
+[14:15:22] ТОЧКА.ОБНОВЛЕНА: Обновлён сигнал существующей точки по символу
+  trace_id: t000015
+  состояние сейчас (max signal): id=7 name=id_ekran_9 type=in signal=38
+  данные: id=7, new_signal=38, symbol=id_ekran_9
+[14:15:22] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000015
+  состояние сейчас (max signal): id=7 name=id_ekran_9 type=in signal=38
+  данные: finish=id_ekran_9, id_finish=7, id_start=17, start=position.1861.26
+[14:15:22] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000015
+  состояние ДО: id=17 name=position.1861.26 type=in signal=37
+  состояние ПОСЛЕ: id=7 name=id_ekran_9 type=in signal=38
+  данные: linked_from=17, linked_to=7, symbol=id_ekran_9
+[14:15:22] ЭКРАН.СМЕНА.КОНЕЦ: Перенос состояния завершён: old_ekran обновлён
+  trace_id: t000015
+  состояние ДО: id=17 name=position.1861.26 type=in signal=37
+  состояние ПОСЛЕ: id=7 name=id_ekran_9 type=in signal=38
+  данные: old_ekran=id_ekran_9
+[14:15:28] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000015
+  состояние сейчас (max signal): id=7 name=id_ekran_9 type=in signal=38
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=4, pyt_len=2
+[14:15:28] ИСПОЛНЕНИЕ.OUT_RED.СТАРТ: Начинаем исполнение действия/ответа по точке
+  trace_id: t000015
+  состояние ДО: id=7 name=id_ekran_9 type=in signal=38
+  данные: id=13, тип=in, точка=2ca531019cef89cd
+[14:15:38] ИСПОЛНЕНИЕ.ОБЪЕКТ.ПОД_КУРСОРОМ.ОК: Под курсором нужный объект (исполнение без перемещения)
+  trace_id: t000015
+  состояние сейчас (max signal): id=7 name=id_ekran_9 type=in signal=38
+  данные: under_cursor=2ca531019cef89cd, want_hash=2ca531019cef89cd
+[14:15:43] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000015
+  состояние сейчас (max signal): id=7 name=id_ekran_9 type=in signal=38
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=4, pyt_len=1
+[14:15:43] ИСПОЛНЕНИЕ.OUT_RED.СТАРТ: Начинаем исполнение действия/ответа по точке
+  trace_id: t000015
+  состояние ДО: id=7 name=id_ekran_9 type=in signal=38
+  данные: id=10, тип=in, точка=click
+[14:15:44] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000015
+  состояние сейчас (max signal): id=10 name=click type=in signal=39
+  данные: finish=click, id_finish=10, id_start=7, start=id_ekran_9
+[14:15:50] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000015
+  состояние сейчас (max signal): id=10 name=click type=in signal=39
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=7, pyt_len=0
+[14:15:50] ПРОШИВКА.ВЫБОР_СВЯЗИ: Выбрана первая онлайн-связь как наиболее вероятное продолжение
+  trace_id: t000015
+  состояние сейчас (max signal): id=10 name=click type=in signal=39
+  данные: svyaz_id=11
+[14:15:50] ПРОШИВКА.НАЙДЕНА_ТОЧКА: По онлайн-связи найдена следующая точка (id_finish)
+  trace_id: t000015
+  состояние сейчас (max signal): id=10 name=click type=in signal=39
+  данные: id_finish=1, svyaz_id=11
+[14:15:50] ПРОШИВКА.КОНЕЦ_РЕАКЦИЯ: Следующая точка — реакция; цепочка завершена, память очищена
+  trace_id: t000015
+  состояние сейчас (max signal): id=10 name=click type=in signal=39
+  данные: reaction_id=1
+[14:16:26] ВВОД.ПОЛУЧЕН: Получен ввод пользователя (source=input)
+  trace_id: t000016
+  состояние сейчас (max signal): id=10 name=click type=in signal=39
+  данные: ввод=o1, длина=2
+[14:16:26] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000016
+  состояние ДО: id=10 name=click type=in signal=39
+  данные: symbol=o
+[14:16:26] ТОЧКА.ОБНОВЛЕНА: Обновлён сигнал существующей точки по символу
+  trace_id: t000016
+  состояние сейчас (max signal): id=5 name=o type=in signal=40
+  данные: id=5, new_signal=40, symbol=o
+[14:16:26] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000016
+  состояние сейчас (max signal): id=5 name=o type=in signal=40
+  данные: finish=o, id_finish=5, id_start=10, start=click
+[14:16:26] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000016
+  состояние ДО: id=10 name=click type=in signal=39
+  состояние ПОСЛЕ: id=5 name=o type=in signal=40
+  данные: linked_from=10, linked_to=5, symbol=o
+[14:16:26] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000016
+  состояние ДО: id=5 name=o type=in signal=40
+  данные: symbol=1
+[14:16:26] ТОЧКА.ОБНОВЛЕНА: Обновлён сигнал существующей точки по символу
+  trace_id: t000016
+  состояние сейчас (max signal): id=6 name=1 type=in signal=41
+  данные: id=6, new_signal=41, symbol=1
+[14:16:26] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000016
+  состояние сейчас (max signal): id=6 name=1 type=in signal=41
+  данные: finish=1, id_finish=6, id_start=5, start=o
+[14:16:26] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000016
+  состояние ДО: id=5 name=o type=in signal=40
+  состояние ПОСЛЕ: id=6 name=1 type=in signal=41
+  данные: linked_from=5, linked_to=6, symbol=1
+[14:16:26] ЭКРАН.СМЕНА: Обнаружена смена экрана, переносим состояние в новый экран
+  trace_id: t000016
+  состояние ДО: id=6 name=1 type=in signal=41
+  данные: hashes_count=198, new_ekran=id_ekran_10, old_ekran=id_ekran_9, screen_id=10
+[14:16:26] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000016
+  состояние ДО: id=6 name=1 type=in signal=41
+  данные: symbol=id_ekran_10
+[14:16:26] ТОЧКА.СОЗДАНА: Создана новая входная точка (in) для символа
+  trace_id: t000016
+  состояние сейчас (max signal): id=19 name=id_ekran_10 type=in signal=42
+  данные: new_id=19, new_signal=42, symbol=id_ekran_10
+[14:16:26] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000016
+  состояние сейчас (max signal): id=19 name=id_ekran_10 type=in signal=42
+  данные: finish=id_ekran_10, id_finish=19, id_start=6, start=1
+[14:16:26] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000016
+  состояние ДО: id=6 name=1 type=in signal=41
+  состояние ПОСЛЕ: id=19 name=id_ekran_10 type=in signal=42
+  данные: linked_from=6, linked_to=19, symbol=id_ekran_10
+[14:16:26] ЭКРАН.СМЕНА.КОНЕЦ: Перенос состояния завершён: old_ekran обновлён
+  trace_id: t000016
+  состояние ДО: id=6 name=1 type=in signal=41
+  состояние ПОСЛЕ: id=19 name=id_ekran_10 type=in signal=42
+  данные: old_ekran=id_ekran_10
+[14:16:33] ВВОД.ПОЛУЧЕН: Получен ввод пользователя (source=input)
+  trace_id: t000017
+  состояние сейчас (max signal): id=19 name=id_ekran_10 type=in signal=42
+  данные: ввод=8, длина=1
+[14:16:38] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000017
+  состояние сейчас (max signal): id=19 name=id_ekran_10 type=in signal=42
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=0, pyt_len=0
+[14:16:44] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000017
+  состояние сейчас (max signal): id=19 name=id_ekran_10 type=in signal=42
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=0, pyt_len=0
+[14:16:50] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000017
+  состояние сейчас (max signal): id=19 name=id_ekran_10 type=in signal=42
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=0, pyt_len=0
+[14:16:56] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000017
+  состояние сейчас (max signal): id=19 name=id_ekran_10 type=in signal=42
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=0, pyt_len=0
+[14:17:01] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000017
+  состояние сейчас (max signal): id=19 name=id_ekran_10 type=in signal=42
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=0, pyt_len=0
+[14:17:07] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000017
+  состояние сейчас (max signal): id=19 name=id_ekran_10 type=in signal=42
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=0, pyt_len=0
+[14:17:13] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000017
+  состояние сейчас (max signal): id=19 name=id_ekran_10 type=in signal=42
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=0, pyt_len=0
+[14:17:19] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000017
+  состояние сейчас (max signal): id=19 name=id_ekran_10 type=in signal=42
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=0, pyt_len=0
+[14:17:24] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000017
+  состояние сейчас (max signal): id=19 name=id_ekran_10 type=in signal=42
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=0, pyt_len=0
+[14:17:30] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000017
+  состояние сейчас (max signal): id=19 name=id_ekran_10 type=in signal=42
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=0, pyt_len=0
+[14:17:36] ПРОШИВКА.СТАРТ: Запуск автопродолжения по краткосрочной памяти
+  trace_id: t000017
+  состояние сейчас (max signal): id=19 name=id_ekran_10 type=in signal=42
+  данные: in_pamyat_name_len=1, online_svyaz_list_len=0, pyt_len=0
+[14:18:36] ВВОД.ПОЛУЧЕН: Получен ввод пользователя (source=input)
+  trace_id: t000018
+  состояние сейчас (max signal): id=19 name=id_ekran_10 type=in signal=42
+  данные: ввод=0, длина=1
+[14:32:15] ЗАПИСЬ.КЛИК: Зафиксирован клик во время записи
+  данные: image_hash=hash123, record_len=1, refined_id=42, unresolved=False, x=10, y=20
+[14:46:40] ВВОД.ПОЛУЧЕН: Получен ввод пользователя (source=input)
+  trace_id: t000002
+  состояние сейчас (max signal): id=19 name=id_ekran_10 type=in signal=42
+  данные: ввод=9, длина=1
+[14:46:40] СИМВОЛ.ОБРАБОТКА.НАЧАЛО: Начата обработка символа/токена
+  trace_id: t000002
+  состояние ДО: id=3 name=ney type=REAC signal=0
+  данные: symbol=0
+[14:46:40] ТОЧКА.СОЗДАНА: Создана новая входная точка (in) для символа
+  trace_id: t000002
+  состояние сейчас (max signal): id=4 name=0 type=in signal=1
+  данные: new_id=4, new_signal=1, symbol=0
+[14:46:40] СВЯЗЬ.СОЗДАНА: Создаём связь между точками
+  trace_id: t000002
+  состояние сейчас (max signal): id=4 name=0 type=in signal=1
+  данные: finish=0, id_finish=4, id_start=1, start=poz
+[14:46:40] СИМВОЛ.ОБРАБОТКА.КОНЕЦ: Завершена обработка символа/токена
+  trace_id: t000002
+  состояние ДО: id=3 name=ney type=REAC signal=0
+  состояние ПОСЛЕ: id=4 name=0 type=in signal=1
+  данные: linked_from=1, linked_to=4, symbol=0

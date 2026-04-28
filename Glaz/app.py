@@ -122,10 +122,18 @@ class ScreenCaptureApp:
         self._last_cursor_pos: tuple[int, int] | None = None  # последняя позиция курсора
         self._cursor_stable_since: float | None = None  # время когда курсор стал стабильным
         self._object_already_recognized: bool = False  # объект уже определён в текущей сессии наведения
-        # Троттлинг обновления: полный цикл ~450 ms → не чаще 1 раза в секунду, чтобы UI не зависал
-        self._update_frame_interval = 1.0  # с
+        # Частоты работы (умный режим): idle 4–6 FPS, step1 быстрее
+        self._idle_interval_s: float = 0.20  # 5 FPS
+        self._step1_interval_s: float = 0.08  # ~12.5 FPS
+        self._active_interval_s: float = self._idle_interval_s
+
+        # Троттлинг обновления UI
+        self._update_frame_interval = self._active_interval_s  # с
         self._last_update_frame_time: float = 0.0
         self._last_processing_log_time: float = 0.0
+        # Троттлинг фоновой обработки (пики+детекция) — иначе воркер будет молотить на каждом кадре захвата
+        self._processing_interval_s: float = self._active_interval_s
+        self._last_processing_request_time: float = 0.0
 
         # Встроенный Kolos (stdout/stderr → панель справа)
         self._kolos_controller: KolosSubprocessController | None = None
@@ -764,9 +772,11 @@ class ScreenCaptureApp:
         self.status_var.set("Захват экрана...")
         self.log_message("Начало захвата скриншотов")
         
+        self._set_performance_mode_idle()
         self.capture.start(
             on_frame=self._on_frame_captured,
-            on_error=self._on_capture_error
+            on_error=self._on_capture_error,
+            interval=self._processing_interval_s,
         )
     
     def _stop_capture(self):
@@ -781,13 +791,39 @@ class ScreenCaptureApp:
     def _on_frame_captured(self, image: Image.Image):
         """Callback при захвате кадра. Троттлинг: не чаще _update_frame_interval с."""
         self.current_image = image
-        self._request_processing()
+        self._request_processing_throttled()
         now = time.time()
         if now - self._last_update_frame_time < self._update_frame_interval:
             return
         self._last_update_frame_time = now  # резервируем слот (обновим при старте _update_frame)
         self.root.after(0, self._update_frame)
     
+    def _request_processing_throttled(self) -> None:
+        """Запросить фоновую обработку не чаще заданного интервала."""
+        now = time.time()
+        if now - self._last_processing_request_time < self._processing_interval_s:
+            return
+        self._last_processing_request_time = now
+        self._request_processing()
+
+    def _apply_intervals(self, interval_s: float) -> None:
+        """Применить интервал для захвата/обработки/обновления UI."""
+        interval_s = float(max(0.01, interval_s))
+        self._active_interval_s = interval_s
+        self._update_frame_interval = interval_s
+        self._processing_interval_s = interval_s
+        if self.capture.is_capturing:
+            # Обновляем интервал захвата на лету, чтобы не перегружать CPU
+            self.capture.set_interval(interval_s)
+
+    def _set_performance_mode_idle(self) -> None:
+        """Idle: 4–6 FPS."""
+        self._apply_intervals(self._idle_interval_s)
+
+    def _set_performance_mode_step1(self) -> None:
+        """Step1: ускоренный режим для точного определения."""
+        self._apply_intervals(self._step1_interval_s)
+
     def _update_frame(self):
         """Синхронное обновление всех компонентов в правильном порядке."""
         # Троттлинг по факту старта в главном потоке (не по планированию из потока захвата)
@@ -1222,6 +1258,7 @@ class ScreenCaptureApp:
             # чтобы подпись/скриншот брались из актуальной позиции.
             self._update_loupe()
             self._recognition_state = RecognitionStep1()
+            self._set_performance_mode_step1()
         else:
             self._reset_object_state()
         return
@@ -1383,6 +1420,7 @@ class ScreenCaptureApp:
 
         # Завершаем процесс определения
         self._recognition_state = RecognitionIdle()
+        self._set_performance_mode_idle()
         self._zoomed_signature_temp = ()
         self._object_already_recognized = True  # Объект определён, не определять повторно
         self._cursor_center_target = None

@@ -14,10 +14,13 @@ from report import report
 from cv_core.compat_adapter import screen
 from cv_core.glaz_ipc import read_last_confirmed_target
 from db import Database
+from cv_core.run_logger_ru import RunLoggerRU
 
 listener_kb = KeyboardListener()  # Слушатель клавиатуры
 kb = kb_Controller()
 mo = Controller()
+
+_ru_log = RunLoggerRU.from_env()
 
 """ Вид в котором информация о событиях хранится объекте:
     
@@ -197,6 +200,11 @@ class Recorder:
         self.record.clear()  # Удаление старой записи перед началом новой
         self.status = True
         screen.get_screen()
+        _ru_log.log(
+            event="ЗАПИСЬ.СТАРТ",
+            message="Запущена запись мыши/клавиатуры (остановка по ESC)",
+            data={},
+        )
 
         # ----------------------------------
         # Создание отчета в виде изображений
@@ -206,6 +214,11 @@ class Recorder:
     def stop(self):
         """ Остановить запись """
         self.status = False
+        _ru_log.log(
+            event="ЗАПИСЬ.СТОП",
+            message="Остановлена запись мыши/клавиатуры",
+            data={"events_count": len(self.record)},
+        )
 
     def on_press(self, key):
         """ Запись нажатой клавиши """
@@ -300,6 +313,18 @@ class Recorder:
             'y': int(y),
         }
         self.record.append(out)
+        _ru_log.log(
+            event="ЗАПИСЬ.КЛИК",
+            message="Зафиксирован клик во время записи",
+            data={
+                "x": int(x),
+                "y": int(y),
+                "image_hash": hash_element,
+                "refined_id": refined_id,
+                "unresolved": bool(unresolved),
+                "record_len": len(self.record),
+            },
+        )
 
     def on_scroll(self, x, y, dx, dy):
         """Запись прокрутки колёсиком (как move) + сообщение в консоль."""

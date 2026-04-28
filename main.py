@@ -16,6 +16,7 @@ from launch_workdir import ensure_script_directory_is_cwd
 from db import Database
 from mous_kb_record import rec, play
 from cv_core.compat_adapter import screen
+from cv_core.run_logger_ru import RunLoggerRU, get_max_signal_point, get_point_by_id
 from cv_core.screens_repository import ScreensRepository
 from cv_core.screen_resolver import ScreenResolver, ResolverConfig
 from report import report
@@ -23,6 +24,9 @@ import pyautogui
 from exceptions import ElementNotFound
 
 screen.VERBOSE = True   #Чтобы выключить консоль вписать False
+
+
+_ru_log = RunLoggerRU.from_env()
 
 
 def _agent_log(hypothesis_id: str, location: str, message: str, data: dict) -> None:
@@ -77,6 +81,16 @@ def obrabotka_symbol(symbol):
     Создаем точку с именем 'n' и типом ‘in’ или обновляем ее сигнал n.signal = Max + 1.
     От предыдущей точки  к текущей создаем связь"""
 
+    state_before = get_max_signal_point(cursor)
+    _ru_log.log(
+        event="СИМВОЛ.ОБРАБОТКА.НАЧАЛО",
+        message="Начата обработка символа/токена",
+        data={"symbol": symbol},
+        db=cursor,
+        state_before=state_before,
+        trace_id=(_why_trace_id if "_why_trace_id" in globals() else None),
+    )
+
     # Поиск максимального сигнала в таблице points
     max_signal = cursor.execute("SELECT MAX(signal) FROM points").fetchone()
     # print(f'Максимальный сигнал такой: {max_signal}')
@@ -98,13 +112,38 @@ def obrabotka_symbol(symbol):
         # print("obrabotka_symbol. Такого id нету")
         new_tochka_name = sozdat_new_tochky(symbol, 'in', new_signal)
         print(f"Создали новую точку in id: {new_tochka_name}")
+        _ru_log.log(
+            event="ТОЧКА.СОЗДАНА",
+            message="Создана новая входная точка (in) для символа",
+            data={"symbol": symbol, "new_id": new_tochka_name, "new_signal": new_signal},
+            db=cursor,
+            trace_id=(_why_trace_id if "_why_trace_id" in globals() else None),
+        )
     else:
         # Если такая точка имеется - то обновляется её сигнал: Max+ 1
         new_tochka_name = nayti_id[0]
         cursor.execute("UPDATE points SET signal = ? WHERE id = ?", (new_signal, new_tochka_name))
+        _ru_log.log(
+            event="ТОЧКА.ОБНОВЛЕНА",
+            message="Обновлён сигнал существующей точки по символу",
+            data={"symbol": symbol, "id": new_tochka_name, "new_signal": new_signal},
+            db=cursor,
+            trace_id=(_why_trace_id if "_why_trace_id" in globals() else None),
+        )
 
     sozdat_svyaz(nayti_id_max_signal[0], new_tochka_name)
     online_svyaz(new_tochka_name)
+
+    state_after = get_max_signal_point(cursor)
+    _ru_log.log(
+        event="СИМВОЛ.ОБРАБОТКА.КОНЕЦ",
+        message="Завершена обработка символа/токена",
+        data={"symbol": symbol, "linked_from": nayti_id_max_signal[0], "linked_to": new_tochka_name},
+        db=cursor,
+        state_before=state_before,
+        state_after=state_after,
+        trace_id=(_why_trace_id if "_why_trace_id" in globals() else None),
+    )
 
 
 def sozdat_svyaz(id_start, id_finish):
@@ -114,6 +153,20 @@ def sozdat_svyaz(id_start, id_finish):
     for max_id_svyazi1 in max_id_svyazi:
         old_id_svyazi = max_id_svyazi1[0]
         new_id_svyazi = old_id_svyazi + 1
+    p_start = get_point_by_id(cursor, id_start)
+    p_finish = get_point_by_id(cursor, id_finish if not isinstance(id_finish, tuple) else (id_finish[0] if id_finish else None))
+    _ru_log.log(
+        event="СВЯЗЬ.СОЗДАНА",
+        message="Создаём связь между точками",
+        data={
+            "id_start": id_start,
+            "start": (p_start.get("name") if p_start else None),
+            "id_finish": (id_finish[0] if isinstance(id_finish, tuple) else id_finish),
+            "finish": (p_finish.get("name") if p_finish else None),
+        },
+        db=cursor,
+        trace_id=(_why_trace_id if "_why_trace_id" in globals() else None),
+    )
     print(f'Создана связь м/у id_start = {id_start} и id_finish {id_finish}')
     cursor.execute("INSERT INTO svyazi VALUES (?, ?, ?)", (new_id_svyazi, id_start, id_finish))
 
@@ -204,6 +257,17 @@ def proshivka():
     global online_svyaz_list
     global spisok_otricatelnih_deystvii
     global source
+    _ru_log.log(
+        event="ПРОШИВКА.СТАРТ",
+        message="Запуск автопродолжения по краткосрочной памяти",
+        data={
+            "pyt_len": len(pyt),
+            "in_pamyat_name_len": len(in_pamyat_name),
+            "online_svyaz_list_len": len(online_svyaz_list),
+        },
+        db=cursor,
+        trace_id=(_why_trace_id if "_why_trace_id" in globals() else None),
+    )
     # 1. Если есть уже собранный ранее путь - пропустить эту функцию
     print(f'Передаётся следующий путь: {pyt}')
     if pyt:
@@ -229,6 +293,13 @@ def proshivka():
     # 2. Если список pamyat пустой - пропустить эту функцию
     print(f'Передаётся следующий in_pamyat_name: {in_pamyat_name}')
     if not in_pamyat_name:
+        _ru_log.log(
+            event="ПРОШИВКА.ПРОПУСК",
+            message="Краткосрочная память пуста — нечего продолжать",
+            data={"schetchik": schetchik},
+            db=cursor,
+            trace_id=(_why_trace_id if "_why_trace_id" in globals() else None),
+        )
         _why.trace(
             trace_id=_why_trace_id,
             event="PROSHIVKA_SKIP",
@@ -249,6 +320,13 @@ def proshivka():
     #   a. Берётся онлайн связь первая в списке
     if online_svyaz_list:
         pervaya_online_svyaz = online_svyaz_list[0]
+        _ru_log.log(
+            event="ПРОШИВКА.ВЫБОР_СВЯЗИ",
+            message="Выбрана первая онлайн-связь как наиболее вероятное продолжение",
+            data={"svyaz_id": pervaya_online_svyaz},
+            db=cursor,
+            trace_id=(_why_trace_id if "_why_trace_id" in globals() else None),
+        )
         print(f'Первая точка в списке онлайн связей: {pervaya_online_svyaz}')
         _why.trace(
             trace_id=_why_trace_id,
@@ -261,6 +339,13 @@ def proshivka():
         id_tochki_online_svyazi = cursor.execute("SELECT id_finish FROM svyazi WHERE ID = ?",
                                                  (pervaya_online_svyaz, )).fetchone()
         print(f'Нашли id_finish: {id_tochki_online_svyazi} от первой в списке онлайн связей')
+        _ru_log.log(
+            event="ПРОШИВКА.НАЙДЕНА_ТОЧКА",
+            message="По онлайн-связи найдена следующая точка (id_finish)",
+            data={"svyaz_id": pervaya_online_svyaz, "id_finish": (id_tochki_online_svyazi[0] if id_tochki_online_svyazi else None)},
+            db=cursor,
+            trace_id=(_why_trace_id if "_why_trace_id" in globals() else None),
+        )
         # region agent log
         _agent_log(
             "H3",
@@ -284,6 +369,13 @@ def proshivka():
                 lvl=2,
             )
             in_pamyat_name = []   # Обнулить список памяти - т.к. цепочка дошла до нужного результата
+            _ru_log.log(
+                event="ПРОШИВКА.КОНЕЦ_РЕАКЦИЯ",
+                message="Следующая точка — реакция; цепочка завершена, память очищена",
+                data={"reaction_id": id_tochki_online_svyazi[0]},
+                db=cursor,
+                trace_id=(_why_trace_id if "_why_trace_id" in globals() else None),
+            )
             print("\033[0m {}".format("**********************************"))
             print("\033[31m {}".format("Был пройден весь путь и цепочка действий закончилась"))  # Ответ
             print("\033[0m {}".format("**********************************"))
@@ -355,6 +447,16 @@ def out_red(id):
         # Создать связь от точки с max сигналом к нейтральной точке
         # Поменять сигнал нейтральной точки на max+1
         # Удалить список pamyat
+    state_before = get_max_signal_point(cursor)
+    p = get_point_by_id(cursor, id)
+    _ru_log.log(
+        event="ИСПОЛНЕНИЕ.OUT_RED.СТАРТ",
+        message="Начинаем исполнение действия/ответа по точке",
+        data={"id": id, "точка": (p.get("name") if p else None), "тип": (p.get("type") if p else None)},
+        db=cursor,
+        state_before=state_before,
+        trace_id=(_why_trace_id if "_why_trace_id" in globals() else None),
+    )
     print(f'в out_red передалась следующее id: {id}')
     _why.trace(
         trace_id=_why_trace_id,
@@ -408,6 +510,13 @@ def out_red(id):
         # Если объект под курсором мыши соответствует нужному изображению - то просто дать ответ этого изображения
         # Иначе - дать ответ и найти объект в другом месте либо откатить состояние к экрану и искать другой способ
         if obiekt_pod_kursorom == text[0]:
+            _ru_log.log(
+                event="ИСПОЛНЕНИЕ.ОБЪЕКТ.ПОД_КУРСОРОМ.ОК",
+                message="Под курсором нужный объект (исполнение без перемещения)",
+                data={"want_hash": text[0], "under_cursor": obiekt_pod_kursorom},
+                db=cursor,
+                trace_id=(_why_trace_id if "_why_trace_id" in globals() else None),
+            )
             _why.trace(
                 trace_id=_why_trace_id,
                 event="OUT_RED_IMAGE_OK",
@@ -420,6 +529,13 @@ def out_red(id):
             print("\033[31m {}".format(text[0]))  # Ответ
             print("\033[0m {}".format("**********************************"))
         else:
+            _ru_log.log(
+                event="ИСПОЛНЕНИЕ.ОБЪЕКТ.ПОД_КУРСОРОМ.НЕ_ТОТ",
+                message="Под курсором другой объект — пробуем найти нужный на экране",
+                data={"want_hash": text[0], "under_cursor": obiekt_pod_kursorom},
+                db=cursor,
+                trace_id=(_why_trace_id if "_why_trace_id" in globals() else None),
+            )
             _why.trace(
                 trace_id=_why_trace_id,
                 event="OUT_RED_IMAGE_MISMATCH",
@@ -620,6 +736,70 @@ def tekyshiy_ekran():
         return id_tekushiy_ekran
 
 
+def _is_valid_screen_token(value) -> bool:
+    """True, если value — валидный маркер экрана вида 'id_ekran_*'."""
+    return isinstance(value, str) and value.startswith("id_ekran_") and len(value) > len("id_ekran_")
+
+
+def _try_restore_old_ekran_from_db_point(screen_point_id: int | None) -> bool:
+    """Пробует восстановить old_ekran из points по id точки экрана."""
+    global old_ekran
+    if screen_point_id is None:
+        return False
+    p = get_point_by_id(cursor, screen_point_id)
+    if not p:
+        return False
+    name = p.get("name")
+    if _is_valid_screen_token(name):
+        old_ekran = name
+        return True
+    return False
+
+
+def ensure_current_screen_before_input(*, context: str) -> bool:
+    """Guard: перед записью ввода гарантирует валидный current screen в old_ekran.
+
+    Возвращает True, если old_ekran валиден (id_ekran_*), иначе False (ввод писать нельзя).
+    """
+    global old_ekran
+
+    if _is_valid_screen_token(old_ekran):
+        return True
+
+    # 1) Пробуем резолв через стабилизатор (если включён захват экрана).
+    try:
+        perenos_sostoyaniya()
+    except Exception:
+        # guard не должен ронять основной цикл
+        pass
+
+    if _is_valid_screen_token(old_ekran):
+        return True
+
+    # 2) Fallback: попробуем найти точку экрана в БД по screenshot_hash и взять её name.
+    try:
+        screen_point_id = tekyshiy_ekran()
+    except Exception:
+        screen_point_id = None
+
+    if _try_restore_old_ekran_from_db_point(screen_point_id):
+        return True
+
+    # 3) Не смогли определить экран — запрещаем запись ввода, чтобы не связывать через 0/мусор.
+    try:
+        _ru_log.log(
+            event="ЭКРАН.GUARD.БЛОК",
+            message="Экран не определён — ввод не будет записан в БД",
+            data={"context": context, "old_ekran": old_ekran},
+            db=cursor,
+            trace_id=(_why_trace_id if "_why_trace_id" in globals() else None),
+        )
+    except Exception:
+        pass
+    print(f"ВНИМАНИЕ: экран не определён (old_ekran={old_ekran!r}); ввод пропущен. context={context}")
+    return False
+
+
 def perenos_sostoyaniya():
     # Функция определяет какой сейчас экран, отличается ли от старого. Если отличается - перенос состояния в этот экран
     global old_ekran
@@ -682,6 +862,20 @@ def perenos_sostoyaniya():
     new_name_id_ekran = f"id_ekran_{screen_id}"
     if old_ekran == new_name_id_ekran:
         return
+    state_before = get_max_signal_point(cursor)
+    _ru_log.log(
+        event="ЭКРАН.СМЕНА",
+        message="Обнаружена смена экрана, переносим состояние в новый экран",
+        data={
+            "old_ekran": old_ekran,
+            "new_ekran": new_name_id_ekran,
+            "screen_id": screen_id,
+            "hashes_count": len(hashes),
+        },
+        db=cursor,
+        state_before=state_before,
+        trace_id=(_why_trace_id if "_why_trace_id" in globals() else None),
+    )
     print("Изменился экран - поэтому запускается функция переноса состояния")
     print(f'Новый нейм экрана в перенос состояния: {new_name_id_ekran}')
     # region agent log
@@ -696,6 +890,16 @@ def perenos_sostoyaniya():
     print(f"Сейчас такой экран id: {new_name_id_ekran}, старый экран такой: {old_ekran}")
     old_ekran = new_name_id_ekran
     print(f'Теперь старый и новый экраны одинаковые')
+    state_after = get_max_signal_point(cursor)
+    _ru_log.log(
+        event="ЭКРАН.СМЕНА.КОНЕЦ",
+        message="Перенос состояния завершён: old_ekran обновлён",
+        data={"old_ekran": old_ekran},
+        db=cursor,
+        state_before=state_before,
+        state_after=state_after,
+        trace_id=(_why_trace_id if "_why_trace_id" in globals() else None),
+    )
     # region agent log
     _agent_log(
         "H4",
@@ -842,6 +1046,13 @@ if __name__ == '__main__':
             # Раньше для цифровых команд (1..9) маркер не печатался, из-за чего они не подсвечивались.
             if vvedeno_luboe != "":
                 _why_trace_id = _why.next_trace_id()
+                _ru_log.log(
+                    event="ВВОД.ПОЛУЧЕН",
+                    message="Получен ввод пользователя (source=input)",
+                    data={"ввод": vvedeno_luboe, "длина": len(vvedeno_luboe)},
+                    db=cursor,
+                    trace_id=_why_trace_id,
+                )
                 _why.trace(
                     trace_id=_why_trace_id,
                     event="INPUT_READ",
@@ -894,6 +1105,13 @@ if __name__ == '__main__':
                 print(f'Сохраненo {n} записанных событий', end='\n\n')
             else:
                 print('Нет событий для записи', end='\n\n')
+            _ru_log.log(
+                event="ЗАПИСЬ.В_ТОКЕНЫ",
+                message="Записанные события преобразованы в токены для обработки",
+                data={"событий": n, "токенов": (len(vvedeno_luboe) if isinstance(vvedeno_luboe, list) else None)},
+                db=cursor,
+                trace_id=(_why_trace_id if "_why_trace_id" in globals() else None),
+            )
 
         else:
 
@@ -930,7 +1148,16 @@ if __name__ == '__main__':
                 При вводе - стирается первый введённый элемент задания (памяти) и состояние переводится 
                 на текущий экран."""
 
+            state_before = get_max_signal_point(cursor)
             tekushiy_id = poisk_id_s_max_signal_points()
+            _ru_log.log(
+                event="КОМАНДА.1.ПЛЮС",
+                message="Положительная реакция: очистка памяти и привязка к текущему экрану",
+                data={"tekushiy_id": tekushiy_id, "old_ekran": old_ekran},
+                db=cursor,
+                state_before=state_before,
+                trace_id=(_why_trace_id if "_why_trace_id" in globals() else None),
+            )
             obrabotka_symbol('poz')   # Положительная реакция будет отработана как символ
             # sozdat_svyaz(tekushiy_id, 1)
 
@@ -951,7 +1178,18 @@ if __name__ == '__main__':
 
             # чтобы не зависало при нажатии на 1 - добавил вместо функции переноса состояния сюда вручную перенос,
             # используя сохранённый старый экран
-            obrabotka_symbol(old_ekran)
+            if ensure_current_screen_before_input(context="command_1_bind_to_screen"):
+                obrabotka_symbol(old_ekran)
+            state_after = get_max_signal_point(cursor)
+            _ru_log.log(
+                event="КОМАНДА.1.ПЛЮС.КОНЕЦ",
+                message="Положительная реакция завершена",
+                data={"память_in_pamyat_name_len": len(in_pamyat_name), "online_svyaz_list_len": len(online_svyaz_list)},
+                db=cursor,
+                state_before=state_before,
+                state_after=state_after,
+                trace_id=(_why_trace_id if "_why_trace_id" in globals() else None),
+            )
             # region agent log
             _agent_log(
                 "H2",
@@ -1008,6 +1246,13 @@ if __name__ == '__main__':
             cursor.commit()  # Сохраняем изменения в БД
             sleep(0.5)
             rec.start()
+            _ru_log.log(
+                event="КОМАНДА.3.СТАРТ_ЗАПИСИ",
+                message="Включена запись мыши и клавиатуры (остановка по ESC)",
+                data={},
+                db=cursor,
+                trace_id=(_why_trace_id if "_why_trace_id" in globals() else None),
+            )
             # source = None  # Запись сохранится в месте ввода
             continue
 
@@ -1036,6 +1281,13 @@ if __name__ == '__main__':
             # Сохранение записи
             source = 'rec'  # Запись сохранится в месте ввода
             vvedeno_luboe = ''
+            _ru_log.log(
+                event="КОМАНДА.5.СОХРАНИТЬ_ЗАПИСЬ_В_ВВОД",
+                message="Следующий цикл преобразует rec.record в токены и обработает их",
+                data={"record_len": len(rec.record)},
+                db=cursor,
+                trace_id=(_why_trace_id if "_why_trace_id" in globals() else None),
+            )
             # continue
 
         elif vvedeno_luboe in [' 6', '6']:
@@ -1076,6 +1328,10 @@ if __name__ == '__main__':
                     "len": (len(vvedeno_luboe) if hasattr(vvedeno_luboe, "__len__") else None),
                 },
             )
+            if not ensure_current_screen_before_input(context="user_input_dispatch"):
+                vvedeno_luboe = ""
+                source = "input"
+                continue
             for vvedeno_luboe1 in vvedeno_luboe:
                 # 16.06.23 - связываем сущность одной команды с t0, обнуляем tp и t
                 # print(f"Рассматривается следующее введённое сообщение: {vvedeno_luboe1}")

@@ -18,6 +18,8 @@ class ScreenCapture:
         self._capture_thread: Optional[threading.Thread] = None
         self._selected_monitor: Optional[int] = None
         self._monitor_info: Optional[dict] = None
+        self._interval_s: float = 0.16
+        self._interval_lock = threading.Lock()
     
     @property
     def is_capturing(self) -> bool:
@@ -54,7 +56,7 @@ class ScreenCapture:
     
     def start(self, on_frame: Callable[[Image.Image], None], 
               on_error: Callable[[str], None],
-              interval: float = 0.1):
+              interval: float = 0.16):
         """
         Запуск захвата экрана.
         
@@ -66,30 +68,35 @@ class ScreenCapture:
         if self._selected_monitor is None:
             on_error("Монитор не выбран")
             return
-        
+
+        with self._interval_lock:
+            self._interval_s = float(max(0.001, interval))
         self._is_capturing = True
         self._capture_thread = threading.Thread(
             target=self._capture_loop,
-            args=(on_frame, on_error, interval),
+            args=(on_frame, on_error),
             daemon=True
         )
         self._capture_thread.start()
     
+    def set_interval(self, interval: float) -> None:
+        """Обновить интервал захвата (сек), можно вызывать во время захвата."""
+        with self._interval_lock:
+            self._interval_s = float(max(0.001, interval))
+
     def stop(self):
         """Остановка захвата экрана."""
         self._is_capturing = False
         self._monitor_info = None
     
     def _capture_loop(self, on_frame: Callable[[Image.Image], None],
-                      on_error: Callable[[str], None],
-                      interval: float):
+                      on_error: Callable[[str], None]):
         """
         Внутренний цикл захвата.
         
         Args:
             on_frame: Callback для кадра
             on_error: Callback для ошибок
-            interval: Интервал между захватами
         """
         # Создаём экземпляр mss в этом потоке (thread-local ресурсы)
         with mss.mss() as sct:
@@ -107,10 +114,11 @@ class ScreenCapture:
                         "raw", 
                         "BGRX"
                     )
-                    img = img.convert("RGB")
                     
                     on_frame(img)
-                    time.sleep(interval)
+                    with self._interval_lock:
+                        interval_s = self._interval_s
+                    time.sleep(interval_s)
                     
                 except Exception as e:
                     on_error(str(e))
