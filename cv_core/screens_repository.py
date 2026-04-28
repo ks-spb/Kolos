@@ -100,6 +100,7 @@ class ScreensRepository:
 
         best: ScreenMatch | None = None
         new_size = len(object_hashes)
+        considered: list[dict] = []
         for screen_id, overlap in rows:
             old_size_row = self._db.execute(
                 "SELECT objects_count FROM screens WHERE screen_id = ?",
@@ -114,6 +115,18 @@ class ScreensRepository:
                 new_size=new_size,
                 old_size=old_size,
             )
+            if len(considered) < 8:
+                considered.append(
+                    {
+                        "screen_id": cand.screen_id,
+                        "overlap": cand.overlap,
+                        "old_size": cand.old_size,
+                        "new_size": cand.new_size,
+                        "recall": cand.recall,
+                        "precision": cand.precision,
+                        "passes_threshold": (cand.recall >= recall_min and cand.precision >= precision_min),
+                    }
+                )
             if cand.recall < recall_min or cand.precision < precision_min:
                 continue
             if best is None:

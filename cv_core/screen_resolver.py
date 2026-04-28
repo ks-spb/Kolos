@@ -66,15 +66,28 @@ def _filter_volatile_objects(
     window: int,
     min_hits: int,
 ) -> set[str]:
+    """
+    Вернуть "стабильные" объекты для ТЕКУЩЕГО кадра.
+
+    Важно: нельзя возвращать объекты, которых нет в текущем кадре — иначе при смене экрана
+    в окно стабилизации начинают "протекать" хэши из предыдущего экрана и резолв дрожит.
+    """
     if not frames:
+        return set()
+    raw = set(frames[-1])  # текущий кадр
+    if not raw:
         return set()
     w = max(1, int(window))
     k = max(1, int(min_hits))
+    if w <= 1 and k <= 1:
+        return raw
     recent = list(frames)[-w:]
     counts: Counter[str] = Counter()
     for s in recent:
         counts.update(s)
-    return {h for h, c in counts.items() if c >= k}
+    stable_now = {h for h in raw if counts.get(h, 0) >= k}
+    # Если фильтр оказался слишком жёстким — не возвращаем пустоту (это ломает резолв).
+    return stable_now or raw
 
 
 def _thresholds(cfg: ResolverConfig) -> tuple[tuple[float, float], tuple[float, float]]:
@@ -145,10 +158,8 @@ class ScreenResolver:
             window=self._cfg.volatile_window,
             min_hits=self._cfg.volatile_min_hits,
         )
-        # Always keep at least the current frame's objects; volatile filter is only for "extras".
-        # This prevents "empty" frames from freezing the resolver.
-        if raw:
-            filtered |= raw
+        # NOTE: _filter_volatile_objects уже гарантирует, что filtered ⊆ raw (или == raw fallback),
+        # поэтому "подмешивать" raw нельзя — это снова включит шум.
 
         (stay_recall_min, stay_precision_min), (switch_recall_min, switch_precision_min) = _thresholds(
             self._cfg
