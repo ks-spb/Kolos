@@ -89,6 +89,17 @@ class ScreenCaptureApp:
         self.photo = None
         self.peaks_photo = None
 
+        # UI render throttling (ускорение без влияния на качество детекции):
+        # - логика обработки/распознавания работает как прежде
+        # - ограничиваем только частоту перерисовки превью (Tk)
+        self._render_interval_screenshot_s: float = 0.25  # 4 FPS
+        self._render_interval_peaks_s: float = 0.25  # 4 FPS
+        self._last_render_screenshot_time: float = 0.0
+        self._last_render_peaks_time: float = 0.0
+        self._screenshot_canvas_image_id: int | None = None
+        self._peaks_canvas_image_id: int | None = None
+        self._screenshot_preview_resample = Image.Resampling.BILINEAR
+
         # Объекты на Пиках (логика без отдельного экрана)
         self._detected_objects: list[DetectedObject] = []
         # Два словаря подписей: полные (исторические) и уменьшенные (используются для определения)
@@ -989,37 +1000,36 @@ class ScreenCaptureApp:
         
         img_width, img_height = self.current_image.size
         
-        # Вычисляем масштаб
-        scale_x = canvas_width / img_width
-        scale_y = canvas_height / img_height
-        scale = min(scale_x, scale_y, 1.0)
+        # Вычисляем геометрию отображения всегда (нужно для корректной логики наведения),
+        # даже если пропускаем тяжёлый рендер превью.
+        scale = self._compute_display_scale(canvas_width, canvas_height, img_width, img_height)
         self.current_scale = scale
-        
-        if scale < 1.0:
-            new_width = int(img_width * scale)
-            new_height = int(img_height * scale)
-            display_img = self.current_image.resize(
-                (new_width, new_height),
-                Image.Resampling.LANCZOS
-            )
-        else:
-            display_img = self.current_image
-        
-        self.photo = ImageTk.PhotoImage(display_img)
-        
-        self.canvas.delete("image")
-        self.canvas.create_image(0, 0, anchor="nw", image=self.photo, tags="image")
-        self.canvas.config(scrollregion=self.canvas.bbox("all"))
-        
+        display_size = self._compute_display_size(img_width, img_height, scale)
+
+        # Логика наведения/step1 не должна зависеть от частоты перерисовки UI.
+        self._process_mouse_over_object(display_size)
+
+        # Тяжёлый рендер превью скриншота — по отдельному троттлингу
+        if self._should_render_screenshot():
+            display_img = self._build_screenshot_preview(scale, display_size)
+            self.photo = ImageTk.PhotoImage(display_img)
+            if self._screenshot_canvas_image_id is None:
+                self._screenshot_canvas_image_id = self.canvas.create_image(
+                    0, 0, anchor="nw", image=self.photo, tags="image"
+                )
+            else:
+                self.canvas.itemconfig(self._screenshot_canvas_image_id, image=self.photo)
+            self.canvas.config(scrollregion=self.canvas.bbox("all"))
+            self.status_var.set(f"Отображен скриншот {display_size[0]}x{display_size[1]}")
+
         # Обновляем пики (только рендер уже вычисленного full-res результата)
         self._update_peaks_display()
-        self._process_mouse_over_object(display_img.size)
-
-        self.status_var.set(f"Отображен скриншот {display_img.size[0]}x{display_img.size[1]}")
     
     def _update_peaks_display(self):
         """Обновление пиков: fit-to-canvas рендер готового full-res изображения."""
         if self.current_peaks_image is None:
+            return
+        if not self._should_render_peaks():
             return
         peaks_img = self.current_peaks_image
         # Визуализация всегда fit-to-canvas; peaks_scale используется только для вычислений.
@@ -1033,11 +1043,57 @@ class ScreenCaptureApp:
         peaks_preview = peaks_img.resize((preview_w, preview_h), Image.Resampling.NEAREST)
         self.peaks_photo = ImageTk.PhotoImage(peaks_preview)
         
-        self.peaks_canvas.delete("image")
-        self.peaks_canvas.create_image(0, 0, anchor="nw", image=self.peaks_photo, tags="image")
+        if self._peaks_canvas_image_id is None:
+            self._peaks_canvas_image_id = self.peaks_canvas.create_image(
+                0, 0, anchor="nw", image=self.peaks_photo, tags="image"
+            )
+        else:
+            self.peaks_canvas.itemconfig(self._peaks_canvas_image_id, image=self.peaks_photo)
         # Лупа рисуется до _update_display; поднимаем её элементы поверх изображения пиков
         for tag in ("loupe", "loupe_border", "loupe_crosshair"):
             self.peaks_canvas.tag_raise(tag)
+
+    def _compute_display_scale(
+        self,
+        canvas_width: int,
+        canvas_height: int,
+        img_width: int,
+        img_height: int,
+    ) -> float:
+        """Масштаб предпросмотра скриншота (0..1)."""
+        scale_x = canvas_width / img_width
+        scale_y = canvas_height / img_height
+        return float(min(scale_x, scale_y, 1.0))
+
+    def _compute_display_size(self, img_width: int, img_height: int, scale: float) -> tuple[int, int]:
+        """Размер предпросмотра (в пикселях canvas) для заданного масштаба."""
+        if scale < 1.0:
+            return (max(1, int(img_width * scale)), max(1, int(img_height * scale)))
+        return (int(img_width), int(img_height))
+
+    def _build_screenshot_preview(
+        self, scale: float, display_size: tuple[int, int]
+    ) -> Image.Image:
+        """Построить PIL изображение предпросмотра для canvas."""
+        if scale < 1.0:
+            return self.current_image.resize(display_size, self._screenshot_preview_resample)
+        return self.current_image
+
+    def _should_render_screenshot(self) -> bool:
+        """Решить, нужно ли перерисовать предпросмотр скриншота сейчас."""
+        now = time.time()
+        if now - self._last_render_screenshot_time < self._render_interval_screenshot_s:
+            return False
+        self._last_render_screenshot_time = now
+        return True
+
+    def _should_render_peaks(self) -> bool:
+        """Решить, нужно ли перерисовать предпросмотр пиков сейчас."""
+        now = time.time()
+        if now - self._last_render_peaks_time < self._render_interval_peaks_s:
+            return False
+        self._last_render_peaks_time = now
+        return True
     
     def _save_peaks_image(self):
         """Сохранение изображения пиков с лупой."""

@@ -105,6 +105,24 @@ class ScreenResolver:
         self._current_objects: set[str] | None = None
         self._current_image_hash: str | None = None
 
+    def _dbg_dd836d(self, hypothesis_id: str, location: str, message: str, data: dict) -> None:
+        """NDJSON debug log for session dd836d (no secrets)."""
+        try:
+            import json, time  # noqa: E401
+            payload = {
+                "sessionId": "dd836d",
+                "runId": "pre-fix",
+                "hypothesisId": hypothesis_id,
+                "location": location,
+                "message": message,
+                "data": data,
+                "timestamp": int(time.time() * 1000),
+            }
+            with open("debug-dd836d.log", "a", encoding="utf-8") as f:
+                f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+        except Exception:
+            pass
+
     @property
     def current_screen_id(self) -> int | None:
         return self._current_screen_id
@@ -136,6 +154,25 @@ class ScreenResolver:
             self._cfg
         )
 
+        # region agent log
+        self._dbg_dd836d(
+            "H4",
+            "cv_core/screen_resolver.py:ScreenResolver.update:entry",
+            "resolver update entry",
+            {
+                "raw_count": len(raw),
+                "filtered_count": len(filtered),
+                "window_size": int(self._cfg.window_size),
+                "stable_required": int(self._cfg.stable_required),
+                "stable_delay_sec": float(self._cfg.stable_delay_sec),
+                "switch_recall_min": float(switch_recall_min),
+                "switch_precision_min": float(switch_precision_min),
+                "candidate_exists": self._candidate_objects is not None,
+                "current_exists": self._current_screen_id is not None,
+            },
+        )
+        # endregion
+
         # Strongest hysteresis: keep current screen if image anchor is close enough.
         if (
             self._cfg.use_image_anchor
@@ -161,12 +198,61 @@ class ScreenResolver:
             # Treat the initial candidate frame as stable against itself,
             # so small-window configs can resolve in 2 calls (backward-friendly).
             self._stable_flags.append(True)
+            # region agent log
+            self._dbg_dd836d(
+                "H4",
+                "cv_core/screen_resolver.py:ScreenResolver.update:init_candidate",
+                "initialized candidate objects",
+                {"candidate_count": len(self._candidate_objects), "stable_flags": list(self._stable_flags)},
+            )
+            # endregion
             return None
 
         overlap, old_size, new_size = _overlap_sizes(self._candidate_objects, filtered)
         recall, precision = _recall_precision(overlap, old_size, new_size)
         stable_frame = recall >= switch_recall_min and precision >= switch_precision_min
         self._stable_flags.append(bool(stable_frame))
+
+        # region agent log
+        self._dbg_dd836d(
+            "H4",
+            "cv_core/screen_resolver.py:ScreenResolver.update:stability",
+            "stability computed",
+            {
+                "overlap": int(overlap),
+                "old_size": int(old_size),
+                "new_size": int(new_size),
+                "recall": float(recall),
+                "precision": float(precision),
+                "stable_frame": bool(stable_frame),
+                "stable_flags": list(self._stable_flags),
+            },
+        )
+        # endregion
+
+        # Если новый кадр "расширил" множество (кандидат ⊂ filtered),
+        # то precision падает из-за роста new_size, хотя recall остаётся высоким.
+        # В этом случае обновляем кандидата до filtered и заново набираем стабильность.
+        if (
+            not stable_frame
+            and recall >= switch_recall_min
+            and precision < switch_precision_min
+            and self._candidate_objects is not None
+            and self._candidate_objects.issubset(filtered)
+        ):
+            self._candidate_objects = set(filtered)
+            self._candidate_since = now
+            self._stable_flags.clear()
+            self._stable_flags.append(True)
+            # region agent log
+            self._dbg_dd836d(
+                "H4",
+                "cv_core/screen_resolver.py:ScreenResolver.update:expand_candidate",
+                "expanded candidate to match larger filtered set",
+                {"new_candidate_count": len(self._candidate_objects), "old_size": int(old_size), "new_size": int(new_size)},
+            )
+            # endregion
+            return None
 
         # N-of-M stabilization: don't reset on a single bad frame.
         m = max(1, int(self._cfg.window_size))
@@ -178,6 +264,14 @@ class ScreenResolver:
             self._candidate_objects = set(filtered)
             self._candidate_since = now
             self._stable_flags.clear()
+            # region agent log
+            self._dbg_dd836d(
+                "H4",
+                "cv_core/screen_resolver.py:ScreenResolver.update:reset_candidate",
+                "candidate reset due to insufficient stable frames",
+                {"m": m, "n": n},
+            )
+            # endregion
             return None
 
         # Множество уже похоже на кандидата достаточно; ждём задержку стабильности
@@ -186,8 +280,28 @@ class ScreenResolver:
             return None
 
         if (now - self._candidate_since) < self._cfg.stable_delay_sec:
+            # region agent log
+            self._dbg_dd836d(
+                "H4",
+                "cv_core/screen_resolver.py:ScreenResolver.update:delay_wait",
+                "waiting stable_delay_sec",
+                {"age_sec": float(now - self._candidate_since)},
+            )
+            # endregion
             return None
         if len(self._stable_flags) < n or sum(1 for x in self._stable_flags if x) < n:
+            # region agent log
+            self._dbg_dd836d(
+                "H4",
+                "cv_core/screen_resolver.py:ScreenResolver.update:not_enough_stable",
+                "not enough stable frames yet",
+                {
+                    "stable_len": len(self._stable_flags),
+                    "stable_true": sum(1 for x in self._stable_flags if x),
+                    "n": n,
+                },
+            )
+            # endregion
             return None
 
         # Кандидат стабилен: резолвим в БД (поиск похожего экрана с теми же порогами)
@@ -202,6 +316,14 @@ class ScreenResolver:
             self._current_screen_id = best.screen_id
             self._current_objects = set(filtered)
             self._current_image_hash = str(image_hash) if image_hash else None
+            # region agent log
+            self._dbg_dd836d(
+                "H4",
+                "cv_core/screen_resolver.py:ScreenResolver.update:resolved_existing",
+                "resolved to existing screen",
+                {"screen_id": int(best.screen_id), "recall": float(best.recall), "precision": float(best.precision)},
+            )
+            # endregion
             return best.screen_id
 
         created = self._repo.create_screen(
@@ -212,5 +334,13 @@ class ScreenResolver:
         self._current_screen_id = created
         self._current_objects = set(filtered)
         self._current_image_hash = str(image_hash) if image_hash else None
+        # region agent log
+        self._dbg_dd836d(
+            "H4",
+            "cv_core/screen_resolver.py:ScreenResolver.update:created_new",
+            "created new screen",
+            {"screen_id": int(created), "objects_count": len(filtered)},
+        )
+        # endregion
         return created
 

@@ -29,6 +29,25 @@ screen.VERBOSE = True   #Чтобы выключить консоль вписа
 _ru_log = RunLoggerRU.from_env()
 
 
+def _dbg_dd836d(hypothesis_id: str, location: str, message: str, data: dict) -> None:
+    """NDJSON debug log for session dd836d (no secrets)."""
+    try:
+        import json, time  # noqa: E401
+        payload = {
+            "sessionId": "dd836d",
+            "runId": "pre-fix",
+            "hypothesisId": hypothesis_id,
+            "location": location,
+            "message": message,
+            "data": data,
+            "timestamp": int(time.time() * 1000),
+        }
+        with open("debug-dd836d.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
+
+
 def _agent_log(hypothesis_id: str, location: str, message: str, data: dict) -> None:
     """NDJSON debug log for session 032654 (no secrets)."""
     try:
@@ -46,6 +65,130 @@ def _agent_log(hypothesis_id: str, location: str, message: str, data: dict) -> N
             f.write(json.dumps(payload, ensure_ascii=False) + "\n")
     except Exception:
         pass
+
+
+_pending_inputs: list[dict] = []
+
+
+def _enqueue_pending_input(*, raw, context: str) -> None:
+    """Ставит ввод в очередь до определения экрана (без секретов)."""
+    try:
+        item = {"raw": raw, "context": context, "ts_ms": int(time.time() * 1000)}
+        _pending_inputs.append(item)
+        # region agent log
+        _dbg_dd836d(
+            "H5",
+            "main.py:_enqueue_pending_input",
+            "input queued until screen resolved",
+            {"context": context, "raw_type": type(raw).__name__, "raw_len": (len(raw) if hasattr(raw, "__len__") else None), "queue_len": len(_pending_inputs)},
+        )
+        # endregion
+    except Exception:
+        pass
+
+
+def _dispatch_input_symbols(*, vvedeno_luboe, why, trace_id: str | None) -> None:
+    """Обрабатывает ввод (строка или list токенов) как раньше, но переиспользуемо для очереди."""
+    global in_pamyat_name
+    bil_klick = False
+    try:
+        why.trace(
+            trace_id=trace_id,
+            event="INPUT_DISPATCH",
+            why="Обработка пользовательского ввода начата",
+            data={
+                "is_list": isinstance(vvedeno_luboe, list),
+                "len": (len(vvedeno_luboe) if hasattr(vvedeno_luboe, "__len__") else None),
+            },
+        )
+    except Exception:
+        pass
+
+    for vvedeno_luboe1 in vvedeno_luboe:
+        if '.' and 'click' in vvedeno_luboe1:
+            try:
+                why.trace(
+                    trace_id=trace_id,
+                    event="INPUT_CLICK_SPLIT",
+                    why="Ввод содержит 'click' — разбиваем по '.' и обрабатываем части",
+                    data={"chunk": vvedeno_luboe1},
+                    lvl=2,
+                )
+            except Exception:
+                pass
+            for vvedeno_luboe2 in vvedeno_luboe1.split('.'):
+                try:
+                    why.trace(
+                        trace_id=trace_id,
+                        event="SYMBOL",
+                        why="Передаём часть клика в obrabotka_symbol()",
+                        data={"symbol": vvedeno_luboe2},
+                        lvl=3,
+                    )
+                except Exception:
+                    pass
+                obrabotka_symbol(vvedeno_luboe2)
+            bil_klick = True
+        else:
+            try:
+                why.trace(
+                    trace_id=trace_id,
+                    event="SYMBOL",
+                    why="Передаём элемент ввода в obrabotka_symbol()",
+                    data={"symbol": vvedeno_luboe1},
+                    lvl=3,
+                )
+            except Exception:
+                pass
+            obrabotka_symbol(vvedeno_luboe1)
+            bil_klick = False
+
+    if not isinstance(vvedeno_luboe, list):
+        for vvedeno_luboe_split in vvedeno_luboe.split():
+            in_pamyat_name.append(vvedeno_luboe_split)
+            try:
+                why.trace(
+                    trace_id=trace_id,
+                    event="MEMORY_APPEND",
+                    why="Добавили токен ввода в краткосрочную память (in_pamyat_name)",
+                    data={"token": vvedeno_luboe_split, "in_pamyat_name_len": len(in_pamyat_name)},
+                    lvl=2,
+                )
+            except Exception:
+                pass
+
+    # region agent log
+    _dbg_dd836d(
+        "H5",
+        "main.py:_dispatch_input_symbols",
+        "input dispatched into obrabotka_symbol",
+        {"raw_type": type(vvedeno_luboe).__name__, "queued_left": len(_pending_inputs), "old_ekran": globals().get("old_ekran", None), "bil_klick": bil_klick},
+    )
+    # endregion
+
+
+def _drain_pending_inputs(*, why, trace_id: str | None) -> None:
+    """Если экран определён — выгрузить очередь во вход."""
+    global _pending_inputs
+    if not _pending_inputs:
+        return
+    if not _is_valid_screen_token(globals().get("old_ekran", None)):
+        return
+
+    items = list(_pending_inputs)
+    _pending_inputs = []
+    # region agent log
+    _dbg_dd836d(
+        "H5",
+        "main.py:_drain_pending_inputs",
+        "draining pending inputs",
+        {"count": len(items), "old_ekran": globals().get("old_ekran", None)},
+    )
+    # endregion
+    for it in items:
+        raw = it.get("raw")
+        if raw:
+            _dispatch_input_symbols(vvedeno_luboe=raw, why=why, trace_id=trace_id)
 
 
 def stiranie_pamyati():
@@ -722,9 +865,29 @@ def tekyshiy_ekran():
         new_name_id_ekran = old_ekran
     else:
         if not screen_capture_enabled:
+            # region agent log
+            _dbg_dd836d(
+                "H1",
+                "main.py:tekyshiy_ekran",
+                "screen capture disabled; cannot compute screen point",
+                {"old_ekran": old_ekran},
+            )
+            # endregion
             return None
         id_ekran = screen.screenshot_hash
         if not id_ekran:
+            # region agent log
+            _dbg_dd836d(
+                "H2",
+                "main.py:tekyshiy_ekran",
+                "missing screen.screenshot_hash; cannot compute screen point",
+                {
+                    "old_ekran": old_ekran,
+                    "last_update": getattr(screen, "last_update", None),
+                    "screenshot_is_none": getattr(screen, "screenshot", None) is None,
+                },
+            )
+            # endregion
             return None
         new_name_id_ekran = "id_ekran_" + str(id_ekran)
     # print(f'Новый нейм экрана: {new_name_id_ekran}')
@@ -763,6 +926,23 @@ def ensure_current_screen_before_input(*, context: str) -> bool:
     """
     global old_ekran
 
+    # region agent log
+    _dbg_dd836d(
+        "H1",
+        "main.py:ensure_current_screen_before_input:entry",
+        "ensure current screen before input",
+        {
+            "context": context,
+            "old_ekran": old_ekran,
+            "screen_capture_enabled": globals().get("screen_capture_enabled", None),
+            "screen_resolver_exists": globals().get("_screen_resolver", None) is not None,
+            "last_update": getattr(screen, "last_update", None),
+            "screenshot_is_none": getattr(screen, "screenshot", None) is None,
+            "screenshot_hash": getattr(screen, "screenshot_hash", None),
+        },
+    )
+    # endregion
+
     if _is_valid_screen_token(old_ekran):
         return True
 
@@ -773,6 +953,20 @@ def ensure_current_screen_before_input(*, context: str) -> bool:
         # guard не должен ронять основной цикл
         pass
 
+    # region agent log
+    _dbg_dd836d(
+        "H2",
+        "main.py:ensure_current_screen_before_input:after_perenos",
+        "after perenos_sostoyaniya",
+        {
+            "context": context,
+            "old_ekran": old_ekran,
+            "last_update": getattr(screen, "last_update", None),
+            "screenshot_hash": getattr(screen, "screenshot_hash", None),
+        },
+    )
+    # endregion
+
     if _is_valid_screen_token(old_ekran):
         return True
 
@@ -781,6 +975,15 @@ def ensure_current_screen_before_input(*, context: str) -> bool:
         screen_point_id = tekyshiy_ekran()
     except Exception:
         screen_point_id = None
+
+    # region agent log
+    _dbg_dd836d(
+        "H3",
+        "main.py:ensure_current_screen_before_input:after_tekyshiy_ekran",
+        "tekyshiy_ekran result",
+        {"context": context, "screen_point_id": screen_point_id, "old_ekran": old_ekran},
+    )
+    # endregion
 
     if _try_restore_old_ekran_from_db_point(screen_point_id):
         return True
@@ -805,14 +1008,51 @@ def perenos_sostoyaniya():
     global old_ekran
     global _screen_resolver
     if not screen_capture_enabled:
+        # region agent log
+        _dbg_dd836d(
+            "H1",
+            "main.py:perenos_sostoyaniya",
+            "screen capture disabled; skipping resolver update",
+            {"old_ekran": old_ekran},
+        )
+        # endregion
         return
     # Забираем свежие данные через Screen
-    if not screen.get_screen():
-        # при необходимости — дождаться пакета
-        for _ in range(20):  # ~2 c
+    got = screen.get_screen()
+    # region agent log
+    _dbg_dd836d(
+        "H2",
+        "main.py:perenos_sostoyaniya",
+        "screen.get_screen initial",
+        {
+            "got": bool(got),
+            "last_update": getattr(screen, "last_update", None),
+            "screenshot_is_none": getattr(screen, "screenshot", None) is None,
+        },
+    )
+    # endregion
+
+    if not got:
+        # при необходимости — дождаться пакета (увеличено, чтобы первый кадр точно успел прийти)
+        waits = 0
+        for _ in range(60):  # ~6 c
             if screen.get_screen():
                 break
             time.sleep(0.1)
+            waits += 1
+
+        # region agent log
+        _dbg_dd836d(
+            "H2",
+            "main.py:perenos_sostoyaniya",
+            "screen.get_screen waited",
+            {
+                "waits": waits,
+                "last_update": getattr(screen, "last_update", None),
+                "screenshot_is_none": getattr(screen, "screenshot", None) is None,
+            },
+        )
+        # endregion
 
     # теперь всё берём из screen
     # Экран = множество объектов; отбрасываем слишком маленькие bbox (мусор детектора).
@@ -856,6 +1096,24 @@ def perenos_sostoyaniya():
             frame_size=frame_size,
             monitor_idx=monitor_idx,
         )
+
+    # region agent log
+    _dbg_dd836d(
+        "H3",
+        "main.py:perenos_sostoyaniya",
+        "resolver update result",
+        {
+            "resolver_exists": _screen_resolver is not None,
+            "hashes_count": len(hashes) if isinstance(hashes, set) else None,
+            "frame_size": frame_size,
+            "monitor_idx": monitor_idx if "monitor_idx" in locals() else None,
+            "img_hash_is_none": (img_hash is None) if "img_hash" in locals() else None,
+            "screen_id": screen_id,
+            "old_ekran": old_ekran,
+        },
+    )
+    # endregion
+
     if screen_id is None:
         return
 
@@ -908,6 +1166,18 @@ def perenos_sostoyaniya():
         {"old_ekran_after": old_ekran},
     )
     # endregion
+    try:
+        # region agent log
+        _dbg_dd836d(
+            "H5",
+            "main.py:perenos_sostoyaniya",
+            "attempt drain pending inputs after screen resolve",
+            {"old_ekran": old_ekran, "queue_len": len(_pending_inputs)},
+        )
+        # endregion
+        _drain_pending_inputs(why=_why, trace_id=(_why_trace_id if "_why_trace_id" in globals() else None))
+    except Exception:
+        pass
     # else:
         # print('!!!!!!!!!!!!!ВНИМАНИЕ!!!!!!ЭКРАН НЕ ИЗМЕНИЛСЯ!!!!!!!!!!!')
 
@@ -1318,69 +1588,12 @@ if __name__ == '__main__':
 
 
         elif vvedeno_luboe != "":
-            bil_klick = False
-            _why.trace(
-                trace_id=_why_trace_id,
-                event="INPUT_DISPATCH",
-                why="Обработка пользовательского ввода начата",
-                data={
-                    "is_list": isinstance(vvedeno_luboe, list),
-                    "len": (len(vvedeno_luboe) if hasattr(vvedeno_luboe, "__len__") else None),
-                },
-            )
             if not ensure_current_screen_before_input(context="user_input_dispatch"):
+                _enqueue_pending_input(raw=vvedeno_luboe, context="user_input_dispatch")
                 vvedeno_luboe = ""
                 source = "input"
                 continue
-            for vvedeno_luboe1 in vvedeno_luboe:
-                # 16.06.23 - связываем сущность одной команды с t0, обнуляем tp и t
-                # print(f"Рассматривается следующее введённое сообщение: {vvedeno_luboe1}")
-                if '.' and 'click' in vvedeno_luboe1:
-                    print(f"Сообщение содержит и точку и click: {vvedeno_luboe1}")
-                    _why.trace(
-                        trace_id=_why_trace_id,
-                        event="INPUT_CLICK_SPLIT",
-                        why="Ввод содержит 'click' — разбиваем по '.' и обрабатываем части",
-                        data={"chunk": vvedeno_luboe1},
-                        lvl=2,
-                    )
-                    # для разрыва сущности, если происходит нажатие кнопок, а затем клик мышкой
-                    # Если клик не находится в начале списка - нужно принудительно отделить его от предыдущих сущностей
-                    for vvedeno_luboe2 in vvedeno_luboe1.split('.'):
-                        _why.trace(
-                            trace_id=_why_trace_id,
-                            event="SYMBOL",
-                            why="Передаём часть клика в obrabotka_symbol()",
-                            data={"symbol": vvedeno_luboe2},
-                            lvl=3,
-                        )
-                        obrabotka_symbol(vvedeno_luboe2)
-                    bil_klick = True
-                else:
-                    # print(f'Сообщение не содержит точку или click: {vvedeno_luboe1}')
-                    _why.trace(
-                        trace_id=_why_trace_id,
-                        event="SYMBOL",
-                        why="Передаём элемент ввода в obrabotka_symbol()",
-                        data={"symbol": vvedeno_luboe1},
-                        lvl=3,
-                    )
-                    obrabotka_symbol(vvedeno_luboe1)
-                    bil_klick = False
-            # 12.01.23 - Если введено не list (т.е. не содержит клик) - то сохранить во входящих
-            # print(f'vvedeno_luboe = {vvedeno_luboe}')
-            if not isinstance(vvedeno_luboe, list):
-                for vvedeno_luboe_split in vvedeno_luboe.split():
-                    print(f"Добавляется в in_pamyat_name {vvedeno_luboe_split}")
-                    in_pamyat_name.append(vvedeno_luboe_split)
-                    _why.trace(
-                        trace_id=_why_trace_id,
-                        event="MEMORY_APPEND",
-                        why="Добавили токен ввода в краткосрочную память (in_pamyat_name)",
-                        data={"token": vvedeno_luboe_split, "in_pamyat_name_len": len(in_pamyat_name)},
-                        lvl=2,
-                    )
-            print(f'in_pamyat_name содержит следующее: {in_pamyat_name}')
+            _dispatch_input_symbols(vvedeno_luboe=vvedeno_luboe, why=_why, trace_id=_why_trace_id)
             vvedeno_luboe = ''
             # print("Было введено vvedeno_luboe: ", vvedeno_luboe)
             # schetchik = 0   # 07.11.23 - добавлено обнуление, чтобы не перешло состояние к старому экрану
