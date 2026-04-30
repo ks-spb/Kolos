@@ -3,3 +3,11 @@
 /elements_img/
 /Li_db_v1_4.db
 /.gitignore
+
+__pycache__/
+*.pyc
+*.log
+*.db-journal
+diagram_output.png
+/record/
+/Glaz/object_screenshots/

@@ -1237,8 +1237,9 @@ if __name__ == '__main__':
     ensure_script_directory_is_cwd(__file__)
     old_ekran = 0
     _screen_resolver = None
-    # Захват экрана по умолчанию ВКЛЮЧЕН. Выключение: установить KOLOS_CAPTURE=0
-    screen_capture_enabled = os.environ.get("KOLOS_CAPTURE", "1").strip().lower() in ("1", "true", "yes", "y", "on")
+    # Захват/определение экранов по умолчанию ВЫКЛЮЧЕН.
+    # Для включения: установить KOLOS_CAPTURE=1
+    screen_capture_enabled = os.environ.get("KOLOS_CAPTURE", "0").strip().lower() in ("1", "true", "yes", "y", "on")
     # Запуск процесса наблюдения за экраном
     if screen_capture_enabled:
         print('Запуск процесса наблюдения за экраном')
