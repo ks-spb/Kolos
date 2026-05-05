@@ -14,6 +14,7 @@ import os
 
 from PIL.ImageStat import Global
 
+from cv_core.glaz_ipc import read_scan_results, write_scan_request
 from launch_workdir import ensure_script_directory_is_cwd
 from db import Database
 from mous_kb_record import rec, play
@@ -70,6 +71,42 @@ def _agent_log(hypothesis_id: str, location: str, message: str, data: dict) -> N
 
 
 _pending_inputs: list[dict] = []
+_pending_scan_request_id: str | None = None
+_printed_scan_result_for_request_id: str | None = None
+_printed_scan_requested_for_request_id: str | None = None
+_scan_poll_attempts: int = 0
+_scan_poll_attempts_max: int = 40  # safety: чтобы не висеть в ожидании бесконечно
+
+
+def _print_scan_results_if_ready(*, request_id: str) -> bool:
+    """
+    Попытаться вывести результаты предскана в терминал Kolos.
+
+    Returns:
+        True если результаты для request_id найдены и выведены; иначе False.
+    """
+    global _printed_scan_result_for_request_id
+    try:
+        res = read_scan_results(max_age_sec=10.0)
+    except Exception:
+        res = None
+    if res is None or res.request_id != request_id:
+        return False
+
+    print("Найдены объекты (после создания связи):")
+    if not res.items:
+        print("  (объекты не найдены)")
+    for it in res.items:
+        rid = int(it.refined_id)
+        cnt = int(it.count)
+        is_new = bool(it.is_new)
+        if is_new:
+            print(f"  ID={rid} x{cnt} (новый)")
+        else:
+            # Зелёный цвет для известного объекта
+            print(f"\033[32m  ID={rid} x{cnt} (известный)\033[0m")
+    _printed_scan_result_for_request_id = request_id
+    return True
 
 
 def _enqueue_pending_input(*, raw, context: str) -> None:
@@ -314,6 +351,18 @@ def sozdat_svyaz(id_start, id_finish):
     )
     print(f'Создана связь м/у id_start = {id_start} и id_finish {id_finish}')
     cursor.execute("INSERT INTO svyazi VALUES (?, ?, ?)", (new_id_svyazi, id_start, id_finish))
+    # IPC-триггер: запросить Glaz предскан объектов (best-effort)
+    global _pending_scan_request_id, _printed_scan_requested_for_request_id, _scan_poll_attempts
+    try:
+        rid = write_scan_request(reason="svyazi_insert")
+    except Exception:
+        rid = None
+    if rid:
+        _pending_scan_request_id = rid
+        _printed_scan_requested_for_request_id = None
+        _scan_poll_attempts = 0
+        # Сообщаем в терминал сразу (результаты придут асинхронно)
+        print(f"Запрошено сканирование объектов (request_id={rid})")
 
 
 def sozdat_new_tochky(name, type, signal):
@@ -945,6 +994,10 @@ def ensure_current_screen_before_input(*, context: str) -> bool:
     )
     # endregion
 
+    # В режиме без экранов не блокируем ввод из-за отсутствия old_ekran.
+    if not globals().get("screen_capture_enabled", True):
+        return True
+
     if _is_valid_screen_token(old_ekran):
         return True
 
@@ -1337,6 +1390,20 @@ if __name__ == '__main__':
         if screen.last_update != last_update_screen:
             last_update_screen = screen.last_update
             perenos_sostoyaniya()
+
+        # Попытаться вывести результаты предскана по последнему request_id (если есть)
+        if _pending_scan_request_id and _printed_scan_result_for_request_id != _pending_scan_request_id:
+            if _printed_scan_requested_for_request_id != _pending_scan_request_id:
+                _printed_scan_requested_for_request_id = _pending_scan_request_id
+                print(f"(Ожидаем результаты сканирования объектов, request_id={_pending_scan_request_id})")
+            if _scan_poll_attempts < _scan_poll_attempts_max:
+                _scan_poll_attempts += 1
+                if _print_scan_results_if_ready(request_id=_pending_scan_request_id):
+                    # Успешно вывели — больше не ждём.
+                    _pending_scan_request_id = None
+            else:
+                print(f"ВНИМАНИЕ: результаты сканирования не получены за ожидание (request_id={_pending_scan_request_id})")
+                _pending_scan_request_id = None
 
         if source == 'input':
             # Ввод строки с клавиатуры, запись по-буквенно

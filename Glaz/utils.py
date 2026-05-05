@@ -50,6 +50,57 @@ def set_cursor_pos(x: int, y: int) -> None:
     ctypes.windll.user32.SetCursorPos(int(x), int(y))
 
 
+def decide_processing_schedule(
+    *,
+    now: float,
+    cursor_pos: tuple[int, int],
+    recognition_is_idle: bool,
+    cursor_stable_delay_s: float,
+    idle_processing_period_s: float,
+    last_cursor_pos: tuple[int, int] | None,
+    cursor_stable_since: float | None,
+    last_idle_processing_time: float,
+) -> tuple[bool, tuple[int, int] | None, float | None, float]:
+    """
+    Решить, нужно ли запускать тяжёлую обработку кадра (пики+детекция) сейчас.
+
+    Цели:
+    - в active/step1 режиме не замедлять распознавание;
+    - в idle при движении мыши не молотить обработку на каждом кадре;
+    - при стабильном курсоре (dwell) дать обработке выполняться как обычно.
+
+    Returns:
+        (should_process, last_cursor_pos, cursor_stable_since, last_idle_processing_time)
+    """
+    cursor_stable_delay_s = float(max(0.0, cursor_stable_delay_s))
+    idle_processing_period_s = float(max(0.0, idle_processing_period_s))
+
+    # Обновить трекинг стабильности курсора (отдельно от логики распознавания объекта).
+    if last_cursor_pos != cursor_pos:
+        last_cursor_pos = cursor_pos
+        cursor_stable_since = now
+
+    is_stable = (
+        cursor_stable_since is not None
+        and (now - cursor_stable_since) >= cursor_stable_delay_s
+    )
+
+    # Во время распознавания (step1/active) — не тормозим.
+    if not recognition_is_idle:
+        return True, last_cursor_pos, cursor_stable_since, last_idle_processing_time
+
+    # В idle: если пользователь "замер" — можно обрабатывать чаще, качество не теряем.
+    if is_stable:
+        return True, last_cursor_pos, cursor_stable_since, last_idle_processing_time
+
+    # В idle при движении — heartbeat: редко обновляем детекцию для актуальности данных.
+    if (now - float(last_idle_processing_time)) >= idle_processing_period_s:
+        last_idle_processing_time = now
+        return True, last_cursor_pos, cursor_stable_since, last_idle_processing_time
+
+    return False, last_cursor_pos, cursor_stable_since, last_idle_processing_time
+
+
 def get_downloads_path() -> str:
     """
     Получение пути к папке Загрузки.

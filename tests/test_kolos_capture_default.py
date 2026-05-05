@@ -10,8 +10,8 @@ class TestKolosCaptureDefault(unittest.TestCase):
         root = Path(__file__).resolve().parents[1]
         text = (root / "main.py").read_text(encoding="utf-8", errors="replace")
         self.assertIn("KOLOS_CAPTURE", text)
-        # По умолчанию должно быть "1" (захват включён)
-        self.assertIn('os.environ.get("KOLOS_CAPTURE", "1")', text)
+        # По умолчанию должно быть "0" (захват выключен) — включение только явным KOLOS_CAPTURE=1
+        self.assertIn('os.environ.get("KOLOS_CAPTURE", "0")', text)
 
     def test_env_monitor_idx_is_supported_in_compat_adapter(self) -> None:
         root = Path(__file__).resolve().parents[1]

@@ -34,11 +34,20 @@ from utils import (
     get_cursor_pos,
     set_cursor_pos,
     compute_lines_to_delete,
+    decide_processing_schedule,
 )
 from kolos_ansi import line_looks_red_in_terminal, line_looks_user_input, strip_sgr
 from kolos_digits_hint import KOLOS_DIGITS_HINT_RU
 from kolos_subprocess import KolosSubprocessController, project_root_from_glaz_file
-from cv_core.glaz_ipc import write_last_confirmed_target
+from cv_core.glaz_ipc import (
+    read_scan_request,
+    write_last_confirmed_target,
+    write_scan_results,
+    ScanResults,
+    ScanResultItem,
+)
+
+from loupe_signature import LoupeSignatureAnalyzer
 
 # Путь к файлу отладочных логов (инструментация)
 _DEBUG_LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".cursor", "debug.log")
@@ -145,6 +154,13 @@ class ScreenCaptureApp:
         # Троттлинг фоновой обработки (пики+детекция) — иначе воркер будет молотить на каждом кадре захвата
         self._processing_interval_s: float = self._active_interval_s
         self._last_processing_request_time: float = 0.0
+        # Адаптивный запуск обработки:
+        # - в idle при движении мыши обрабатываем редко (heartbeat)
+        # - при стабильном курсоре или в step1 — как обычно
+        self._idle_processing_period_s: float = 1.5
+        self._last_idle_processing_time: float = 0.0
+        self._processing_last_cursor_pos: tuple[int, int] | None = None
+        self._processing_cursor_stable_since: float | None = None
 
         # Встроенный Kolos (stdout/stderr → панель справа)
         self._kolos_controller: KolosSubprocessController | None = None
@@ -156,6 +172,18 @@ class ScreenCaptureApp:
         self._processing_future: Future | None = None
         self._pending_processing_request: tuple[Image.Image, int, bool] | None = None
         self._completed_processing_result: ProcessingResult | None = None
+
+        # Предскан объектов по IPC (latest-request-wins + debounce)
+        self._scan_executor = ThreadPoolExecutor(max_workers=1)
+        self._scan_lock = threading.Lock()
+        self._scan_future: Future | None = None
+        self._scan_pending_request_id: str | None = None
+        self._scan_last_handled_request_id: str | None = None
+        self._scan_last_request_seen_ts: float = 0.0
+        self._scan_debounce_sec: float = 1.0
+        self._scan_last_run_ts: float = 0.0
+        self._scan_signature_analyzer = LoupeSignatureAnalyzer()
+        self._scan_last_results: dict[int, tuple[int, bool]] = {}  # refined_id -> (count, is_new_any)
 
         # Скриншоты лупы при определении объекта
         self._do_screenshots_var = tk.BooleanVar(value=True)
@@ -802,8 +830,23 @@ class ScreenCaptureApp:
     def _on_frame_captured(self, image: Image.Image):
         """Callback при захвате кадра. Троттлинг: не чаще _update_frame_interval с."""
         self.current_image = image
-        self._request_processing_throttled()
         now = time.time()
+        cursor_pos = get_cursor_pos()
+        should_process, last_pos, stable_since, last_idle = decide_processing_schedule(
+            now=now,
+            cursor_pos=cursor_pos,
+            recognition_is_idle=self._recognition_state.is_idle,
+            cursor_stable_delay_s=self._cursor_stable_delay,
+            idle_processing_period_s=self._idle_processing_period_s,
+            last_cursor_pos=self._processing_last_cursor_pos,
+            cursor_stable_since=self._processing_cursor_stable_since,
+            last_idle_processing_time=self._last_idle_processing_time,
+        )
+        self._processing_last_cursor_pos = last_pos
+        self._processing_cursor_stable_since = stable_since
+        self._last_idle_processing_time = last_idle
+        if should_process:
+            self._request_processing_throttled()
         if now - self._last_update_frame_time < self._update_frame_interval:
             return
         self._last_update_frame_time = now  # резервируем слот (обновим при старте _update_frame)
@@ -840,11 +883,217 @@ class ScreenCaptureApp:
         # Троттлинг по факту старта в главном потоке (не по планированию из потока захвата)
         self._last_update_frame_time = time.time()
         self._consume_processing_result()
+        self._poll_scan_request_and_maybe_run()
         # Лупа обновляется до отрисовки и проверки контура/сегментов при наведении на объект
         self._update_loupe()
         self._update_display()
         self._process_signature_if_pending()  # Снятие подписи ПОСЛЕ отрисовки лупы
         self._event_bus.emit("frame_captured")
+
+    def _poll_scan_request_and_maybe_run(self) -> None:
+        """Проверить IPC scan_request и запустить предскан (debounce, idle-only)."""
+        # Не мешаем step1: если идёт определение объекта, отложим.
+        if not self._recognition_state.is_idle:
+            return
+
+        now = time.time()
+        req = read_scan_request(max_age_sec=10.0, now=now)
+        if req is not None:
+            if req.request_id != self._scan_last_handled_request_id:
+                # Запоминаем последний запрос (latest wins)
+                self._scan_pending_request_id = req.request_id
+                self._scan_last_request_seen_ts = req.timestamp
+
+        if self._scan_pending_request_id is None:
+            return
+
+        if (now - self._scan_last_run_ts) < self._scan_debounce_sec:
+            return
+
+        with self._scan_lock:
+            if self._scan_future is not None and not self._scan_future.done():
+                return
+            snapshot = self._build_scan_snapshot(request_id=self._scan_pending_request_id)
+            if snapshot is None:
+                return
+            self._scan_last_run_ts = now
+            self._scan_future = self._scan_executor.submit(self._compute_prescan, snapshot)
+            self._scan_future.add_done_callback(self._on_scan_done)
+
+    def _build_scan_snapshot(self, *, request_id: str) -> dict | None:
+        """Собрать данные для фонового предскана (без ссылок на mutable UI state)."""
+        if self.current_image is None:
+            return None
+        if not self._detected_objects:
+            return None
+        try:
+            threshold = int(self.peaks_threshold.get())
+            invert = bool(self.peaks_invert.get())
+        except Exception:
+            threshold = 100
+            invert = False
+
+        # Копируем кадр, чтобы воркер не зависел от обновлений.
+        frame = self.current_image.copy()
+        objects = list(self._detected_objects)
+        return {
+            "request_id": str(request_id),
+            "frame": frame,
+            "objects": objects,
+            "threshold": threshold,
+            "invert": invert,
+        }
+
+    def _compute_prescan(self, snapshot: dict) -> dict:
+        """Фоновый расчёт подписей по bbox объектов (без изменения БД)."""
+        request_id = snapshot["request_id"]
+        frame: Image.Image = snapshot["frame"]
+        objects: list[DetectedObject] = snapshot["objects"]
+        threshold: int = snapshot["threshold"]
+        invert: bool = snapshot["invert"]
+
+        loupe_size = 100
+        try:
+            if self.loupe_controller is not None:
+                loupe_size = int(getattr(self.loupe_controller, "loupe_size", 100))
+        except Exception:
+            loupe_size = 100
+
+        out: list[tuple[int, tuple[int, ...]]] = []
+        for obj in objects:
+            sig = self._signature_for_object_bbox(
+                frame=frame,
+                obj=obj,
+                loupe_size=loupe_size,
+                threshold=threshold,
+                invert=invert,
+            )
+            if sig:
+                out.append((int(obj.id), sig))
+        return {"request_id": request_id, "signatures": out}
+
+    def _signature_for_object_bbox(
+        self,
+        *,
+        frame: Image.Image,
+        obj: DetectedObject,
+        loupe_size: int,
+        threshold: int,
+        invert: bool,
+    ) -> tuple[int, ...]:
+        """
+        Построить подпись геометрии лупы для bbox объекта.
+
+        Возвращает пустой кортеж, если объект слишком мал или подпись пустая.
+        """
+        try:
+            left, top, right, bottom = obj.bbox
+            if (right - left) * (bottom - top) < 36:
+                return ()
+        except Exception:
+            return ()
+
+        crop_bbox, obj_bbox_source = self._object_bbox_to_source_coords(obj, margin_percent=0.2)
+        img_w, img_h = frame.size
+        l, t, r, b = crop_bbox
+        l = max(0, min(int(l), img_w))
+        t = max(0, min(int(t), img_h))
+        r = max(0, min(int(r), img_w))
+        b = max(0, min(int(b), img_h))
+        if r - l < 10 or b - t < 10:
+            return ()
+
+        crop = frame.crop((l, t, r, b)).resize((int(loupe_size), int(loupe_size)), Image.Resampling.LANCZOS)
+
+        loupe_peaks = ImageProcessor.detect_color_peaks(crop, int(threshold), bool(invert))
+
+        # geometry_scale: большой круг должен описывать объект, как в loupe.update()
+        try:
+            ol, ot, or_, ob = obj_bbox_source
+            obj_w = float(or_ - ol)
+            obj_h = float(ob - ot)
+            crop_w = float(r - l)
+            crop_h = float(b - t)
+            if crop_w <= 0 or crop_h <= 0:
+                geometry_scale = 1.0
+            else:
+                obj_w_loupe = obj_w * float(loupe_size) / crop_w
+                obj_h_loupe = obj_h * float(loupe_size) / crop_h
+                obj_diag_loupe = math.hypot(obj_w_loupe, obj_h_loupe)
+                r_large_base = 12 * math.sqrt(2)
+                geometry_scale = (obj_diag_loupe / 2.0) / r_large_base if r_large_base > 0 else 1.0
+                geometry_scale = max(0.4, min(2.0, float(geometry_scale)))
+        except Exception:
+            geometry_scale = 1.0
+
+        sig = self._scan_signature_analyzer.compute(
+            loupe_peaks, peaks_invert=bool(invert), geometry_scale=float(geometry_scale)
+        ).highlighted_segment_ids
+        return tuple(sorted(sig)) if sig else ()
+
+    def _on_scan_done(self, future: Future) -> None:
+        """Завершение фонового скана: применяем в UI-потоке."""
+        try:
+            result = future.result()
+        except Exception:
+            return
+        self.root.after(0, lambda r=result: self._apply_scan_result(r))
+
+    def _apply_scan_result(self, result: dict) -> None:
+        """Применить результат скана: распознать/зарегистрировать и записать IPC scan_results."""
+        request_id = str(result.get("request_id") or "")
+        if not request_id:
+            return
+
+        # Если уже обработали — не повторяем.
+        if request_id == self._scan_last_handled_request_id:
+            return
+
+        signatures: list[tuple[int, tuple[int, ...]]] = list(result.get("signatures") or [])
+        if not signatures:
+            self._scan_last_handled_request_id = request_id
+            self._scan_pending_request_id = None
+            write_scan_results(ScanResults(request_id=request_id, timestamp=time.time(), items=tuple()))
+            return
+
+        # Группировка по refined_id после распознавания/регистрации.
+        counts: dict[int, int] = {}
+        is_new_any: dict[int, bool] = {}
+        any_new = False
+
+        # Распознаём последовательно в UI-потоке, чтобы не конфликтовать с step1/сохранением.
+        for _obj_id, sig in signatures:
+            if not sig:
+                continue
+            match = self._objects_repo.find_similar(sig, self._zoomed_signature_to_ids, max_diff_pct=self._signature_match_max_pct)
+            if match:
+                known_sig, _ = match
+                refined_id = self._zoomed_signature_to_ids[known_sig][0]
+                is_new = False
+            else:
+                refined_id = self._next_refined_id
+                self._next_refined_id += 1
+                self._zoomed_signature_to_ids.setdefault(sig, []).append(refined_id)
+                is_new = True
+                any_new = True
+
+            counts[int(refined_id)] = int(counts.get(int(refined_id), 0) + 1)
+            is_new_any[int(refined_id)] = bool(is_new_any.get(int(refined_id), False) or is_new)
+
+        if any_new:
+            self._objects_repo.save(self._full_signature_to_ids, self._zoomed_signature_to_ids, self._next_refined_id)
+
+        items = tuple(
+            ScanResultItem(refined_id=int(rid), count=int(cnt), is_new=bool(is_new_any.get(int(rid), False)))
+            for rid, cnt in sorted(counts.items(), key=lambda kv: kv[0])
+        )
+        write_scan_results(ScanResults(request_id=request_id, timestamp=time.time(), items=items))
+
+        # Запоминаем последние результаты (для потенциального UI-использования)
+        self._scan_last_results = {int(it.refined_id): (int(it.count), bool(it.is_new)) for it in items}
+
+        self._scan_last_handled_request_id = request_id
+        self._scan_pending_request_id = None
 
     def _request_processing(self) -> None:
         """Запросить фоновую обработку последнего кадра (latest-frame-wins)."""
