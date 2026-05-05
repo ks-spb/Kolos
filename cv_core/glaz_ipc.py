@@ -15,6 +15,11 @@ import time
 from dataclasses import dataclass
 from typing import Any, Optional
 
+try:
+    import uuid as _uuid
+except Exception:  # pragma: no cover
+    _uuid = None  # type: ignore[assignment]
+
 
 def _glaz_dir() -> str:
     home = os.path.expanduser("~")
@@ -118,4 +123,177 @@ def read_last_confirmed_target(*, max_age_sec: float = 2.0, now: float | None = 
     if age_sec > effective_max:
         return None
     return target
+
+
+def scan_request_path() -> str:
+    """Путь к IPC-файлу запроса предскана объектов."""
+    return os.path.join(_glaz_dir(), "scan_request.json")
+
+
+@dataclass(frozen=True)
+class ScanRequest:
+    request_id: str
+    timestamp: float
+    reason: str
+
+
+def _new_request_id() -> str:
+    """Сгенерировать request_id без новых зависимостей."""
+    try:
+        if _uuid is not None:
+            return str(_uuid.uuid4())
+    except Exception:
+        pass
+    # Fallback: достаточно уникально для IPC-сценария.
+    return f"req_{int(time.time() * 1000)}"
+
+
+def write_scan_request(
+    *,
+    reason: str,
+    timestamp: float | None = None,
+    request_id: str | None = None,
+) -> str | None:
+    """
+    Записать запрос на предскан объектов (Kolos -> Glaz).
+
+    Returns:
+        request_id, если запись удалась (best-effort), иначе None.
+    """
+    ts = time.time() if timestamp is None else float(timestamp)
+    rid = str(request_id) if request_id is not None else _new_request_id()
+    payload: dict[str, Any] = {"request_id": rid, "timestamp": ts, "reason": str(reason)}
+    try:
+        with open(scan_request_path(), "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False)
+        return rid
+    except OSError:
+        return None
+
+
+def _parse_scan_request(raw: Any) -> Optional[ScanRequest]:
+    if not isinstance(raw, dict):
+        return None
+    request_id = raw.get("request_id")
+    timestamp = raw.get("timestamp")
+    reason = raw.get("reason")
+    if request_id is None or timestamp is None or reason is None:
+        return None
+    try:
+        return ScanRequest(
+            request_id=str(request_id),
+            timestamp=float(timestamp),
+            reason=str(reason),
+        )
+    except (TypeError, ValueError):
+        return None
+
+
+def read_scan_request(*, max_age_sec: float = 10.0, now: float | None = None) -> Optional[ScanRequest]:
+    """Прочитать запрос предскана (если не протух)."""
+    now_ts = time.time() if now is None else float(now)
+    try:
+        with open(scan_request_path(), "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+    req = _parse_scan_request(data)
+    if req is None:
+        return None
+    if max_age_sec < 0:
+        return req
+    age_sec = float(now_ts - req.timestamp)
+    effective_max = float(max_age_sec) + 0.35
+    if age_sec > effective_max:
+        return None
+    return req
+
+
+def scan_results_path() -> str:
+    """Путь к IPC-файлу результатов предскана (Glaz -> Kolos)."""
+    return os.path.join(_glaz_dir(), "scan_results.json")
+
+
+@dataclass(frozen=True)
+class ScanResultItem:
+    refined_id: int
+    count: int
+    is_new: bool
+
+
+@dataclass(frozen=True)
+class ScanResults:
+    request_id: str
+    timestamp: float
+    items: tuple[ScanResultItem, ...]
+
+
+def write_scan_results(
+    results: ScanResults,
+    *,
+    timestamp: float | None = None,
+) -> None:
+    """Записать результаты предскана (best-effort)."""
+    ts = time.time() if timestamp is None else float(timestamp)
+    payload: dict[str, Any] = {
+        "request_id": str(results.request_id),
+        "timestamp": ts,
+        "items": [
+            {"refined_id": int(it.refined_id), "count": int(it.count), "is_new": bool(it.is_new)}
+            for it in results.items
+        ],
+    }
+    try:
+        with open(scan_results_path(), "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False)
+    except OSError:
+        return
+
+
+def _parse_scan_results(raw: Any) -> Optional[ScanResults]:
+    if not isinstance(raw, dict):
+        return None
+    request_id = raw.get("request_id")
+    timestamp = raw.get("timestamp")
+    items_raw = raw.get("items")
+    if request_id is None or timestamp is None or not isinstance(items_raw, list):
+        return None
+    items: list[ScanResultItem] = []
+    try:
+        for it in items_raw:
+            if not isinstance(it, dict):
+                continue
+            rid = it.get("refined_id")
+            cnt = it.get("count")
+            is_new = it.get("is_new")
+            if rid is None or cnt is None or is_new is None:
+                continue
+            items.append(ScanResultItem(refined_id=int(rid), count=int(cnt), is_new=bool(is_new)))
+        return ScanResults(
+            request_id=str(request_id),
+            timestamp=float(timestamp),
+            items=tuple(items),
+        )
+    except (TypeError, ValueError):
+        return None
+
+
+def read_scan_results(*, max_age_sec: float = 10.0, now: float | None = None) -> Optional[ScanResults]:
+    """Прочитать результаты предскана (если не протухли)."""
+    now_ts = time.time() if now is None else float(now)
+    try:
+        with open(scan_results_path(), "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+    res = _parse_scan_results(data)
+    if res is None:
+        return None
+    if max_age_sec < 0:
+        return res
+    age_sec = float(now_ts - res.timestamp)
+    effective_max = float(max_age_sec) + 0.35
+    if age_sec > effective_max:
+        return None
+    return res
 
