@@ -76,6 +76,62 @@ _scan_poll_attempts: int = 0
 _scan_poll_attempts_max: int = 40  # safety: чтобы не висеть в ожидании бесконечно
 
 
+def _is_click_symbol(symbol: str) -> bool:
+    """True для токенов клика мыши в текущем и legacy-форматах."""
+    return symbol == "click" or symbol.startswith("click.") or symbol.endswith(".click")
+
+
+def _is_position_symbol(symbol: str) -> bool:
+    """True для токена перемещения мыши вида position.x.y."""
+    parts = symbol.split(".")
+    if len(parts) != 3 or parts[0] != "position":
+        return False
+    try:
+        float(parts[1])
+        float(parts[2])
+    except Exception:
+        return False
+    return True
+
+
+def _is_keyboard_symbol(symbol: str) -> bool:
+    """True для явных action-токенов клавиатуры и legacy mouse-button событий."""
+    return symbol.startswith("Key.") or symbol.startswith("Button.")
+
+
+def _is_action_symbol(symbol) -> bool:
+    """True, если symbol описывает действие, после связи к которому нужен prescan."""
+    if not isinstance(symbol, str):
+        return False
+    text = symbol.strip()
+    if not text or text == "poz" or text.startswith("id_ekran_"):
+        return False
+    return _is_click_symbol(text) or _is_position_symbol(text) or _is_keyboard_symbol(text)
+
+
+def _request_objects_prescan(*, reason: str) -> bool:
+    """Best-effort IPC-запрос Glaz на prescan объектов; не ломает основной поток."""
+    global _pending_scan_request_id, _printed_scan_requested_for_request_id, _scan_poll_attempts
+    try:
+        rid = write_scan_request(reason=reason)
+    except Exception:
+        return False
+    if not rid:
+        return False
+    _pending_scan_request_id = rid
+    _printed_scan_requested_for_request_id = None
+    _scan_poll_attempts = 0
+    print(f"Запрошено сканирование объектов (request_id={rid})")
+    return True
+
+
+def _request_prescan_after_action_execution(symbol) -> bool:
+    """Запросить prescan после фактического исполнения action-точки."""
+    if not _is_action_symbol(symbol):
+        return False
+    return _request_objects_prescan(reason="action_executed")
+
+
 def _print_scan_results_if_ready(*, request_id: str) -> bool:
     """
     Попытаться вывести результаты предскана в терминал Kolos.
@@ -312,6 +368,8 @@ def obrabotka_symbol(symbol):
         )
 
     sozdat_svyaz(nayti_id_max_signal[0], new_tochka_name)
+    if _is_action_symbol(symbol):
+        _request_objects_prescan(reason="action_point_link")
     online_svyaz(new_tochka_name)
 
     state_after = get_max_signal_point(cursor)
@@ -349,18 +407,6 @@ def sozdat_svyaz(id_start, id_finish):
     )
     print(f'Создана связь м/у id_start = {id_start} и id_finish {id_finish}')
     cursor.execute("INSERT INTO svyazi VALUES (?, ?, ?)", (new_id_svyazi, id_start, id_finish))
-    # IPC-триггер: запросить Glaz предскан объектов (best-effort)
-    global _pending_scan_request_id, _printed_scan_requested_for_request_id, _scan_poll_attempts
-    try:
-        rid = write_scan_request(reason="svyazi_insert")
-    except Exception:
-        rid = None
-    if rid:
-        _pending_scan_request_id = rid
-        _printed_scan_requested_for_request_id = None
-        _scan_poll_attempts = 0
-        # Сообщаем в терминал сразу (результаты придут асинхронно)
-        print(f"Запрошено сканирование объектов (request_id={rid})")
 
 
 def sozdat_new_tochky(name, type, signal):
@@ -782,6 +828,8 @@ def out_red(id):
                 cursor.execute("UPDATE svyazi SET id_finish = ? WHERE ID = ?", (id_new_koord, max_ID_svyazi))
                 # создаётся связь от новых координат к объекту (id объекта передаётся в функцию)
                 sozdat_svyaz(id_new_koord, id)
+                if _is_action_symbol(name_new_koordinat):
+                    _request_objects_prescan(reason="action_point_link")
                 max_signal_2 = cursor.execute("SELECT MAX(signal) FROM points").fetchone()[0]
                 cursor.execute("UPDATE points SET signal = ? WHERE id = ?", (max_signal_2, id))
             else:
@@ -863,6 +911,7 @@ def out_red(id):
 
                 print(f'Попытка воспроизвести действие: {event}')
                 play.play_one(event)  # Воспроизводим событие
+                _request_prescan_after_action_execution(text[i])
                 print('Выполнение скрипта остановлено')
                 break
 
@@ -880,6 +929,7 @@ def out_red(id):
                 # try:
                 print('Выполняется действие без присутствия точки в тексте')
                 play.play_one(event)  # Воспроизводим событие
+                _request_prescan_after_action_execution(text[i])
                 # except:
                 print('Выполнение скрипта остановлено')
                 break
