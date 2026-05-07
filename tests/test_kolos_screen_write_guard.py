@@ -5,38 +5,37 @@ from pathlib import Path
 
 
 class TestKolosScreenWriteGuard(unittest.TestCase):
-    def test_perenos_sostoyaniya_returns_before_obrabotka_when_same_screen(self) -> None:
+    """Checks that Kolos no longer depends on current-screen resolution."""
+
+    def _main_text(self) -> str:
         root = Path(__file__).resolve().parents[1]
-        text = (root / "main.py").read_text(encoding="utf-8", errors="replace")
+        return (root / "main.py").read_text(encoding="utf-8", errors="replace")
 
-        # Проверяем порядок: guard должен быть раньше вызова obrabotka_symbol(new_name_id_ekran)
-        guard = "if old_ekran == new_name_id_ekran"
-        call = "obrabotka_symbol(new_name_id_ekran)"
-        self.assertIn(guard, text)
-        self.assertIn(call, text)
-        self.assertLess(text.index(guard), text.index(call))
+    def test_user_input_dispatches_without_screen_guard(self) -> None:
+        text = self._main_text()
+        branch_start = text.index('elif vvedeno_luboe != "":')
+        branch_end = text.index("else:", branch_start)
+        branch = text[branch_start:branch_end]
 
-    def test_user_input_dispatch_calls_screen_guard_before_writing_symbols(self) -> None:
-        root = Path(__file__).resolve().parents[1]
-        text = (root / "main.py").read_text(encoding="utf-8", errors="replace")
+        self.assertIn("_dispatch_input_symbols", branch)
+        self.assertNotIn("ensure_current_screen_before_input", branch)
+        self.assertNotIn("_enqueue_pending_input", branch)
 
-        guard_call = 'ensure_current_screen_before_input(context="user_input_dispatch")'
-        loop = "for vvedeno_luboe1 in vvedeno_luboe:"
-        self.assertIn(guard_call, text)
-        self.assertIn(loop, text)
-        self.assertLess(text.index(guard_call), text.index(loop))
+    def test_positive_reaction_does_not_bind_to_old_screen(self) -> None:
+        text = self._main_text()
+        branch_start = text.index("elif vvedeno_luboe in [' 1', '1']:")
+        branch_end = text.index("elif vvedeno_luboe in [' 2', '2']:", branch_start)
+        branch = text[branch_start:branch_end]
 
-    def test_command_1_branch_guards_before_obrabotka_old_ekran(self) -> None:
-        root = Path(__file__).resolve().parents[1]
-        text = (root / "main.py").read_text(encoding="utf-8", errors="replace")
+        self.assertNotIn("command_1_bind_to_screen", branch)
+        self.assertNotIn("obrabotka_symbol(old_ekran)", branch)
 
-        guard_call = 'ensure_current_screen_before_input(context="command_1_bind_to_screen")'
-        call = "obrabotka_symbol(old_ekran)"
-        self.assertIn(guard_call, text)
-        self.assertIn(call, text)
-        self.assertLess(text.index(guard_call), text.index(call))
+    def test_kolos_does_not_start_screen_capture(self) -> None:
+        text = self._main_text()
+
+        self.assertIn("screen_capture_enabled = False", text)
+        self.assertNotIn("screen.start()", text)
 
 
 if __name__ == "__main__":
     unittest.main()
-

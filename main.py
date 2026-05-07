@@ -1,7 +1,7 @@
 """ Версия v4.
 19.06.25 - Создал новый файл main. Отрабатывается алгоритм со слоями.
 
-ТЕСТ-МАРКЕР: ensure_current_screen_before_input(context="user_input_dispatch")
+Текущий экран в Kolos больше не определяется и не блокирует ввод.
 """
 
 
@@ -20,8 +20,6 @@ from db import Database
 from mous_kb_record import rec, play
 from cv_core.compat_adapter import screen
 from cv_core.run_logger_ru import RunLoggerRU, get_max_signal_point, get_point_by_id
-from cv_core.screens_repository import ScreensRepository
-from cv_core.screen_resolver import ScreenResolver, ResolverConfig
 from report import report
 import pyautogui
 from exceptions import ElementNotFound
@@ -971,6 +969,14 @@ def _try_restore_old_ekran_from_db_point(screen_point_id: int | None) -> bool:
 
 
 def ensure_current_screen_before_input(*, context: str) -> bool:
+    _dbg_dd836d(
+        "SCREEN_DISABLED",
+        "main.py:ensure_current_screen_before_input",
+        "current screen resolution disabled; input allowed",
+        {"context": context, "old_ekran": globals().get("old_ekran", None)},
+    )
+    return True
+
     """Guard: перед записью ввода гарантирует валидный current screen в old_ekran.
 
     Возвращает True, если old_ekran валиден (id_ekran_*), иначе False (ввод писать нельзя).
@@ -1059,6 +1065,8 @@ def ensure_current_screen_before_input(*, context: str) -> bool:
 
 
 def _warmup_screen_on_startup(*, timeout_sec: float = 12.0, interval_sec: float = 0.25) -> bool:
+    return True
+
     """Прогреть определение текущего экрана на старте.
 
     Цель: получить валидный `old_ekran` вида 'id_ekran_*' до основного цикла, без ручной промотки.
@@ -1084,6 +1092,14 @@ def _warmup_screen_on_startup(*, timeout_sec: float = 12.0, interval_sec: float 
 
 
 def perenos_sostoyaniya():
+    _dbg_dd836d(
+        "SCREEN_DISABLED",
+        "main.py:perenos_sostoyaniya",
+        "current screen resolution disabled; state transfer skipped",
+        {"old_ekran": globals().get("old_ekran", None)},
+    )
+    return
+
     # Функция определяет какой сейчас экран, отличается ли от старого. Если отличается - перенос состояния в этот экран
     global old_ekran
     global _screen_resolver
@@ -1290,48 +1306,21 @@ if __name__ == '__main__':
     ensure_script_directory_is_cwd(__file__)
     old_ekran = 0
     _screen_resolver = None
-    # Захват/определение экранов по умолчанию ВЫКЛЮЧЕН.
-    # Для включения: установить KOLOS_CAPTURE=1
-    screen_capture_enabled = os.environ.get("KOLOS_CAPTURE", "0").strip().lower() in ("1", "true", "yes", "y", "on")
-    # Запуск процесса наблюдения за экраном
-    if screen_capture_enabled:
-        print('Запуск процесса наблюдения за экраном')
-        screen.start()
+    screen_capture_requested = os.environ.get("KOLOS_CAPTURE", "0").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "y",
+        "on",
+    )
+    screen_capture_enabled = False
+    if screen_capture_requested:
+        print("KOLOS_CAPTURE больше не используется: Kolos не определяет текущий экран.")
     else:
-        print('Захват экрана выключен. Для включения: KOLOS_CAPTURE=1')
+        print("Определение текущего экрана в Kolos отключено.")
 
     # -----------------------------------------------------------
     cursor = Database('Li_db_v1_4.db')
-    # Экранное хранилище (таблицы + резолвер со стабилизацией)
-    try:
-        _screens_repo = ScreensRepository(cursor)
-        _screens_repo.ensure_schema()
-        _screen_resolver = ScreenResolver(
-            _screens_repo,
-            ResolverConfig(
-                stable_delay_sec=0.45,
-                # switch thresholds (строгие): подтверждение нового/другого экрана
-                recall_min=0.8,
-                precision_min=0.8,
-                # image-anchor: удержание рабочего стола при шуме детектора
-                use_image_anchor=True,
-                stay_hamming_max=6,
-                switch_hamming_min=12,
-                # удержание текущего экрана (мягче): гистерезис против дрожания
-                stay_recall_min=0.65,
-                stay_precision_min=0.55,
-                # окно стабильности N-of-M
-                window_size=6,
-                stable_required=4,
-                # фильтр одноразовых объектов
-                volatile_window=4,
-                volatile_min_hits=2,
-                limit_candidates=200,
-            ),
-        )
-    except Exception as e:
-        print(f"ВНИМАНИЕ: хранилище экранов не инициализировано: {e}")
-        _screen_resolver = None
     A = True
 
     t0_10 = 0  # для проверки на изменение to за 10 циклов
@@ -1339,7 +1328,6 @@ if __name__ == '__main__':
     source = 'input'
     # source = 'input'  # Получает значение источника ввода None - клавиатура (None запустит автоматический переход по
     # циклам, 'rec' -  запись клавиатуры и мыши, 'input' - ручное переключение
-    last_update_screen = 0  # Время последнего обновления экрана
     schetchik = 0
     most_new = 0
     online_svyaz_list = []
@@ -1355,9 +1343,6 @@ if __name__ == '__main__':
     izmenilos_li_sostyanie = 0
 
 
-    if not _warmup_screen_on_startup(timeout_sec=12.0, interval_sec=0.25):
-        print("ВНИМАНИЕ: не удалось определить экран на старте за отведённое время; продолжаем без прогрева.")
-
     _why = WhyTracer.from_env()
     _why_trace_id = _why.next_trace_id()
 
@@ -1367,29 +1352,9 @@ if __name__ == '__main__':
             sleep(0.001)
             continue
 
-        # -------------------------------------------------------
-        # Активация и деактивация точек в соответствии с экраном
-        # -------------------------------------------------------
-        # if screen.last_update != last_update_screen:
-        screen.get_screen()
-        scrsh = screen.screenshot
-        # if scrsh is not None:
-        #     # -------------------------------
-        #     # Сохранение изображений в отчете
-        #     report.set_folder('update_points')  # Инициализация папки для сохранения изображений
-        #     scr = report.circle_an_object(scrsh, screen.hashes_elements.values())  # Обводим элементы
-        #     report.save(scr)  # Сохранение скриншота и элемента
-            # -------------------------------
-
-        # zazhiganie_obiektov_na_ekrane()   # TODO вернуть в работу это зажигание?
-
         schetchik += 1
         print('************************************************************************')
         print("schetchik = ", schetchik)
-
-        if screen.last_update != last_update_screen:
-            last_update_screen = screen.last_update
-            perenos_sostoyaniya()
 
         # Попытаться вывести результаты предскана по последнему request_id (если есть)
         if _pending_scan_request_id and _printed_scan_result_for_request_id != _pending_scan_request_id:
@@ -1542,10 +1507,6 @@ if __name__ == '__main__':
             #     in_pamyat_name.pop(0)
             #     print(f'Удалён первый элемент из in_pamyat_name, теперь список такой: {in_pamyat_name}')
 
-            # чтобы не зависало при нажатии на 1 - добавил вместо функции переноса состояния сюда вручную перенос,
-            # используя сохранённый старый экран
-            if ensure_current_screen_before_input(context="command_1_bind_to_screen"):
-                obrabotka_symbol(old_ekran)
             state_after = get_max_signal_point(cursor)
             _ru_log.log(
                 event="КОМАНДА.1.ПЛЮС.КОНЕЦ",
@@ -1560,7 +1521,7 @@ if __name__ == '__main__':
             _agent_log(
                 "H2",
                 "main.py:main_loop",
-                "input 1 branch executed; memory cleared and old_ekran re-injected",
+                "input 1 branch executed; memory cleared without screen binding",
                 {"old_ekran": old_ekran, "tekushiy_id": tekushiy_id, "in_pamyat_name_len": len(in_pamyat_name), "online_svyaz_list_len": len(online_svyaz_list)},
             )
             # endregion
@@ -1671,24 +1632,13 @@ if __name__ == '__main__':
             source = None   # Если поставить 'input' - то будет ручной переход по циклам
 
         elif vvedeno_luboe in [' 9', '9']:
-            tekyshiy_ekran_ = old_ekran
             stiranie_pamyati()
             source = 'input'
             vvedeno_luboe = ''
             schetchik = 0
             in_pamyat = []
             in_pamyat_name = []
-            # чтобы не зависало при нажатии на 9 - добавил вместо функции переноса состояния сюда вручную перенос,
-            # используя сохранённый старый экран до стирания памяти
-            obrabotka_symbol(tekyshiy_ekran_)
-
-
         elif vvedeno_luboe != "":
-            if not ensure_current_screen_before_input(context="user_input_dispatch"):
-                _enqueue_pending_input(raw=vvedeno_luboe, context="user_input_dispatch")
-                vvedeno_luboe = ""
-                source = "input"
-                continue
             _dispatch_input_symbols(vvedeno_luboe=vvedeno_luboe, why=_why, trace_id=_why_trace_id)
             vvedeno_luboe = ''
             # print("Было введено vvedeno_luboe: ", vvedeno_luboe)

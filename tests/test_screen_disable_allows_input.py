@@ -6,9 +6,9 @@ from pathlib import Path
 
 
 class TestScreenDisabledAllowsInput(unittest.TestCase):
-    def test_guard_allows_input_when_screens_disabled(self) -> None:
+    def test_guard_allows_input_without_screen_resolution(self) -> None:
         """
-        Регрессия: при KOLOS_CAPTURE=0 ввод/обучение должны продолжаться,
+        Регрессия: ввод/обучение должны продолжаться независимо от текущего экрана,
         а guard не должен пытаться резолвить экран или трогать screen.get_screen().
         """
         # Важно: некоторые тесты добавляют `Glaz/` в sys.path, из-за чего `import main`
@@ -19,7 +19,7 @@ class TestScreenDisabledAllowsInput(unittest.TestCase):
         app = module_from_spec(spec)
         spec.loader.exec_module(app)
 
-        app.screen_capture_enabled = False
+        app.screen_capture_enabled = True
         app.old_ekran = 0
 
         def _boom(*_args, **_kwargs):
