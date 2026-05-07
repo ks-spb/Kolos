@@ -22,6 +22,11 @@ mo = Controller()
 
 _ru_log = RunLoggerRU.from_env()
 
+ANSI_RED = "\033[31m"
+ANSI_BLUE = "\033[34m"
+ANSI_YELLOW = "\033[33m"
+ANSI_RESET = "\033[0m"
+
 """ Вид в котором информация о событиях хранится объекте:
     
     Нажата клавиша 'A': {'type': 'kb', 'event': 'down', 'key': 'A'}
@@ -187,6 +192,38 @@ def screenshot(x_reg: int = 0, y_reg: int = 0, region: int = 0):
     return cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR)
 
 
+def _bbox_contains_point(bbox_ltrb, x: int, y: int) -> bool:
+    """True, если координаты клика попадают внутрь bbox Glaz."""
+    if not isinstance(bbox_ltrb, (list, tuple)) or len(bbox_ltrb) != 4:
+        return False
+    try:
+        left, top, right, bottom = (int(v) for v in bbox_ltrb)
+    except Exception:
+        return False
+    return left <= int(x) <= right and top <= int(y) <= bottom
+
+
+def _glaz_target_name(refined_id) -> str | None:
+    """Вернуть имя точки Kolos для объекта Glaz."""
+    if refined_id is None:
+        return None
+    try:
+        return f"glaz.{int(refined_id)}"
+    except Exception:
+        return None
+
+
+def _read_click_glaz_target(x: int, y: int, *, max_age_sec: float = 10.0):
+    """Прочитать Glaz target и принять его только если bbox содержит координаты клика."""
+    try:
+        target = read_last_confirmed_target(max_age_sec=max_age_sec)
+    except Exception:
+        return None
+    if target is None or not _bbox_contains_point(target.bbox_ltrb, int(x), int(y)):
+        return None
+    return target
+
+
 class Recorder:
     """ Прослушивание мыши и клавиатуры и запись событий с них """
 
@@ -195,10 +232,31 @@ class Recorder:
     key_down = ''  # Помнит, какая клавиша нажата, для использования во внешних модулях
     queue_hashes = None  # Получаем сюда ссылку на очередь с элементами экрана
 
+    def __init__(self):
+        self._glaz_status: str | None = None
+
+    def _set_glaz_status(self, status: str) -> None:
+        """Печатать статус Glaz только при смене состояния."""
+        if self._glaz_status == status:
+            return
+        self._glaz_status = status
+        if status == "detecting":
+            print(f"{ANSI_RED}Объекты экрана определяются. Подождите...{ANSI_RESET}")
+        elif status == "ready":
+            print(f"{ANSI_BLUE}Объекты определены. Можно продолжать действия.{ANSI_RESET}")
+        elif status == "unresolved":
+            print(
+                f"{ANSI_YELLOW}"
+                "Объекты пока не подтверждены. Клик будет записан с координатным fallback."
+                f"{ANSI_RESET}"
+            )
+
     def start(self):
         """ Начать запись """
         self.record.clear()  # Удаление старой записи перед началом новой
         self.status = True
+        self._glaz_status = None
+        self._set_glaz_status("detecting")
         screen.get_screen()
         _ru_log.log(
             event="ЗАПИСЬ.СТАРТ",
@@ -272,43 +330,33 @@ class Recorder:
         if not is_pressed:
             return  # Если кнопка отпущена, то ничего не записываем
 
-        # Привязка клика к последнему подтверждённому объекту Glaz (межпроцессный IPC).
-        # TTL увеличен: в реальном сценарии между "определён" в UI и кликом часто проходит >2с.
-        target_ttl_sec = 10.0
-        target = read_last_confirmed_target(max_age_sec=target_ttl_sec)
+        self._set_glaz_status("detecting")
+        target = _read_click_glaz_target(int(x), int(y), max_age_sec=10.0)
         refined_id = target.refined_id if target else None
+        target_name = _glaz_target_name(refined_id)
         glaz_center_xy = target.center_xy if target else None
         glaz_bbox_ltrb = target.bbox_ltrb if target else None
-        unresolved = refined_id is None
+        unresolved = target_name is None
 
-        # legacy: по-прежнему фиксируем CV-хэш объекта под курсором (для обратной совместимости и отчёта).
-        # hash_element = screen.list_search(x, y)  # Поиск элемента на экране по координатам клика
-        hash_element = screen.element_under_cursor()   # 21.03.24 - Поиск элемента под курсором
         print(
-            f'Объект под курсором для записи действий: {hash_element}; '
-            f'refined_id={refined_id}; glaz_center={glaz_center_xy}; unresolved={unresolved}'
+            f'Glaz target для записи клика: target_name={target_name}; '
+            f'refined_id={refined_id}; bbox={glaz_bbox_ltrb}; unresolved={unresolved}'
         )
 
-        # -------------------------------
-        # Сохранение изображений в отчете
-        scr = report.circle_an_object(screenshot(), screen.hashes_elements.values())  # Обводим элементы
-        report.save(scr, screen.get_element(hash_element))  # Сохранение скриншота и элемента
-        # -------------------------------
-
-        if not hash_element:
-            print("**** ВНИМАНИЕ! Хэш элемента не найден на экране! Клик записан без привязки к элементу. **************")
+        if unresolved:
+            self._set_glaz_status("unresolved")
+            print("**** ВНИМАНИЕ! Glaz target по bbox клика не найден. Клик записан с координатным fallback. **************")
+        else:
+            self._set_glaz_status("ready")
 
         out = {
             'type': 'mouse',
             'event': 'click',
-            # legacy:
-            'image': hash_element,
-            # новый формат:
             'refined_id': refined_id,
+            'target_name': target_name,
             'glaz_center_xy': glaz_center_xy,
             'glaz_bbox_ltrb': glaz_bbox_ltrb,
             'unresolved': bool(unresolved),
-            # fallback:
             'x': int(x),
             'y': int(y),
         }
@@ -319,8 +367,8 @@ class Recorder:
             data={
                 "x": int(x),
                 "y": int(y),
-                "image_hash": hash_element,
                 "refined_id": refined_id,
+                "target_name": target_name,
                 "unresolved": bool(unresolved),
                 "record_len": len(self.record),
             },

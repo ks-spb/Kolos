@@ -46,6 +46,7 @@ from cv_core.glaz_ipc import (
     ScanResults,
     ScanResultItem,
 )
+from cv_core.glaz_geometry_cache import geometry_hash_from_bboxes
 
 from loupe_signature import LoupeSignatureAnalyzer
 
@@ -184,6 +185,10 @@ class ScreenCaptureApp:
         self._scan_last_run_ts: float = 0.0
         self._scan_signature_analyzer = LoupeSignatureAnalyzer()
         self._scan_last_results: dict[int, tuple[int, bool]] = {}  # refined_id -> (count, is_new_any)
+        self._scan_geometry_hash: str | None = None
+        self._scan_cache_ready: bool = False
+        self._scan_cached_items: tuple[ScanResultItem, ...] = tuple()
+        self._scan_cached_at: float | None = None
 
         # Скриншоты лупы при определении объекта
         self._do_screenshots_var = tk.BooleanVar(value=True)
@@ -916,6 +921,12 @@ class ScreenCaptureApp:
             snapshot = self._build_scan_snapshot(request_id=self._scan_pending_request_id)
             if snapshot is None:
                 return
+            if self._try_write_cached_scan_results(
+                request_id=self._scan_pending_request_id,
+                geometry_hash=str(snapshot.get("geometry_hash") or ""),
+            ):
+                self._scan_last_run_ts = now
+                return
             self._scan_last_run_ts = now
             self._scan_future = self._scan_executor.submit(self._compute_prescan, snapshot)
             self._scan_future.add_done_callback(self._on_scan_done)
@@ -936,13 +947,38 @@ class ScreenCaptureApp:
         # Копируем кадр, чтобы воркер не зависел от обновлений.
         frame = self.current_image.copy()
         objects = list(self._detected_objects)
+        geometry_hash = self._scan_geometry_hash_from_objects(objects)
         return {
             "request_id": str(request_id),
             "frame": frame,
             "objects": objects,
             "threshold": threshold,
             "invert": invert,
+            "geometry_hash": geometry_hash,
         }
+
+    def _scan_geometry_hash_from_objects(self, objects: list[DetectedObject]) -> str:
+        """Построить стабильный hash геометрии текущих объектов Glaz."""
+        return geometry_hash_from_bboxes((obj.bbox for obj in objects), step=8)
+
+    def _try_write_cached_scan_results(self, *, request_id: str, geometry_hash: str) -> bool:
+        """Записать cached scan_results, если геометрия объектов не изменилась."""
+        if not geometry_hash or geometry_hash != self._scan_geometry_hash or not self._scan_cache_ready:
+            return False
+        write_scan_results(
+            ScanResults(request_id=str(request_id), timestamp=time.time(), items=self._scan_cached_items)
+        )
+        self._scan_last_results = {
+            int(it.refined_id): (int(it.count), bool(it.is_new)) for it in self._scan_cached_items
+        }
+        self._scan_cached_at = time.time()
+        self._scan_last_handled_request_id = str(request_id)
+        self._scan_pending_request_id = None
+        try:
+            self.log_message("scan cache hit: геометрия объектов не изменилась", color="blue")
+        except Exception:
+            pass
+        return True
 
     def _compute_prescan(self, snapshot: dict) -> dict:
         """Фоновый расчёт подписей по bbox объектов (без изменения БД)."""
@@ -970,7 +1006,7 @@ class ScreenCaptureApp:
             )
             if sig:
                 out.append((int(obj.id), sig))
-        return {"request_id": request_id, "signatures": out}
+        return {"request_id": request_id, "signatures": out, "geometry_hash": snapshot.get("geometry_hash")}
 
     def _signature_for_object_bbox(
         self,
@@ -1050,10 +1086,16 @@ class ScreenCaptureApp:
             return
 
         signatures: list[tuple[int, tuple[int, ...]]] = list(result.get("signatures") or [])
+        geometry_hash = str(result.get("geometry_hash") or "")
         if not signatures:
             self._scan_last_handled_request_id = request_id
             self._scan_pending_request_id = None
-            write_scan_results(ScanResults(request_id=request_id, timestamp=time.time(), items=tuple()))
+            items: tuple[ScanResultItem, ...] = tuple()
+            write_scan_results(ScanResults(request_id=request_id, timestamp=time.time(), items=items))
+            self._scan_geometry_hash = geometry_hash or self._scan_geometry_hash
+            self._scan_cache_ready = True
+            self._scan_cached_items = items
+            self._scan_cached_at = time.time()
             return
 
         # Группировка по refined_id после распознавания/регистрации.
@@ -1091,6 +1133,11 @@ class ScreenCaptureApp:
 
         # Запоминаем последние результаты (для потенциального UI-использования)
         self._scan_last_results = {int(it.refined_id): (int(it.count), bool(it.is_new)) for it in items}
+        if geometry_hash:
+            self._scan_geometry_hash = geometry_hash
+            self._scan_cache_ready = True
+            self._scan_cached_items = items
+            self._scan_cached_at = time.time()
 
         self._scan_last_handled_request_id = request_id
         self._scan_pending_request_id = None

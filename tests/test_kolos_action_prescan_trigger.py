@@ -51,12 +51,21 @@ class TestKolosActionPrescanTrigger(unittest.TestCase):
         body = text[start:end]
 
         play_pos = body.index("play.play_one(event)")
-        request_pos = body.index("_request_prescan_after_action_execution(text[i])")
+        request_pos = body.index("_request_prescan_after_action_execution(action_symbol)")
         helper_pos = text.index("def _request_prescan_after_action_execution")
         reason_pos = text.index('reason="action_executed"', helper_pos)
 
         self.assertLess(play_pos, request_pos)
         self.assertGreater(reason_pos, helper_pos)
+
+    def test_out_red_prescan_uses_saved_action_symbol_not_mutated_index(self) -> None:
+        text = self._main_text()
+        start = text.index("def out_red")
+        end = text.index("def poisk_id_s_max_signal_points", start)
+        body = text[start:end]
+
+        self.assertIn("action_symbol = text[i]", body)
+        self.assertNotIn("_request_prescan_after_action_execution(text[i])", body)
 
     def test_is_action_symbol_accepts_explicit_action_tokens(self) -> None:
         app = self._load_main_module()

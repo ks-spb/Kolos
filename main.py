@@ -14,7 +14,7 @@ import os
 
 from PIL.ImageStat import Global
 
-from cv_core.glaz_ipc import read_scan_results, write_scan_request
+from cv_core.glaz_ipc import read_last_confirmed_target, read_scan_results, write_scan_request
 from launch_workdir import ensure_script_directory_is_cwd
 from db import Database
 from mous_kb_record import rec, play
@@ -132,6 +132,22 @@ def _request_prescan_after_action_execution(symbol) -> bool:
     return _request_objects_prescan(reason="action_executed")
 
 
+def _print_last_glaz_target(*, max_age_sec: float = 10.0):
+    """Напечатать последний подтверждённый объект Glaz для диагностики Kolos."""
+    try:
+        target = read_last_confirmed_target(max_age_sec=max_age_sec)
+    except Exception:
+        target = None
+    if target is None:
+        print("Последний объект Glaz: нет актуального подтверждённого объекта")
+        return None
+    print(
+        "Последний объект Glaz: "
+        f"refined_id={target.refined_id}, center={target.center_xy}, bbox={target.bbox_ltrb}"
+    )
+    return target
+
+
 def _print_scan_results_if_ready(*, request_id: str) -> bool:
     """
     Попытаться вывести результаты предскана в терминал Kolos.
@@ -161,6 +177,77 @@ def _print_scan_results_if_ready(*, request_id: str) -> bool:
             print(f"\033[32m  ID={rid} x{cnt} (известный)\033[0m")
     _printed_scan_result_for_request_id = request_id
     return True
+
+
+def _poll_pending_scan_and_block_loop() -> bool:
+    """Вернуть True, если основной цикл должен ждать результат Glaz prescan."""
+    global _pending_scan_request_id, _printed_scan_requested_for_request_id, _scan_poll_attempts
+    if not _pending_scan_request_id or _printed_scan_result_for_request_id == _pending_scan_request_id:
+        return False
+
+    if _printed_scan_requested_for_request_id != _pending_scan_request_id:
+        _printed_scan_requested_for_request_id = _pending_scan_request_id
+        print(f"(Ожидаем результаты сканирования объектов, request_id={_pending_scan_request_id})")
+
+    if _scan_poll_attempts < _scan_poll_attempts_max:
+        _scan_poll_attempts += 1
+        if _print_scan_results_if_ready(request_id=_pending_scan_request_id):
+            _pending_scan_request_id = None
+            return False
+        sleep(0.1)
+        return True
+
+    print(f"ВНИМАНИЕ: результаты сканирования не получены за ожидание (request_id={_pending_scan_request_id})")
+    _pending_scan_request_id = None
+    return False
+
+
+def _position_token_from_event(event: dict) -> str | None:
+    """Сформировать fallback position.x.y из записанного события."""
+    try:
+        return f"position.{int(event['x'])}.{int(event['y'])}"
+    except Exception:
+        return None
+
+
+def _record_event_to_tokens(event: dict) -> list[str]:
+    """Преобразовать одно событие rec.record в токены Kolos."""
+    if not isinstance(event, dict):
+        return []
+    if event.get("type") == "kb":
+        key = event.get("key")
+        return [key] if isinstance(key, str) and key else []
+    if event.get("type") != "mouse":
+        return []
+
+    event_name = event.get("event")
+    if event_name == "click":
+        position = _position_token_from_event(event)
+        target_name = event.get("target_name")
+        if isinstance(target_name, str) and target_name.startswith("glaz."):
+            tokens = []
+            if position:
+                tokens.append(position)
+            tokens.extend([target_name, "click"])
+            return tokens
+
+        image_hash = event.get("image")
+        if image_hash:
+            tokens = []
+            if position:
+                tokens.append(position)
+            tokens.append(f"{image_hash}.click")
+            return tokens
+        if position:
+            return [position, "click"]
+        return ["click"]
+
+    if event_name == "scroll":
+        try:
+            return [f"scroll.{int(event.get('dy', 0))}"]
+        except Exception:
+            return ["scroll.0"]
+    return []
 
 
 def _enqueue_pending_input(*, raw, context: str) -> None:
@@ -731,27 +818,31 @@ def out_red(id):
             if goryashie_in:
                 list_goryashih_in.append(goryashie_in)
         print(f'Найдены все хэши на экране: {screen.get_all_hashes()}')
-        # поиск объекта под курсором мыши
-        obiekt_pod_kursorom = screen.element_under_cursor()
+        # Диагностика последнего объекта, подтверждённого Glaz через IPC.
+        last_glaz_target = _print_last_glaz_target(max_age_sec=10.0)
 
         print(f'Имеются следующие объекты на экране записанные в БД: {list_goryashih_in}')
         # print(f'На экране всего найдены следующие объекты: {screen.get_all_hashes()}')
-        print(f'Объект под курсором мыши: {obiekt_pod_kursorom}')
         _why.trace(
             trace_id=_why_trace_id,
             event="OUT_RED_IMAGE_CHECK",
-            why="Проверяем: под курсором нужный объект или требуется поиск/перемещение",
-            data={"want_hash": text[0], "under_cursor": obiekt_pod_kursorom},
+            why="Показываем последний подтверждённый объект Glaz перед fallback-поиском legacy hash",
+            data={
+                "want_hash": text[0],
+                "glaz_refined_id": (last_glaz_target.refined_id if last_glaz_target is not None else None),
+                "glaz_center": (last_glaz_target.center_xy if last_glaz_target is not None else None),
+                "glaz_bbox": (last_glaz_target.bbox_ltrb if last_glaz_target is not None else None),
+            },
             lvl=2,
         )
 
-        # Если объект под курсором мыши соответствует нужному изображению - то просто дать ответ этого изображения
-        # Иначе - дать ответ и найти объект в другом месте либо откатить состояние к экрану и искать другой способ
-        if obiekt_pod_kursorom == text[0]:
+        # Legacy hash и refined_id Glaz пока не сопоставляются напрямую.
+        legacy_hash_matches_glaz = False
+        if legacy_hash_matches_glaz:
             _ru_log.log(
                 event="ИСПОЛНЕНИЕ.ОБЪЕКТ.ПОД_КУРСОРОМ.ОК",
                 message="Под курсором нужный объект (исполнение без перемещения)",
-                data={"want_hash": text[0], "under_cursor": obiekt_pod_kursorom},
+                data={"want_hash": text[0]},
                 db=cursor,
                 trace_id=(_why_trace_id if "_why_trace_id" in globals() else None),
             )
@@ -769,20 +860,26 @@ def out_red(id):
         else:
             _ru_log.log(
                 event="ИСПОЛНЕНИЕ.ОБЪЕКТ.ПОД_КУРСОРОМ.НЕ_ТОТ",
-                message="Под курсором другой объект — пробуем найти нужный на экране",
-                data={"want_hash": text[0], "under_cursor": obiekt_pod_kursorom},
+                message="Legacy hash не сопоставляем с refined_id Glaz — пробуем найти нужный hash на экране",
+                data={
+                    "want_hash": text[0],
+                    "glaz_refined_id": (last_glaz_target.refined_id if last_glaz_target is not None else None),
+                },
                 db=cursor,
                 trace_id=(_why_trace_id if "_why_trace_id" in globals() else None),
             )
             _why.trace(
                 trace_id=_why_trace_id,
                 event="OUT_RED_IMAGE_MISMATCH",
-                why="Под курсором другой объект — пробуем найти нужный на экране и перевести курсор",
-                data={"want_hash": text[0], "under_cursor": obiekt_pod_kursorom},
+                why="Legacy hash не сопоставляем с refined_id Glaz — пробуем найти нужный hash на экране и перевести курсор",
+                data={
+                    "want_hash": text[0],
+                    "glaz_refined_id": (last_glaz_target.refined_id if last_glaz_target is not None else None),
+                },
                 lvl=2,
             )
             print("\033[0m {}".format("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"))
-            print("\033[31m {}".format(f"Объект под курсором: {obiekt_pod_kursorom}, а должен быть: {text[0]}"))
+            print("\033[31m {}".format(f"Legacy hash {text[0]} не сопоставляется с refined_id Glaz; выполняется fallback поиска/перемещения"))
             print("\033[0m {}".format("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"))
             # 04.07.25 Поиск изображения на экране и перевод туда курсора.
             event = {'type': 'mouse', 'event': 'down', 'image': text[0]}
@@ -862,6 +959,7 @@ def out_red(id):
         while i < len(text):
 
             if '.' in text[i]:
+                action_symbol = text[i]
                 item = text[i].split('.')
                 # print(f'Преобразовали текст в item: {item}')
                 if item[0] == 'Key':
@@ -911,13 +1009,14 @@ def out_red(id):
 
                 print(f'Попытка воспроизвести действие: {event}')
                 play.play_one(event)  # Воспроизводим событие
-                _request_prescan_after_action_execution(text[i])
+                _request_prescan_after_action_execution(action_symbol)
                 print('Выполнение скрипта остановлено')
                 break
 
                 continue
 
             elif text[i] == 'click':
+                action_symbol = text[i]
                 event = {'type': 'mouse', 'event': 'click'}
 
                 # -------------------------------
@@ -929,7 +1028,7 @@ def out_red(id):
                 # try:
                 print('Выполняется действие без присутствия точки в тексте')
                 play.play_one(event)  # Воспроизводим событие
-                _request_prescan_after_action_execution(text[i])
+                _request_prescan_after_action_execution(action_symbol)
                 # except:
                 print('Выполнение скрипта остановлено')
                 break
@@ -1402,23 +1501,12 @@ if __name__ == '__main__':
             sleep(0.001)
             continue
 
+        if _poll_pending_scan_and_block_loop():
+            continue
+
         schetchik += 1
         print('************************************************************************')
         print("schetchik = ", schetchik)
-
-        # Попытаться вывести результаты предскана по последнему request_id (если есть)
-        if _pending_scan_request_id and _printed_scan_result_for_request_id != _pending_scan_request_id:
-            if _printed_scan_requested_for_request_id != _pending_scan_request_id:
-                _printed_scan_requested_for_request_id = _pending_scan_request_id
-                print(f"(Ожидаем результаты сканирования объектов, request_id={_pending_scan_request_id})")
-            if _scan_poll_attempts < _scan_poll_attempts_max:
-                _scan_poll_attempts += 1
-                if _print_scan_results_if_ready(request_id=_pending_scan_request_id):
-                    # Успешно вывели — больше не ждём.
-                    _pending_scan_request_id = None
-            else:
-                print(f"ВНИМАНИЕ: результаты сканирования не получены за ожидание (request_id={_pending_scan_request_id})")
-                _pending_scan_request_id = None
 
         if source == 'input':
             # Ввод строки с клавиатуры, запись по-буквенно
@@ -1455,30 +1543,8 @@ if __name__ == '__main__':
             n = 0
 
             for event in rec.record:
-
-                if event['type'] == 'kb':
-                    # Запись события клавиатуры
-                    vvedeno_luboe.append(event['key'])
-                    # vvedeno_luboe.append(event['key'])
-
-
-                else:
-
-                    print(f'Передаются на запись следующие event: {event}')
-
-                    if event['event'] == 'click':
-                        vvedeno_luboe.append('position.' + str(event['x']) + '.' + str(event['y']))
-
-                        if event['image']:
-                            vvedeno_luboe.append(event['image'] + '.' + 'click')
-
-                        else:
-                            vvedeno_luboe.append('click.')
-
-                    elif event['event'] == 'scroll':
-                        # Просто токен скролла, без привязки к элементу — как и договорились
-                        vvedeno_luboe.append(f"scroll.{int(event.get('dy', 0))}")
-
+                print(f'Передаются на запись следующие event: {event}')
+                vvedeno_luboe.extend(_record_event_to_tokens(event))
                 n += 1
 
             print(vvedeno_luboe, '---------------------------------------------------')
