@@ -125,11 +125,10 @@ def _request_objects_prescan(*, reason: str) -> bool:
     return True
 
 
-def _request_prescan_after_action_execution(symbol) -> bool:
-    """Запросить prescan после фактического исполнения action-точки."""
-    if not _is_action_symbol(symbol):
-        return False
-    return _request_objects_prescan(reason="action_executed")
+def _request_rescue_prescan(*, reason: str = "target_unavailable") -> bool:
+    """Запросить prescan только когда прямой путь не может быть выполнен."""
+    print("Целевой объект недоступен. Запрошен rescue-prescan знакомых объектов.")
+    return _request_objects_prescan(reason=reason)
 
 
 def _print_last_glaz_target(*, max_age_sec: float = 10.0):
@@ -455,8 +454,6 @@ def obrabotka_symbol(symbol):
         )
 
     sozdat_svyaz(nayti_id_max_signal[0], new_tochka_name)
-    if _is_action_symbol(symbol):
-        _request_objects_prescan(reason="action_point_link")
     online_svyaz(new_tochka_name)
 
     state_after = get_max_signal_point(cursor)
@@ -925,8 +922,6 @@ def out_red(id):
                 cursor.execute("UPDATE svyazi SET id_finish = ? WHERE ID = ?", (id_new_koord, max_ID_svyazi))
                 # создаётся связь от новых координат к объекту (id объекта передаётся в функцию)
                 sozdat_svyaz(id_new_koord, id)
-                if _is_action_symbol(name_new_koordinat):
-                    _request_objects_prescan(reason="action_point_link")
                 max_signal_2 = cursor.execute("SELECT MAX(signal) FROM points").fetchone()[0]
                 cursor.execute("UPDATE points SET signal = ? WHERE id = ?", (max_signal_2, id))
             else:
@@ -944,6 +939,7 @@ def out_red(id):
                 # print(f'Обновление id экрана = {ekran}, новым сигналом = {max_signal[0] + 1}')
                 cursor.execute("UPDATE points SET signal = ? WHERE id = ?", (max_signal[0] + 1, ekran))
                 online_svyaz(ekran)
+                _request_rescue_prescan(reason="target_unavailable")
 
 # todo Добавить отрицательную реакцию, чтобы не повторять действия
 # todo Добавить в прошивку поиск путей, которые приведут к положительной реакции (например, имеется id связи от текущего состояния и имеется id связи к положительной реакции - попробовать их соединить в обратном направлении)
@@ -1009,7 +1005,6 @@ def out_red(id):
 
                 print(f'Попытка воспроизвести действие: {event}')
                 play.play_one(event)  # Воспроизводим событие
-                _request_prescan_after_action_execution(action_symbol)
                 print('Выполнение скрипта остановлено')
                 break
 
@@ -1028,7 +1023,6 @@ def out_red(id):
                 # try:
                 print('Выполняется действие без присутствия точки в тексте')
                 play.play_one(event)  # Воспроизводим событие
-                _request_prescan_after_action_execution(action_symbol)
                 # except:
                 print('Выполнение скрипта остановлено')
                 break
