@@ -74,6 +74,14 @@ _printed_scan_result_for_request_id: str | None = None
 _printed_scan_requested_for_request_id: str | None = None
 _scan_poll_attempts: int = 0
 _scan_poll_attempts_max: int = 40  # safety: чтобы не висеть в ожидании бесконечно
+GOLDEN_PATH_MAX_LEN: int = 80
+POSITIVE_REACTION_POINT_IDS: set[int] = {1}
+NEGATIVE_REACTION_POINT_IDS: set[int] = {2}
+NEUTRAL_REACTION_POINT_IDS: set[int] = {3}
+pyt: list[tuple[int, int]] = []
+zolotoy_pyt: list[tuple[int, int]] = []
+blocked_target: int | None = None
+remaining_golden_path: list[tuple[int, int]] = []
 
 
 def _is_click_symbol(symbol: str) -> bool:
@@ -129,6 +137,193 @@ def _request_rescue_prescan(*, reason: str = "target_unavailable") -> bool:
     """Запросить prescan только когда прямой путь не может быть выполнен."""
     print("Целевой объект недоступен. Запрошен rescue-prescan знакомых объектов.")
     return _request_objects_prescan(reason=reason)
+
+
+def _int_or_none(value) -> int | None:
+    """Вернуть int(value) или None, если значение нельзя безопасно привести."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _point_name(cursor_obj, point_id: int) -> str | None:
+    """Прочитать points.name для проверки реакции в графе Kolos."""
+    try:
+        row = cursor_obj.execute("SELECT name FROM points WHERE id = ?", (point_id,)).fetchone()
+    except Exception:
+        return None
+    if not row:
+        return None
+    return row[0]
+
+
+def _is_positive_reaction_point(cursor_obj, point_id: int) -> bool:
+    """True, если точка является положительной реакцией задачи."""
+    if point_id in POSITIVE_REACTION_POINT_IDS:
+        return True
+    return _point_name(cursor_obj, point_id) == "poz"
+
+
+def _is_terminal_reaction_point(cursor_obj, point_id: int) -> bool:
+    """True для реакций, которыми завершается проверяемый путь."""
+    if point_id in (
+        POSITIVE_REACTION_POINT_IDS
+        | NEGATIVE_REACTION_POINT_IDS
+        | NEUTRAL_REACTION_POINT_IDS
+    ):
+        return True
+    return _point_name(cursor_obj, point_id) in {"poz", "neg", "ney"}
+
+
+def _fetch_link(cursor_obj, link_id: int) -> tuple[int, int] | None:
+    """Прочитать связь как пару (id_start, id_finish)."""
+    try:
+        row = cursor_obj.execute(
+            "SELECT id_start, id_finish FROM svyazi WHERE ID = ?",
+            (link_id,),
+        ).fetchone()
+    except Exception:
+        return None
+    if not row:
+        return None
+    id_start = _int_or_none(row[0])
+    id_finish = _int_or_none(row[1])
+    if id_start is None or id_finish is None:
+        return None
+    return id_start, id_finish
+
+
+def _walk_success_path_from_link(
+    cursor_obj,
+    first_link_id: int,
+    *,
+    start_point_id: int,
+    max_len: int = GOLDEN_PATH_MAX_LEN,
+) -> list[tuple[int, int]] | None:
+    """Пройти цепочку связей ID+1 и вернуть путь, если он доходит до poz/1."""
+    path: list[tuple[int, int]] = []
+    current_start = start_point_id
+    link_id = first_link_id
+    seen_links: set[int] = set()
+
+    while len(path) < max_len:
+        if link_id in seen_links:
+            return None
+        seen_links.add(link_id)
+        link = _fetch_link(cursor_obj, link_id)
+        if link is None:
+            return None
+        id_start, id_finish = link
+        if id_start != current_start:
+            return None
+
+        path.append((id_finish, link_id))
+        if _is_positive_reaction_point(cursor_obj, id_finish):
+            return path
+        if _is_terminal_reaction_point(cursor_obj, id_finish):
+            return None
+
+        current_start = id_finish
+        link_id += 1
+    return None
+
+
+def _find_shortest_golden_path(
+    cursor_obj,
+    start_point_id: int,
+    *,
+    max_len: int = GOLDEN_PATH_MAX_LEN,
+) -> list[tuple[int, int]]:
+    """Найти самый короткий успешный путь из текущей точки по существующему графу."""
+    try:
+        rows = cursor_obj.execute(
+            "SELECT ID FROM svyazi WHERE id_start = ? ORDER BY ID",
+            (start_point_id,),
+        ).fetchall()
+    except Exception:
+        return []
+
+    successful_paths: list[list[tuple[int, int]]] = []
+    for row in rows:
+        first_link_id = _int_or_none(row[0] if row else None)
+        if first_link_id is None:
+            continue
+        path = _walk_success_path_from_link(
+            cursor_obj,
+            first_link_id,
+            start_point_id=start_point_id,
+            max_len=max_len,
+        )
+        if path:
+            successful_paths.append(path)
+    if not successful_paths:
+        return []
+    return min(successful_paths, key=lambda item: (len(item), item[0][1]))
+
+
+def _remaining_path_after_block(
+    point_id: int,
+    current_path: list[tuple[int, int]],
+    golden_path: list[tuple[int, int]],
+) -> list[tuple[int, int]]:
+    """Вернуть хвост временного золотого пути с заблокированной точки."""
+    for path in (current_path, golden_path):
+        for index, item in enumerate(path):
+            if item[0] == point_id:
+                return list(path[index:])
+    return []
+
+
+def _mark_golden_path_blocked(point_id: int) -> None:
+    """Зафиксировать, где прямой золотой путь уперся в недоступную цель."""
+    global blocked_target, remaining_golden_path
+    blocked_target = point_id
+    remaining_golden_path = _remaining_path_after_block(point_id, pyt, zolotoy_pyt)
+    print(
+        "Золотой путь заблокирован: "
+        f"blocked_target={blocked_target}, remaining={remaining_golden_path}"
+    )
+
+
+def _clear_golden_runtime_state() -> None:
+    """Очистить временную память одной попытки выполнения задания."""
+    global pyt, zolotoy_pyt, blocked_target, remaining_golden_path
+    global in_pamyat, in_pamyat_name
+    pyt = []
+    zolotoy_pyt = []
+    blocked_target = None
+    remaining_golden_path = []
+    in_pamyat = []
+    in_pamyat_name = []
+
+
+def _install_golden_path_for_current_task(task_text: str) -> bool:
+    """Найти и поставить во временную память кратчайший успешный путь задачи."""
+    global pyt, zolotoy_pyt, blocked_target, remaining_golden_path
+    try:
+        start_point_id = int(poisk_id_s_max_signal_points())
+    except Exception:
+        return False
+
+    path = _find_shortest_golden_path(cursor, start_point_id)
+    if not path:
+        zolotoy_pyt = []
+        remaining_golden_path = []
+        blocked_target = None
+        print(f"Золотой путь для задачи '{task_text}' не найден.")
+        return False
+
+    zolotoy_pyt = list(path)
+    pyt = list(path)
+    remaining_golden_path = []
+    blocked_target = None
+    link_ids = [link_id for _, link_id in path]
+    print(
+        f"Найден золотой путь для задачи '{task_text}': "
+        f"длина={len(path)}, links={link_ids}"
+    )
+    return True
 
 
 def _print_last_glaz_target(*, max_age_sec: float = 10.0):
@@ -690,7 +885,7 @@ def proshivka():
                 data={"id_finish": id_tochki_online_svyazi[0]},
                 lvl=2,
             )
-            in_pamyat_name = []   # Обнулить список памяти - т.к. цепочка дошла до нужного результата
+            _clear_golden_runtime_state()
             _ru_log.log(
                 event="ПРОШИВКА.КОНЕЦ_РЕАКЦИЯ",
                 message="Следующая точка — реакция; цепочка завершена, память очищена",
@@ -797,12 +992,13 @@ def out_red(id):
             data={"id": id},
             lvl=2,
         )
-        sozdat_svyaz(id, (3, ))
+        sozdat_svyaz(id, 3)
         # Поиск максимального сигнала в таблице points
         max_signal = cursor.execute("SELECT MAX(signal) FROM points").fetchone()
-        cursor.execute("UPDATE points SET signal = ? WHERE id = 3", max_signal + 1)
-        pyt = []
-        in_pamyat_name = []
+        max_signal_value = max_signal[0] if max_signal and max_signal[0] is not None else 0
+        cursor.execute("UPDATE points SET signal = ? WHERE id = 3", (max_signal_value + 1,))
+        _clear_golden_runtime_state()
+        return
     text = (cursor.execute("SELECT name FROM points WHERE id = (?)", (id,))).fetchone()
     if len(text[0]) == 16 and '.' not in text[0]:
         list_goryashih_in = []
@@ -930,6 +1126,7 @@ def out_red(id):
                 print("\033[0m {}".format("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"))
                 # удалить путь, чтобы не произошло лишних действий
                 print('Удаляется путь')
+                _mark_golden_path_blocked(id)
                 pyt = []
                 ekran = tekyshiy_ekran()   #Ищется id текущего экрана
                 max_id = poisk_id_s_max_signal_points()   # Поиск id точки с максимальным сигналом
@@ -1568,7 +1765,7 @@ if __name__ == '__main__':
         if vvedeno_luboe in [' 0', '0']:
             tree = ()
             A = False
-            in_pamyat = []
+            _clear_golden_runtime_state()
             # cursor.execute("UPDATE points SET puls = 0 AND signal = 0 AND work = 0")
             old_ekran = 0
             online_svyaz_list = []
@@ -1608,8 +1805,7 @@ if __name__ == '__main__':
             schetchik = 0  # 12.09.23 Добавил переход к началу цикла, если была применена реакция
 
             # print(f'in_pamyat перед удалением первого элемента: {in_pamyat}')
-            in_pamyat_name = []
-            in_pamyat = []
+            _clear_golden_runtime_state()
             # if in_pamyat:
             #     in_pamyat.pop(0)
             #     print(f'Удалён первый элемент из in_pamyat, теперь список такой: {in_pamyat}')
@@ -1734,8 +1930,7 @@ if __name__ == '__main__':
 
         elif vvedeno_luboe in [' 7', '7']:
             print("Стирание краткосрочной памяти")
-            in_pamyat = []
-            in_pamyat_name = []
+            _clear_golden_runtime_state()
 
         elif vvedeno_luboe in [' 8', '8']:
             # запуск автоматического срабатывания счётчика без нажатия enter
@@ -1746,14 +1941,17 @@ if __name__ == '__main__':
             source = 'input'
             vvedeno_luboe = ''
             schetchik = 0
-            in_pamyat = []
-            in_pamyat_name = []
+            _clear_golden_runtime_state()
         elif vvedeno_luboe != "":
+            task_text = vvedeno_luboe if isinstance(vvedeno_luboe, str) else ""
             _dispatch_input_symbols(vvedeno_luboe=vvedeno_luboe, why=_why, trace_id=_why_trace_id)
+            golden_found = False
+            if task_text.strip():
+                golden_found = _install_golden_path_for_current_task(task_text)
             vvedeno_luboe = ''
             # print("Было введено vvedeno_luboe: ", vvedeno_luboe)
             # schetchik = 0   # 07.11.23 - добавлено обнуление, чтобы не перешло состояние к старому экрану
-            source = 'input'
+            source = None if golden_found else 'input'
         else:
             if schetchik == 1:
                 print(f'Счетчик = 1 и in_pamyat сейчас такая: {in_pamyat_name}')
