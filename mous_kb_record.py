@@ -26,6 +26,8 @@ ANSI_RED = "\033[31m"
 ANSI_BLUE = "\033[34m"
 ANSI_YELLOW = "\033[33m"
 ANSI_RESET = "\033[0m"
+GLAZ_READY_TIMEOUT_SEC = 10.0
+GLAZ_READY_POLL_SEC = 0.1
 
 """ Вид в котором информация о событиях хранится объекте:
     
@@ -250,6 +252,31 @@ class Recorder:
                 "Объекты пока не подтверждены. Клик будет записан с координатным fallback."
                 f"{ANSI_RESET}"
             )
+        elif status == "timeout":
+            print(
+                f"{ANSI_YELLOW}"
+                "Не дождались первого обновления Glaz. Можно продолжить, но target клика может ещё не определиться."
+                f"{ANSI_RESET}"
+            )
+
+    def _wait_until_glaz_ready(
+        self,
+        *,
+        timeout_sec: float = GLAZ_READY_TIMEOUT_SEC,
+        poll_sec: float = GLAZ_READY_POLL_SEC,
+    ) -> bool:
+        """Wait until screen compatibility layer has its first fresh snapshot."""
+        deadline = time.monotonic() + max(0.0, float(timeout_sec))
+        while True:
+            try:
+                if screen.get_screen():
+                    return True
+            except Exception:
+                return False
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return False
+            sleep(min(max(float(poll_sec), 0.01), remaining))
 
     def start(self):
         """ Начать запись """
@@ -257,7 +284,10 @@ class Recorder:
         self.status = True
         self._glaz_status = None
         self._set_glaz_status("detecting")
-        screen.get_screen()
+        if self._wait_until_glaz_ready():
+            self._set_glaz_status("ready")
+        else:
+            self._set_glaz_status("timeout")
         _ru_log.log(
             event="ЗАПИСЬ.СТАРТ",
             message="Запущена запись мыши/клавиатуры (остановка по ESC)",

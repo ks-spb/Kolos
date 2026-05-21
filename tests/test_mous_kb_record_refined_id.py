@@ -89,6 +89,70 @@ class TestMouseKbRecordRefinedId(unittest.TestCase):
         self.assertEqual(text.count("Объекты экрана определяются"), 1)
         self.assertEqual(text.count("Объекты определены"), 1)
 
+    def test_start_prints_ready_after_initial_glaz_update(self) -> None:
+        import mous_kb_record as mkr
+
+        class _Report:
+            def set_folder(self, _name: str) -> None:
+                return
+
+        class _Logger:
+            def log(self, **_kwargs) -> None:
+                return
+
+        orig_wait = mkr.Recorder._wait_until_glaz_ready
+        orig_report = mkr.report
+        orig_log = mkr._ru_log
+        mkr.Recorder._wait_until_glaz_ready = lambda self: True  # type: ignore[assignment]
+        mkr.report = _Report()  # type: ignore[assignment]
+        mkr._ru_log = _Logger()  # type: ignore[assignment]
+        try:
+            r = mkr.Recorder()
+            out = io.StringIO()
+            with redirect_stdout(out):
+                r.start()
+
+            text = out.getvalue()
+            self.assertIn("Объекты экрана определяются", text)
+            self.assertIn("Объекты определены. Можно продолжать действия.", text)
+            self.assertTrue(r.status)
+        finally:
+            mkr.Recorder._wait_until_glaz_ready = orig_wait  # type: ignore[assignment]
+            mkr.report = orig_report  # type: ignore[assignment]
+            mkr._ru_log = orig_log  # type: ignore[assignment]
+
+    def test_start_prints_timeout_when_initial_glaz_update_missing(self) -> None:
+        import mous_kb_record as mkr
+
+        class _Report:
+            def set_folder(self, _name: str) -> None:
+                return
+
+        class _Logger:
+            def log(self, **_kwargs) -> None:
+                return
+
+        orig_wait = mkr.Recorder._wait_until_glaz_ready
+        orig_report = mkr.report
+        orig_log = mkr._ru_log
+        mkr.Recorder._wait_until_glaz_ready = lambda self: False  # type: ignore[assignment]
+        mkr.report = _Report()  # type: ignore[assignment]
+        mkr._ru_log = _Logger()  # type: ignore[assignment]
+        try:
+            r = mkr.Recorder()
+            out = io.StringIO()
+            with redirect_stdout(out):
+                r.start()
+
+            text = out.getvalue()
+            self.assertIn("Объекты экрана определяются", text)
+            self.assertIn("Не дождались первого обновления Glaz", text)
+            self.assertTrue(r.status)
+        finally:
+            mkr.Recorder._wait_until_glaz_ready = orig_wait  # type: ignore[assignment]
+            mkr.report = orig_report  # type: ignore[assignment]
+            mkr._ru_log = orig_log  # type: ignore[assignment]
+
 
 if __name__ == "__main__":
     unittest.main()
