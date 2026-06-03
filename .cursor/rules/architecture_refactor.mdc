@@ -1,15 +1,23 @@
 ---
-description: Архитектурные правила рефакторинга и разработки
+description: Architecture refactoring and development rules
 globs:
   - "**/*.py"
 alwaysApply: true
 ---
 
+- Follow SOLID, KISS, and DRY.
+- Remove unused code while touching a module.
+- If the task is unclear or illogical, ask clarifying questions and explain why.
 - Before implementation, propose the target file structure.
 - First design the file structure, then write the code.
+- Prefer a multi-file structure split by responsibility when it improves maintainability.
+- Choose the appropriate pattern from the first iteration:
+  - Strategy for variable behavior
+  - State for states
+  - Observer for notifications
+  - Repository for data access
 - If a function is > 40 lines, split it.
 - If repetition occurs more than once, extract it into a helper/class.
-- Duplication is forbidden (DRY).
 - Small private helper methods are mandatory for non-trivial logic.
 - Any new module: types + docstring + consistent naming style.
 - Docstrings and type hints are mandatory.
@@ -19,4 +27,3 @@ alwaysApply: true
   - what was simplified
   - what was extracted
   - what was removed
-
