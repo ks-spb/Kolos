@@ -13,7 +13,7 @@ from exceptions import *
 from report import report
 from cv_core.compat_adapter import screen
 from cv_core.glaz_ipc import read_last_confirmed_target
-from db import Database
+from db import Database, KOLOS_DATABASE_PATH
 from cv_core.run_logger_ru import RunLoggerRU
 
 listener_kb = KeyboardListener()  # Слушатель клавиатуры
@@ -64,7 +64,7 @@ class Hotkey:
         self.alt = False  # Помнит, нажата ли клавиша Alt
         self.cmd = False  # Помнит, нажата ли клавиша Cmd
         self.record_order = []  # Хранит сочетание текущей записи
-        self.cursor = Database('Li_db_v1_4.db')  # Подключение к БД
+        self.cursor = Database(KOLOS_DATABASE_PATH)  # Подключение к БД
 
         # Читаем из ДБ существующие последовательности, подставляя имена вместо id если они есть
         # TODO: Допускаются одинаковые имена сочетаний, добавляемые позже будут заменять прежние

@@ -1,7 +1,11 @@
 #  Класс для работы с базой данных
 
 import sqlite3
+from pathlib import Path
 from threading import local
+
+
+KOLOS_DATABASE_PATH = Path(__file__).resolve().with_name("db_v4.db")
 
 
 #  Создает новый объект локальных данных потока.

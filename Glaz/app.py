@@ -53,6 +53,23 @@ from loupe_signature import LoupeSignatureAnalyzer
 # Путь к файлу отладочных логов (инструментация)
 _DEBUG_LOG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".cursor", "debug.log")
 
+_NORMAL_WINDOW_MAX_WIDTH = 1600
+_NORMAL_WINDOW_MAX_HEIGHT = 900
+_NORMAL_WINDOW_MARGIN = 80
+
+
+def _normal_window_geometry(monitor: dict) -> str:
+    """Вернуть размер восстановления, который целиком помещается на мониторе."""
+    monitor_width = max(1, int(monitor["width"]))
+    monitor_height = max(1, int(monitor["height"]))
+    available_width = max(1, monitor_width - _NORMAL_WINDOW_MARGIN)
+    available_height = max(1, monitor_height - _NORMAL_WINDOW_MARGIN)
+    window_width = min(_NORMAL_WINDOW_MAX_WIDTH, available_width)
+    window_height = min(_NORMAL_WINDOW_MAX_HEIGHT, available_height)
+    x = int(monitor["left"]) + max(0, (monitor_width - window_width) // 2)
+    y = int(monitor["top"]) + max(0, (monitor_height - window_height) // 2)
+    return f"{window_width}x{window_height}{x:+d}{y:+d}"
+
 
 @dataclass
 class ProcessingResult:
@@ -95,20 +112,14 @@ class ScreenCaptureApp:
         self.peaks_invert = tk.BooleanVar(value=False)
         self.segment_peak_threshold = tk.IntVar(value=3)  # минимум подряд пиковых пикселей для зажигания сегмента
         
-        # Переменные для PhotoImage (предотвращение сборки мусора)
-        self.photo = None
+        # Переменная для PhotoImage (предотвращение сборки мусора)
         self.peaks_photo = None
 
-        # UI render throttling (ускорение без влияния на качество детекции):
-        # - логика обработки/распознавания работает как прежде
-        # - ограничиваем только частоту перерисовки превью (Tk)
-        self._render_interval_screenshot_s: float = 0.25  # 4 FPS
+        # UI render throttling: логика обработки/распознавания работает как прежде,
+        # ограничивается только частота перерисовки пиков (Tk).
         self._render_interval_peaks_s: float = 0.25  # 4 FPS
-        self._last_render_screenshot_time: float = 0.0
         self._last_render_peaks_time: float = 0.0
-        self._screenshot_canvas_image_id: int | None = None
         self._peaks_canvas_image_id: int | None = None
-        self._screenshot_preview_resample = Image.Resampling.BILINEAR
 
         # Объекты на Пиках (логика без отдельного экрана)
         self._detected_objects: list[DetectedObject] = []
@@ -221,19 +232,13 @@ class ScreenCaptureApp:
         with mss.mss() as sct:
             monitors = sct.monitors
             # monitors[0] - все мониторы вместе, monitors[1] - монитор 1, monitors[2] - монитор 2
-            if len(monitors) > 2:
-                # Есть монитор 2
-                monitor = monitors[2]
-                x = monitor['left']
-                y = monitor['top']
-                # Устанавливаем позицию окна на монитор 2
-                self.root.geometry(f"+{x}+{y}")
-            else:
-                # Только один монитор - используем его
-                self.root.geometry("900x850")
-        
-        # Разворачиваем на весь экран после небольшой задержки
-        self.root.after(100, lambda: self.root.state('zoomed'))
+            monitor = monitors[2] if len(monitors) > 2 else monitors[1]
+            # Windows восстанавливает максимизированное окно до этой геометрии
+            # перед перетаскиванием. Размер обязан помещаться на одном мониторе.
+            self.root.geometry(_normal_window_geometry(monitor))
+
+        # Колбэк выполнится после полной сборки UI, но до действий пользователя.
+        self.root.after_idle(lambda: self.root.state('zoomed'))
     
     def _setup_ui(self):
         """Настройка пользовательского интерфейса."""
@@ -257,7 +262,6 @@ class ScreenCaptureApp:
         self._main_pane.add(self._right_frame, weight=0)
         
         self._setup_monitor_frame()
-        self._setup_screenshot_frame()
         self._setup_peaks_frame()
         self._setup_error_frame()
         self._setup_status_bar()
@@ -332,38 +336,6 @@ class ScreenCaptureApp:
             text="Делать скриншоты",
             variable=self._do_screenshots_var
         ).pack(side="left", padx=(12, 0))
-    
-    def _setup_screenshot_frame(self):
-        """Настройка фрейма скриншота."""
-        image_frame = ttk.LabelFrame(self._left_frame, text="Скриншот", padding=10)
-        image_frame.pack(fill="both", expand=True, padx=10, pady=5)
-
-        # Область отображения скриншота закреплена слева; справа остаётся пустое место.
-        self._screenshot_view_frame = ttk.Frame(image_frame)
-        self._screenshot_view_frame.pack(fill="both", expand=True)
-        self._screenshot_view_frame.bind("<Configure>", self._on_screenshot_view_resize)
-
-        self.canvas = tk.Canvas(self._screenshot_view_frame, bg="gray")
-        self.canvas.pack(side="left", anchor="nw", expand=False)
-        
-        # Полосы прокрутки
-        h_scrollbar = ttk.Scrollbar(image_frame, orient="horizontal", command=self.canvas.xview)
-        h_scrollbar.pack(side="bottom", fill="x")
-        v_scrollbar = ttk.Scrollbar(image_frame, orient="vertical", command=self.canvas.yview)
-        v_scrollbar.pack(side="right", fill="y")
-        
-        self.canvas.configure(
-            xscrollcommand=h_scrollbar.set,
-            yscrollcommand=v_scrollbar.set
-        )
-
-    def _on_screenshot_view_resize(self, event=None):
-        """Ограничить область «Скриншот»: ширина 50%, высота 90%."""
-        if event is None:
-            return
-        target_width = max(1, int(event.width * 0.5))
-        target_height = max(1, int(event.height * 0.9))
-        self.canvas.configure(width=target_width, height=target_height)
     
     def _setup_peaks_frame(self):
         """Настройка фрейма пиков."""
@@ -567,7 +539,7 @@ class ScreenCaptureApp:
     def _init_loupe_controller(self):
         """Инициализация контроллера луп после создания canvas."""
         self.loupe_controller = LoupeController(
-            self.canvas,
+            None,
             self.peaks_canvas,
             loupe_size=100
         )
@@ -1281,42 +1253,28 @@ class ScreenCaptureApp:
             self._current_loupe_label.configure(image="", text="—")
     
     def _update_display(self):
-        """Обновление отображения скриншота."""
+        """Обновление отображения пиков и геометрии наведения."""
         # Удерживаем курсор перед обновлением дисплея
         self._hold_cursor_if_active()
         
         if self.current_image is None:
             return
         
-        canvas_width = self.canvas.winfo_width()
-        canvas_height = self.canvas.winfo_height()
+        canvas_width = self.peaks_canvas.winfo_width()
+        canvas_height = self.peaks_canvas.winfo_height()
         
         if canvas_width <= 1 or canvas_height <= 1:
             return
         
         img_width, img_height = self.current_image.size
         
-        # Вычисляем геометрию отображения всегда (нужно для корректной логики наведения),
-        # даже если пропускаем тяжёлый рендер превью.
+        # Геометрия наведения совпадает с единственным видимым canvas пиков.
         scale = self._compute_display_scale(canvas_width, canvas_height, img_width, img_height)
         self.current_scale = scale
         display_size = self._compute_display_size(img_width, img_height, scale)
 
         # Логика наведения/step1 не должна зависеть от частоты перерисовки UI.
         self._process_mouse_over_object(display_size)
-
-        # Тяжёлый рендер превью скриншота — по отдельному троттлингу
-        if self._should_render_screenshot():
-            display_img = self._build_screenshot_preview(scale, display_size)
-            self.photo = ImageTk.PhotoImage(display_img)
-            if self._screenshot_canvas_image_id is None:
-                self._screenshot_canvas_image_id = self.canvas.create_image(
-                    0, 0, anchor="nw", image=self.photo, tags="image"
-                )
-            else:
-                self.canvas.itemconfig(self._screenshot_canvas_image_id, image=self.photo)
-            self.canvas.config(scrollregion=self.canvas.bbox("all"))
-            self.status_var.set(f"Отображен скриншот {display_size[0]}x{display_size[1]}")
 
         # Обновляем пики (только рендер уже вычисленного full-res результата)
         self._update_peaks_display()
@@ -1345,6 +1303,7 @@ class ScreenCaptureApp:
             )
         else:
             self.peaks_canvas.itemconfig(self._peaks_canvas_image_id, image=self.peaks_photo)
+        self.status_var.set(f"Отображены пики {preview_w}x{preview_h}")
         # Лупа рисуется до _update_display; поднимаем её элементы поверх изображения пиков
         for tag in ("loupe", "loupe_border", "loupe_crosshair"):
             self.peaks_canvas.tag_raise(tag)
@@ -1356,7 +1315,7 @@ class ScreenCaptureApp:
         img_width: int,
         img_height: int,
     ) -> float:
-        """Масштаб предпросмотра скриншота (0..1)."""
+        """Масштаб предпросмотра пиков (0..1)."""
         scale_x = canvas_width / img_width
         scale_y = canvas_height / img_height
         return float(min(scale_x, scale_y, 1.0))
@@ -1366,22 +1325,6 @@ class ScreenCaptureApp:
         if scale < 1.0:
             return (max(1, int(img_width * scale)), max(1, int(img_height * scale)))
         return (int(img_width), int(img_height))
-
-    def _build_screenshot_preview(
-        self, scale: float, display_size: tuple[int, int]
-    ) -> Image.Image:
-        """Построить PIL изображение предпросмотра для canvas."""
-        if scale < 1.0:
-            return self.current_image.resize(display_size, self._screenshot_preview_resample)
-        return self.current_image
-
-    def _should_render_screenshot(self) -> bool:
-        """Решить, нужно ли перерисовать предпросмотр скриншота сейчас."""
-        now = time.time()
-        if now - self._last_render_screenshot_time < self._render_interval_screenshot_s:
-            return False
-        self._last_render_screenshot_time = now
-        return True
 
     def _should_render_peaks(self) -> bool:
         """Решить, нужно ли перерисовать предпросмотр пиков сейчас."""

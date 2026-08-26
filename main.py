@@ -12,11 +12,18 @@ from time import sleep
 import random
 import os
 
+from launch_workdir import ensure_script_directory_is_cwd
+
+
+# Все импортируемые модули используют относительные пути к SQLite. Устанавливаем
+# рабочую папку до их импорта, иначе SQLite может открыть новую пустую БД из cwd
+# ярлыка или проводника.
+ensure_script_directory_is_cwd(__file__)
+
 from PIL.ImageStat import Global
 
 from cv_core.glaz_ipc import read_last_confirmed_target, read_scan_results, write_scan_request
-from launch_workdir import ensure_script_directory_is_cwd
-from db import Database
+from db import Database, KOLOS_DATABASE_PATH
 from mous_kb_record import rec, play
 from cv_core.compat_adapter import screen
 from cv_core.run_logger_ru import RunLoggerRU, get_max_signal_point, get_point_by_id
@@ -1643,7 +1650,6 @@ def zazhiganie_obiektov_na_ekrane():
 
 
 if __name__ == '__main__':
-    ensure_script_directory_is_cwd(__file__)
     old_ekran = 0
     _screen_resolver = None
     screen_capture_requested = os.environ.get("KOLOS_CAPTURE", "0").strip().lower() in (
@@ -1660,7 +1666,7 @@ if __name__ == '__main__':
         print("Определение текущего экрана в Kolos отключено.")
 
     # -----------------------------------------------------------
-    cursor = Database('Li_db_v1_4.db')
+    cursor = Database(KOLOS_DATABASE_PATH)
     A = True
 
     t0_10 = 0  # для проверки на изменение to за 10 циклов

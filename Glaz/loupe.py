@@ -421,20 +421,20 @@ class Loupe:
 class LoupeController:
     """Контроллер для управления лупами на основном canvas и canvas пиков."""
     
-    def __init__(self, main_canvas: tk.Canvas, peaks_canvas: tk.Canvas,
+    def __init__(self, main_canvas: Optional[tk.Canvas], peaks_canvas: tk.Canvas,
                  loupe_size: int = 100):
         """
         Инициализация контроллера луп.
         
         Args:
-            main_canvas: Основной canvas для скриншота
+            main_canvas: Основной canvas для скриншота; None, если он скрыт
             peaks_canvas: Canvas для пиков
             loupe_size: Размер лупы в пикселях
         """
         self.loupe_size = loupe_size
         
-        # Создаём лупы для обоих canvas
-        self.main_loupe = Loupe(main_canvas)
+        # Основная лупа не создаётся, когда предпросмотр скриншота скрыт.
+        self.main_loupe = Loupe(main_canvas) if main_canvas is not None else None
         self.peaks_loupe = Loupe(peaks_canvas)
         
         # Хранение PhotoImage для предотвращения сборки мусора
@@ -609,7 +609,8 @@ class LoupeController:
 
     def clear_all(self):
         """Очистка всех луп."""
-        self.main_loupe.clear()
+        if self.main_loupe is not None:
+            self.main_loupe.clear()
         self.peaks_loupe.clear()
         self._peaks_loupe_data = LoupeData()
         self._last_highlighted_segment_ids = ()
@@ -711,21 +712,21 @@ class LoupeController:
 
         loupe_width = self.loupe_size
         loupe_height = self.loupe_size
-        self._main_photo = ImageTk.PhotoImage(loupe_img)
-        
         # Позиция на main canvas: центр лупы совпадает с курсором
         canvas_x = int(rel_x * current_scale)
         canvas_y = int(rel_y * current_scale)
         loupe_canvas_x = canvas_x - loupe_width // 2
         loupe_canvas_y = canvas_y - loupe_height // 2
         
-        # Отрисовка на основном canvas (без перекрестия)
-        self.main_loupe.draw(
-            self._main_photo,
-            loupe_canvas_x, loupe_canvas_y,
-            loupe_width, loupe_height,
-            peaks_pil_image=None  # Без перекрестия
-        )
+        # Отрисовка на основном canvas (без перекрестия), если он видим.
+        if self.main_loupe is not None:
+            self._main_photo = ImageTk.PhotoImage(loupe_img)
+            self.main_loupe.draw(
+                self._main_photo,
+                loupe_canvas_x, loupe_canvas_y,
+                loupe_width, loupe_height,
+                peaks_pil_image=None  # Без перекрестия
+            )
         
         # Для bbox crop не нормализуем — crop уже центрирован на объекте, нормализация
         # краёв обрезала объект. Для курсорной лупы используем оригинал.

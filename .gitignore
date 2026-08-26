@@ -9,5 +9,6 @@ __pycache__/
 *.log
 *.db-journal
 diagram_output.png
+/kolos_graph.html
 /record/
 /Glaz/object_screenshots/
